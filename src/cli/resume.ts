@@ -1,7 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { decideResumeAction } from "../domain/validation/resume-decision.js";
+import type { PatchBundle } from "../domain/patch/patch-bundle.js";
 import type { WorkItemStatus } from "../domain/planning/work-item.js";
+import { inspectResumeWorkItem } from "../domain/validation/resume-inspector.js";
 
 const workspaceRoot = process.argv[2];
 
@@ -36,16 +37,28 @@ const decisions = await Promise.all(
       const workItem = JSON.parse(await readFile(path.join(workItemsRoot, file), "utf8")) as {
         id: string;
         status: WorkItemStatus;
+        targetPaths?: string[];
       };
-      return {
-        workItemId: workItem.id,
-        action: decideResumeAction({
+      let contentSha: string | undefined;
+      try {
+        const patchPath = path.join(workspaceRoot, ".agent-runs", runId, "patches", `${workItem.id}.patch.json`);
+        const patch = JSON.parse(await readFile(patchPath, "utf8")) as PatchBundle;
+        contentSha = patch.files[0]?.contentSha;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+      return inspectResumeWorkItem({
+        workspaceRoot,
+        workItem: {
+          id: workItem.id,
           status: workItem.status,
-          currentSha: "published-sha",
-          contentSha: "published-sha",
+          targetPaths: workItem.targetPaths ?? [],
+          contentSha,
           retryable: true
-        })
-      };
+        }
+      });
     })
 );
 

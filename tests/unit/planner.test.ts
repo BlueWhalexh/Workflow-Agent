@@ -23,6 +23,10 @@ describe("organize planner", () => {
     ]);
     expect(plan.workItems.some((item) => item.type === "REWRITE_TOPIC_NOTE")).toBe(true);
     expect(plan.workItems.some((item) => item.type === "CREATE_TOPIC_NOTE")).toBe(true);
+    expect(plan.workItems.some((item) => item.targetPaths.includes("knowledge-base/topics/tools/index.md"))).toBe(true);
+    expect(plan.workItems.some((item) => item.targetPaths.some((targetPath) => targetPath.includes(".md/index.md")))).toBe(
+      false
+    );
     expect(plan.workItems.some((item) => item.type === "MAINTAIN_MOC")).toBe(true);
   });
 });

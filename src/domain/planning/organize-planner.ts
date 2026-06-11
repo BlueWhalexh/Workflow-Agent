@@ -16,7 +16,10 @@ function targetPathForRaw(rawPath: string): string {
 
 function topicIndexPathForTarget(targetPath: string): string {
   const parts = targetPath.split("/");
-  return parts.slice(0, 4).join("/") + "/index.md";
+  if (parts.length >= 3 && parts[0] === "knowledge-base" && parts[1] === "topics") {
+    return parts.slice(0, 3).join("/") + "/index.md";
+  }
+  return parts.slice(0, -1).join("/") + "/index.md";
 }
 
 export function createOrganizePlan(input: {
