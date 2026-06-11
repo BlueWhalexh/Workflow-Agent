@@ -41,4 +41,20 @@ describe("LangGraph workflow", () => {
     expect(result.status).toBe("SUCCEEDED_WITH_WARNINGS");
     expect(result.reportPath).toBe(".agent-runs/run-test/report.md");
   });
+
+  it("executes with explicit fake provider runtime config", async () => {
+    const result = await runOrganizeWorkflow({
+      workspaceRoot: tempRoot,
+      instruction: "整理全部知识库",
+      runId: "run-provider-runtime",
+      autoApprove: true,
+      providerRuntime: {
+        provider: "fake",
+        timeoutMs: 30000
+      }
+    });
+
+    expect(result.status).toBe("SUCCEEDED_WITH_WARNINGS");
+    expect(result.reportPath).toBe(".agent-runs/run-provider-runtime/report.md");
+  });
 });

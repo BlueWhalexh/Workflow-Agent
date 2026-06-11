@@ -12,6 +12,10 @@
 - `.agent-runs` artifact-based resume 已接入，恢复判断基于 artifacts、workspace current sha、`PatchBundle` content sha。
 - `LlmNoteProvider` adapter interface 已存在。
 - `fake` note provider 已存在，并能驱动 note agent 生成 `PatchBundle`。
+- `ProviderRuntimeConfig` 已存在，当前支持 `provider: "fake"`。
+- Provider registry 已存在，默认选择 fake note provider。
+- `runOrganizeWorkflow` 已接受 `providerRuntime` 配置。
+- `organize` CLI 已支持 `--provider fake`。
 - LLM trace canonical JSONL、provider normalizers、mock agent trace 写入已存在。
 
 尚未完成：
@@ -19,7 +23,7 @@
 - 未接入真实 Claude Code Agent SDK。
 - 未接入真实 DeepSeek API。
 - 未接入真实 MiMo API 或本地 MiMo engine。
-- 未实现 provider runtime selection、timeout、error classification、fallback、rate limit。
+- 未实现真实 provider timeout、error classification、fallback、rate limit。
 - 未实现 durable LangGraph checkpoint saver。
 
 ## Goal
@@ -232,6 +236,8 @@ type ProviderErrorClass =
 ## Implementation Phases
 
 ### Phase 1: Runtime Selection With Fake Provider
+
+状态：已完成。
 
 目标：
 

@@ -35,6 +35,23 @@ describe("CLI smoke", () => {
     expect(result.stdout).toContain("SUCCEEDED_WITH_WARNINGS");
   });
 
+  it("runs organize with explicit fake provider", async () => {
+    const result = await execFileAsync(process.execPath, [
+      "--import",
+      "tsx",
+      "src/cli/organize.ts",
+      tempRoot,
+      "整理全部知识库",
+      "--auto-approve",
+      "--provider",
+      "fake",
+      "--run-id",
+      "run-cli-provider"
+    ]);
+
+    expect(result.stdout).toContain("SUCCEEDED_WITH_WARNINGS");
+  });
+
   it("reports resume decisions for the latest run", async () => {
     await execFileAsync(process.execPath, [
       "--import",

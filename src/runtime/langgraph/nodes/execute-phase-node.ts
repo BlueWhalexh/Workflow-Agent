@@ -5,6 +5,7 @@ import { publishBundle } from "../../../domain/patch/publisher.js";
 import { validateBundle } from "../../../domain/validation/validator.js";
 import { AgentRunsStore } from "../../../storage/agent-runs-store.js";
 import { readWorkspaceFile } from "../../../storage/workspace-fs.js";
+import { selectNoteProvider } from "../../provider/provider-registry.js";
 import type { GraphState } from "../state.js";
 
 export async function executePhaseNode(state: GraphState): Promise<Partial<GraphState>> {
@@ -20,11 +21,13 @@ export async function executePhaseNode(state: GraphState): Promise<Partial<Graph
   }
 
   const sourceContent = await readWorkspaceFile(state.workspaceRoot, noteItem.sourcePaths[0]);
+  const provider = selectNoteProvider(state.providerRuntime);
   const bundle = await runMockNoteAgent({
     runId: state.runId,
     workItem: noteItem,
     sourceContent,
-    store
+    store,
+    provider
   });
   await store.writeJson(`patches/${noteItem.id}.patch.json`, bundle);
 

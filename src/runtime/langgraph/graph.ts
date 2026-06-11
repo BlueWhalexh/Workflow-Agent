@@ -4,6 +4,7 @@ import { inventoryNode } from "./nodes/inventory-node.js";
 import { planNode } from "./nodes/plan-node.js";
 import { reportNode } from "./nodes/report-node.js";
 import type { RuntimeCheckpointStore } from "./checkpoint-store.js";
+import type { ProviderRuntimeConfig } from "../provider/provider-runtime-config.js";
 import type { GraphState } from "./state.js";
 
 const GraphAnnotation = Annotation.Root({
@@ -11,6 +12,7 @@ const GraphAnnotation = Annotation.Root({
   workspaceRoot: Annotation<string>,
   instruction: Annotation<string>,
   autoApprove: Annotation<boolean>,
+  providerRuntime: Annotation<GraphState["providerRuntime"]>,
   status: Annotation<GraphState["status"]>,
   planPath: Annotation<string | undefined>,
   reportPath: Annotation<string | undefined>,
@@ -24,6 +26,7 @@ export async function runOrganizeWorkflow(input: {
   runId: string;
   autoApprove: boolean;
   checkpointStore?: RuntimeCheckpointStore;
+  providerRuntime?: ProviderRuntimeConfig;
 }): Promise<GraphState> {
   const graph = new StateGraph(GraphAnnotation)
     .addNode("inventory", inventoryNode)
@@ -48,6 +51,7 @@ export async function runOrganizeWorkflow(input: {
       workspaceRoot: input.workspaceRoot,
       instruction: input.instruction,
       autoApprove: input.autoApprove,
+      providerRuntime: input.providerRuntime,
       status: "CREATED"
     },
     {
