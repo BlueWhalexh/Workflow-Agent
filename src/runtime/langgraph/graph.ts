@@ -14,6 +14,7 @@ const GraphAnnotation = Annotation.Root({
   status: Annotation<GraphState["status"]>,
   planPath: Annotation<string | undefined>,
   reportPath: Annotation<string | undefined>,
+  pendingApproval: Annotation<GraphState["pendingApproval"]>,
   lastError: Annotation<string | undefined>
 });
 
@@ -31,7 +32,9 @@ export async function runOrganizeWorkflow(input: {
     .addNode("report", reportNode)
     .addEdge(START, "inventory")
     .addEdge("inventory", "plan")
-    .addEdge("plan", "execute")
+    .addConditionalEdges("plan", (state) => {
+      return state.status === "WAITING_PLAN_APPROVAL" ? "report" : "execute";
+    })
     .addEdge("execute", "report")
     .addEdge("report", END);
 

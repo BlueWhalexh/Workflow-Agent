@@ -23,6 +23,12 @@ export async function planNode(state: GraphState): Promise<Partial<GraphState>> 
   });
   return {
     status: state.autoApprove ? "RUNNING" : "WAITING_PLAN_APPROVAL",
-    planPath: `.agent-runs/${state.runId}/plan.json`
+    planPath: `.agent-runs/${state.runId}/plan.json`,
+    pendingApproval: state.autoApprove
+      ? undefined
+      : {
+          type: "PLAN",
+          artifactPath: `.agent-runs/${state.runId}/approvals/plan-approval.json`
+        }
   };
 }
