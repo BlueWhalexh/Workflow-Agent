@@ -1,4 +1,4 @@
-export type ProviderRuntimeName = "fake";
+export type ProviderRuntimeName = "fake" | "deepseek-fixture" | "claude-code-fixture";
 
 export interface ProviderRuntimeConfig {
   provider: ProviderRuntimeName;

@@ -17,6 +17,7 @@ export interface LlmNoteProviderResult {
     outputTokens?: number;
     totalTokens?: number;
     reasoningTokens?: number;
+    costUsd?: number;
   };
   content: string;
 }

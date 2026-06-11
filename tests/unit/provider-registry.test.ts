@@ -44,4 +44,24 @@ describe("provider registry", () => {
 
     expect(result.provider).toBe("fake");
   });
+
+  it("selects fixture providers from runtime config", async () => {
+    const deepSeek = selectNoteProvider({ provider: "deepseek-fixture", timeoutMs: 30000 });
+    const claudeCode = selectNoteProvider({ provider: "claude-code-fixture", timeoutMs: 30000 });
+
+    await expect(
+      deepSeek.generateNote({
+        runId: "run-provider",
+        workItem,
+        sourceContent: "# source\n"
+      })
+    ).resolves.toMatchObject({ provider: "deepseek" });
+    await expect(
+      claudeCode.generateNote({
+        runId: "run-provider",
+        workItem,
+        sourceContent: "# source\n"
+      })
+    ).resolves.toMatchObject({ provider: "claude-code" });
+  });
 });

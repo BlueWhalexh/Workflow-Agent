@@ -11,13 +11,16 @@ const instruction = process.argv[3];
 const autoApprove = process.argv.includes("--auto-approve");
 const runId = readArg("--run-id") ?? `run-${Date.now()}`;
 const provider = readArg("--provider") ?? "fake";
+const supportedProviders = ["fake", "deepseek-fixture", "claude-code-fixture"];
 
 if (!workspaceRoot || !instruction) {
-  console.error("Usage: organize <workspaceRoot> <instruction> [--auto-approve] [--run-id <runId>] [--provider fake]");
+  console.error(
+    "Usage: organize <workspaceRoot> <instruction> [--auto-approve] [--run-id <runId>] [--provider fake|deepseek-fixture|claude-code-fixture]"
+  );
   process.exit(1);
 }
 
-if (provider !== "fake") {
+if (!supportedProviders.includes(provider)) {
   console.error(`Unsupported provider: ${provider}`);
   process.exit(1);
 }

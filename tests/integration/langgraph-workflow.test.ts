@@ -57,4 +57,20 @@ describe("LangGraph workflow", () => {
     expect(result.status).toBe("SUCCEEDED_WITH_WARNINGS");
     expect(result.reportPath).toBe(".agent-runs/run-provider-runtime/report.md");
   });
+
+  it("executes with DeepSeek fixture provider runtime config", async () => {
+    const result = await runOrganizeWorkflow({
+      workspaceRoot: tempRoot,
+      instruction: "整理全部知识库",
+      runId: "run-deepseek-fixture",
+      autoApprove: true,
+      providerRuntime: {
+        provider: "deepseek-fixture",
+        timeoutMs: 30000
+      }
+    });
+
+    expect(result.status).toBe("SUCCEEDED_WITH_WARNINGS");
+    expect(result.reportPath).toBe(".agent-runs/run-deepseek-fixture/report.md");
+  });
 });
