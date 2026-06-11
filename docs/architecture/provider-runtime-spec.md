@@ -16,6 +16,10 @@
 - Provider registry 已存在，默认选择 fake note provider。
 - `runOrganizeWorkflow` 已接受 `providerRuntime` 配置。
 - `organize` CLI 已支持 `--provider fake`。
+- `deepseek-fixture` provider 已存在，使用本地 OpenAI-compatible fixture response。
+- `claude-code-fixture` provider 已存在，使用本地 Claude Code result fixture。
+- Provider error classification 已存在，覆盖 timeout/auth/schema 等稳定类别。
+- Failure harness 已存在，能验证 timeout 不发布、invalid content 被 Validator 阻断。
 - LLM trace canonical JSONL、provider normalizers、mock agent trace 写入已存在。
 
 尚未完成：
@@ -23,7 +27,7 @@
 - 未接入真实 Claude Code Agent SDK。
 - 未接入真实 DeepSeek API。
 - 未接入真实 MiMo API 或本地 MiMo engine。
-- 未实现真实 provider timeout、error classification、fallback、rate limit。
+- 未实现真实 provider fallback、rate limit。
 - 未实现 durable LangGraph checkpoint saver。
 
 ## Goal
@@ -255,6 +259,8 @@ type ProviderErrorClass =
 
 ### Phase 2: Fixture Providers
 
+状态：已完成。
+
 目标：
 
 - `deepseek-fixture` provider：读取本地 fixture response，不联网。
@@ -270,6 +276,8 @@ type ProviderErrorClass =
 
 ### Phase 3: Failure And Guardrail Harness
 
+状态：已完成。
+
 目标：
 
 - provider timeout/auth/schema failure classification。
@@ -284,6 +292,8 @@ type ProviderErrorClass =
 - resume: failed/retryable status maps to correct resume action。
 
 ### Phase 4: Optional Real Smoke
+
+状态：未执行。该阶段需要真实外部调用、网络、凭证或 SDK 条件，必须单独确认。
 
 目标：
 
