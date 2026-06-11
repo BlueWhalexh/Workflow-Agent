@@ -825,3 +825,8 @@ knowledge-base/topics/tools/Skill vs CLI Tool 决策.md  # bootstrap raw mirror
 - Eval 输出 raw coverage、pagesRewritten、rawMirrorConverted、qualityIssues。
 
 第一阶段可以加一个 real provider smoke，但不能把 mock/fake 测试描述成真实 provider 链路。
+
+实现切片说明：
+
+- 第一阶段实现可以先验证 LangGraph orchestration 和 `.agent-runs` artifact-based resume。
+- 持久化 LangGraph checkpointer 是 runtime 加固项；接 real provider smoke 前应补齐或明确接受该 gap。
