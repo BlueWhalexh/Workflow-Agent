@@ -828,5 +828,6 @@ knowledge-base/topics/tools/Skill vs CLI Tool 决策.md  # bootstrap raw mirror
 
 实现切片说明：
 
-- 第一阶段实现可以先验证 LangGraph orchestration 和 `.agent-runs` artifact-based resume。
-- 持久化 LangGraph checkpointer 是 runtime 加固项；接 real provider smoke 前应补齐或明确接受该 gap。
+- 第一阶段已验证 LangGraph orchestration、plan approval pause、MemorySaver checkpoint boundary 和 `.agent-runs` artifact-based resume。
+- 当前恢复策略以 `.agent-runs` artifacts + workspace current sha 为事实源；LangGraph checkpoint 只承载 runtime state，不作为 domain truth。
+- MemorySaver 只能证明 checkpointer 接入边界，不能证明跨进程或长任务恢复。接 real provider smoke、跨进程 resume 或长运行 workflow 前，应替换为 durable file/SQLite checkpoint saver，或明确接受该 gap。

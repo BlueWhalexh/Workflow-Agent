@@ -29,6 +29,7 @@ LangGraph-first, Domain-pure
 含义：
 
 - LangGraph 负责 workflow、checkpoint、resume、approval interrupt、phase transition。
+- 当前 checkpoint 已接入 `MemorySaver` 边界验证；跨进程或长任务恢复前仍需 durable file/SQLite saver。
 - Domain Core 负责 inventory、plan、work item、patch、merge、publish、validation、eval。
 - Agent node 是 workflow 内的受控计算节点，只处理一个 bounded work item。
 - Agent node 只能输出 `PatchBundle` 或 `QualityFindings`。
@@ -53,13 +54,13 @@ fixture workspace
   -> WorkspaceInventory
   -> OrganizePlanner
   -> LangGraph Level 1 workflow
-  -> plan approval interrupt
+  -> plan approval pause
   -> mock NoteAgentNode
   -> PatchBundle
   -> MergeGuard
   -> Publisher
   -> Validator / Eval report
-  -> resume
+  -> artifact-based resume
 ```
 
 不做完整前端、CRUD、旧 compile 兼容、多 workspace、多用户、provider fallback、rate limit 或长任务队列。
