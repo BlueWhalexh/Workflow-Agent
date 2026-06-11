@@ -1,4 +1,5 @@
 import type { PatchBundle } from "../domain/patch/patch-bundle.js";
+import { appendLlmTraceEvent } from "../domain/llm-trace/trace-writer.js";
 import { sha256 } from "../storage/sha.js";
 import type { WorkItemAgentInput } from "./work-item-agent.js";
 
@@ -7,6 +8,29 @@ export async function runMockNoteAgent(input: WorkItemAgentInput): Promise<Patch
   const sourcePath = input.workItem.sourcePaths[0];
   const sourceSha = input.workItem.baseShas[sourcePath] ?? "unknown-source-sha";
   const baseSha = input.workItem.baseShas[targetPath] ?? null;
+  const providerCallId = `${input.workItem.id}:fake-note`;
+  const timestamp = "2026-06-11T00:00:00.000Z";
+
+  if (input.store) {
+    await appendLlmTraceEvent(input.store, input.workItem.id, {
+      schemaVersion: "llm-trace.v1",
+      type: "llm.call.started",
+      eventId: `${providerCallId}:started`,
+      runId: input.runId,
+      workItemId: input.workItem.id,
+      agentNode: "note",
+      providerCallId,
+      provider: "fake",
+      model: "fake-note-model",
+      timestamp,
+      request: {
+        messagesSha: sha256(input.sourceContent),
+        temperature: 0,
+        thinkingEnabled: false
+      }
+    });
+  }
+
   const content = `# Skill vs CLI Tool 决策
 
 <!-- agent-meta
@@ -43,6 +67,28 @@ Skill 更容易表达意图，但不能替代验证。CLI 更适合进入 CI 和
 `;
   const contentSha = sha256(content);
   const finalizedContent = content.replace("contentSha: pending", `contentSha: ${contentSha}`);
+
+  if (input.store) {
+    await appendLlmTraceEvent(input.store, input.workItem.id, {
+      schemaVersion: "llm-trace.v1",
+      type: "llm.call.completed",
+      eventId: `${providerCallId}:completed`,
+      runId: input.runId,
+      workItemId: input.workItem.id,
+      agentNode: "note",
+      providerCallId,
+      provider: "fake",
+      model: "fake-note-model",
+      timestamp,
+      finishReason: "stop",
+      outputTextSha: sha256(finalizedContent),
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2
+      }
+    });
+  }
 
   return {
     workItemId: input.workItem.id,

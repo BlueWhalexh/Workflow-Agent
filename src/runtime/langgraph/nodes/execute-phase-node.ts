@@ -23,7 +23,8 @@ export async function executePhaseNode(state: GraphState): Promise<Partial<Graph
   const bundle = await runMockNoteAgent({
     runId: state.runId,
     workItem: noteItem,
-    sourceContent
+    sourceContent,
+    store
   });
   await store.writeJson(`patches/${noteItem.id}.patch.json`, bundle);
 
