@@ -2,6 +2,7 @@ import { createOrganizePlan } from "../../../domain/planning/organize-planner.js
 import type { WorkspaceInventory } from "../../../domain/workspace/inventory.js";
 import { AgentRunsStore } from "../../../storage/agent-runs-store.js";
 import type { GraphState } from "../state.js";
+import { writePlanApproval } from "./approval-node.js";
 
 export async function planNode(state: GraphState): Promise<Partial<GraphState>> {
   const store = new AgentRunsStore(state.workspaceRoot, state.runId);
@@ -15,6 +16,11 @@ export async function planNode(state: GraphState): Promise<Partial<GraphState>> 
   for (const item of plan.workItems) {
     await store.writeJson(`work-items/${item.id}.json`, item);
   }
+  await writePlanApproval({
+    store,
+    status: state.autoApprove ? "APPROVED" : "PENDING",
+    approvedAt: state.autoApprove ? new Date(0).toISOString() : undefined
+  });
   return {
     status: state.autoApprove ? "RUNNING" : "WAITING_PLAN_APPROVAL",
     planPath: `.agent-runs/${state.runId}/plan.json`
