@@ -3,6 +3,7 @@ import path from "node:path";
 import type { PatchBundle } from "../domain/patch/patch-bundle.js";
 import type { WorkItemStatus } from "../domain/planning/work-item.js";
 import { inspectResumeWorkItem } from "../domain/validation/resume-inspector.js";
+import { AgentRunsStore } from "../storage/agent-runs-store.js";
 
 const workspaceRoot = process.argv[2];
 
@@ -11,17 +12,7 @@ if (!workspaceRoot) {
   process.exit(1);
 }
 
-async function latestRunId(root: string): Promise<string | null> {
-  const runsRoot = path.join(root, ".agent-runs");
-  const entries = await readdir(runsRoot, { withFileTypes: true });
-  const runIds = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  return runIds.at(-1) ?? null;
-}
-
-const runId = await latestRunId(workspaceRoot);
+const runId = await AgentRunsStore.latestRunId(workspaceRoot);
 
 if (!runId) {
   console.log(JSON.stringify({ workspaceRoot, status: "NO_RUNS_FOUND" }, null, 2));

@@ -5,6 +5,22 @@ import { stableJson } from "./json-schema.js";
 export class AgentRunsStore {
   private readonly runRoot: string;
 
+  static async latestRunId(workspaceRoot: string): Promise<string | null> {
+    try {
+      const entries = await fs.readdir(path.join(workspaceRoot, ".agent-runs"), { withFileTypes: true });
+      const runIds = entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort();
+      return runIds.at(-1) ?? null;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   constructor(
     private readonly workspaceRoot: string,
     private readonly runId: string
