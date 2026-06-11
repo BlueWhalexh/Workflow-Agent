@@ -15,7 +15,10 @@
 3. `llm-call-trace-contract.md`
    - LLM 调用记录契约。
    - 定义 `.agent-runs/<runId>/traces/*.jsonl` 的 canonical trace、provider raw envelope、redaction、Claude/DeepSeek/MiMo 兼容边界。
-4. `agent-loop-core.md`
+4. `provider-runtime-spec.md`
+   - 真实 LLM provider 接入前的主 spec。
+   - 定义 provider runtime 目标、非目标、adapter 边界、运行时选择、错误分类、验收矩阵和升级条件。
+5. `agent-loop-core.md`
    - 架构摘要。
    - 用于快速理解核心链路、模块边界和第一阶段验收。
 
@@ -36,6 +39,7 @@ LangGraph-first, Domain-pure
 - Domain Core 负责 inventory、plan、work item、patch、merge、publish、validation、eval。
 - Agent node 是 workflow 内的受控计算节点，只处理一个 bounded work item。
 - Agent node 只能输出 `PatchBundle` 或 `QualityFindings`。
+- Provider 只能作为 runtime adapter，经 agent node 包装为 `PatchBundle`，不能直接写 workspace 或决定 publish。
 - `Publisher` 是唯一真正写 workspace 的组件。
 - `.agent-runs/<runId>/` 是审计与恢复事实源。
 - `traces/*.jsonl` 记录 agent node 内部 LLM loop，但不能替代 artifacts、workspace sha 或 Validator。
