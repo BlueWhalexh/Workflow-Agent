@@ -183,6 +183,33 @@ Agent node 不能：
 - 不允许写 `knowledge-base/topics/<topic>/index.md`。
 - `MERGE_USER_EDITED_NOTE` 只生成候选 patch，等待批准。
 
+### Topic Note Quality Contract
+
+Phase A 的目标不是把 raw 拆到 topic 目录，也不是只把 raw mirror 改名为 organized note。每个新建或改写的 topic note 必须体现知识整理质量。
+
+最低结构要求：
+
+- 标题能表达主题，不只是 raw 文件名机械复制。
+- 有摘要，说明该 note 解决什么问题或沉淀什么知识。
+- 有来源追踪，列出 source paths 和 source shas。
+- 有关键概念、决策、步骤或事实，不允许只有索引链接。
+- 有关联关系，使用 wikilink 或明确说明暂无相关链接。
+- 不保留 bootstrap raw mirror 标记，例如 `Raw mirror:`、`Source path:`、`## Content` 模板。
+
+最低整理要求：
+
+- 对 raw 内容进行归纳、去重、重组，而不是原文整段搬运。
+- 保留 raw 中的关键事实、判断和约束，不能只写泛化总结。
+- 如果 raw 包含决策或取舍，note 必须保留 decision、rationale、trade-off。
+- 如果 raw 包含操作步骤，note 必须保留可执行步骤或明确说明步骤不完整。
+- 如果多个 source 合并到一个 note，必须说明来源之间的关系。
+- 如果是 `MERGE_USER_EDITED_NOTE`，必须保留用户编辑内容的可追踪证据。
+
+质量判断分两层：
+
+- 结构性质量由 deterministic validator 阻断，例如缺摘要、缺来源、仍像 raw mirror。
+- 内容性质量由 `QualityReviewAgentNode` 或启发式 eval 进入 report，例如摘要空泛、关键概念遗漏、关联关系薄弱。
+
 ### Phase B: Topic Indexes
 
 维护 topic index：
@@ -461,6 +488,10 @@ Hard blockers 阻断 merge/publish：
 - 新内容包含 `TODO`、`TBD`、`<placeholder>`、空洞的“后续补充”。
 - topic note 缺标题。
 - topic note 缺来源追踪。
+- topic note 缺摘要。
+- topic note 缺关键概念、决策、步骤或事实。
+- topic note 仍保留 bootstrap raw mirror 模板。
+- topic note 只有索引链接，没有整理后的正文内容。
 - MOC 不链接任何 topic index。
 - topic index 不链接任何 topic note。
 - `MERGE_USER_EDITED_NOTE` 缺 `mergeEvidence`。
@@ -468,6 +499,9 @@ Hard blockers 阻断 merge/publish：
 Quality issues 只进入 report：
 
 - 摘要太短或空泛。
+- 内容只是 raw 的轻微改写，缺少归纳、去重或重组。
+- raw 中的关键事实、决策或约束疑似遗漏。
+- 多 source 合并时没有说明来源关系。
 - wikilink 数量为 0。
 - raw coverage 不完整。
 - note 没有相关链接且说明不充分。
@@ -613,12 +647,14 @@ knowledge-base/topics/tools/Skill vs CLI Tool 决策.md  # bootstrap raw mirror
 - Mock `NoteAgentNode` 能产出 PatchBundle。
 - MergeGuard 阻断 raw/schema 写入。
 - Validator 阻断 placeholder patch。
+- Validator 阻断缺摘要、缺来源追踪、仍像 raw mirror 的 topic note。
 - 至少一个 bootstrap mirror 被改写为 `AGENT_ORGANIZED`。
+- 改写后的 topic note 满足 Topic Note Quality Contract，不只是移动 raw 或拆分目录。
 - `agent-meta` 写入 organized note。
 - Topic index 和 MOC 由专门阶段维护。
+- Quality review report 能指出空泛摘要、关键事实遗漏、关联关系薄弱等 topic 质量问题。
 - Timeout work item 不拖死整个 run。
 - Resume 能跳过已 published 且 sha 匹配的 work item。
 - Eval 输出 raw coverage、pagesRewritten、rawMirrorConverted、qualityIssues。
 
 第一阶段可以加一个 real provider smoke，但不能把 mock/fake 测试描述成真实 provider 链路。
-
