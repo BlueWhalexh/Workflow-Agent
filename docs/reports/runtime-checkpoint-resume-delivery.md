@@ -44,3 +44,9 @@ The durable recovery fact source is `.agent-runs` plus current workspace file SH
 - Whether single-file `PatchBundle` content SHA is sufficient before multi-file patches.
 - Approval pause semantics before adopting LangGraph native `interrupt()` / `Command`.
 - Durable checkpointer selection before real provider smoke or cross-process resume.
+
+## Next Runtime Boundary: LLM Trace
+
+Provider-neutral LLM trace is now the next boundary before real provider smoke. The trace contract records canonical JSONL events and optional redacted raw provider envelopes, with explicit support for Claude Code Agent SDK, OpenAI-compatible APIs, DeepSeek reasoning/tool fields, and Xiaomi MiMo API or local vLLM/SGLang inference shapes.
+
+Trace remains audit/debug/eval data only. Resume decisions continue to rely on `.agent-runs` artifacts, workspace current SHA, `PatchBundle` content SHA, and Validator results.
