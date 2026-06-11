@@ -110,7 +110,7 @@ contentSha: ghi789
 - `work-items/*.json`: work item 状态、baseShas、attempts。
 - `patches/*.json`: full-content PatchBundle。
 - `approvals/*.json`: plan 或高风险 patch 审批记录。
-- `traces/*.jsonl`: agent node 内部 loop trace。
+- `traces/*.jsonl`: agent node 内部 LLM loop trace。格式见 `docs/architecture/llm-call-trace-contract.md`。Trace 只能用于审计、debug、eval，不能替代 `.agent-runs` artifacts、workspace current sha 或 Validator。
 - `validation.json`: hard blocker 检查结果。
 - `eval.json`: 质量指标。
 - `report.md`: 用户和 agent 可读报告。

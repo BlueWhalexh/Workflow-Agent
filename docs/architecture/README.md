@@ -12,7 +12,10 @@
 2. `workspace-contract.md`
    - workspace 文件契约。
    - 定义目录结构、权限边界、页面状态、`agent-meta`、`.agent-runs`、topic note 质量底线。
-3. `agent-loop-core.md`
+3. `llm-call-trace-contract.md`
+   - LLM 调用记录契约。
+   - 定义 `.agent-runs/<runId>/traces/*.jsonl` 的 canonical trace、provider raw envelope、redaction、Claude/DeepSeek/MiMo 兼容边界。
+4. `agent-loop-core.md`
    - 架构摘要。
    - 用于快速理解核心链路、模块边界和第一阶段验收。
 
@@ -35,6 +38,7 @@ LangGraph-first, Domain-pure
 - Agent node 只能输出 `PatchBundle` 或 `QualityFindings`。
 - `Publisher` 是唯一真正写 workspace 的组件。
 - `.agent-runs/<runId>/` 是审计与恢复事实源。
+- `traces/*.jsonl` 记录 agent node 内部 LLM loop，但不能替代 artifacts、workspace sha 或 Validator。
 - LangGraph checkpoint 是 runtime state，不是 domain truth。
 
 技术选型：
