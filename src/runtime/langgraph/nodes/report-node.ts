@@ -6,6 +6,22 @@ export async function reportNode(state: GraphState): Promise<Partial<GraphState>
     return {};
   }
   const store = new AgentRunsStore(state.workspaceRoot, state.runId);
+  if (state.status === "FAILED") {
+    await store.writeText(
+      "report.md",
+      `# Agent Run Report
+
+- Status: FAILED
+- Error: ${state.lastError ?? "UNKNOWN"}
+`
+    );
+    return {
+      status: "FAILED",
+      reportPath: `.agent-runs/${state.runId}/report.md`,
+      lastError: state.lastError
+    };
+  }
+
   await store.writeJson("eval.json", {
     rawCoverage: { total: 3, seen: 1 },
     pagesRewritten: 1,

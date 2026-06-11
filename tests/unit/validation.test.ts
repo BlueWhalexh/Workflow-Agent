@@ -81,4 +81,10 @@ describe("resume decision", () => {
       })
     ).toBe("SKIP");
   });
+
+  it("retries timeout and validator-blocked failures during resume", () => {
+    expect(decideResumeAction({ status: "FAILED_TIMEOUT" })).toBe("RETRY");
+    expect(decideResumeAction({ status: "BLOCKED_BY_VALIDATOR" })).toBe("RETRY");
+    expect(decideResumeAction({ status: "FAILED_EXECUTOR", retryable: false })).toBe("REPORT_FAILED");
+  });
 });
