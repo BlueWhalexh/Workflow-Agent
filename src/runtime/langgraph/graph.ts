@@ -3,6 +3,7 @@ import { executePhaseNode } from "./nodes/execute-phase-node.js";
 import { inventoryNode } from "./nodes/inventory-node.js";
 import { planNode } from "./nodes/plan-node.js";
 import { reportNode } from "./nodes/report-node.js";
+import type { RuntimeCheckpointStore } from "./checkpoint-store.js";
 import type { GraphState } from "./state.js";
 
 const GraphAnnotation = Annotation.Root({
@@ -21,6 +22,7 @@ export async function runOrganizeWorkflow(input: {
   instruction: string;
   runId: string;
   autoApprove: boolean;
+  checkpointStore?: RuntimeCheckpointStore;
 }): Promise<GraphState> {
   const graph = new StateGraph(GraphAnnotation)
     .addNode("inventory", inventoryNode)
@@ -31,14 +33,24 @@ export async function runOrganizeWorkflow(input: {
     .addEdge("inventory", "plan")
     .addEdge("plan", "execute")
     .addEdge("execute", "report")
-    .addEdge("report", END)
-    .compile();
+    .addEdge("report", END);
 
-  return graph.invoke({
-    runId: input.runId,
-    workspaceRoot: input.workspaceRoot,
-    instruction: input.instruction,
-    autoApprove: input.autoApprove,
-    status: "CREATED"
+  const compiled = graph.compile({
+    checkpointer: input.checkpointStore?.checkpointer
   });
+
+  return compiled.invoke(
+    {
+      runId: input.runId,
+      workspaceRoot: input.workspaceRoot,
+      instruction: input.instruction,
+      autoApprove: input.autoApprove,
+      status: "CREATED"
+    },
+    {
+      configurable: {
+        thread_id: input.runId
+      }
+    }
+  );
 }
