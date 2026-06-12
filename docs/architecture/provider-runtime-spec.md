@@ -20,6 +20,7 @@
 - `claude-code-fixture` provider 已存在，使用本地 Claude Code result fixture。
 - Provider error classification 已存在，覆盖 timeout/auth/schema 等稳定类别。
 - Failure harness 已存在，能验证 timeout 不发布、invalid content 被 Validator 阻断。
+- Optional real smoke harness 已存在，默认无 env 时跳过，不发起真实外部调用。
 - LLM trace canonical JSONL、provider normalizers、mock agent trace 写入已存在。
 
 尚未完成：
@@ -293,7 +294,7 @@ type ProviderErrorClass =
 
 ### Phase 4: Optional Real Smoke
 
-状态：未执行。该阶段需要真实外部调用、网络、凭证或 SDK 条件，必须单独确认。
+状态：harness 已完成；真实外部调用未执行。真实调用需要网络、凭证或 SDK 条件，必须单独确认。
 
 目标：
 
