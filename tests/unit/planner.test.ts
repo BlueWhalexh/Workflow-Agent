@@ -15,6 +15,8 @@ describe("organize planner", () => {
     });
 
     expect(plan.mode).toBe("SEMI_AUTOMATIC");
+    expect(plan.methodologyId).toBe("lmwiki-v1");
+    expect(plan.methodologyVersion).toBe("1");
     expect(plan.approval.status).toBe("PENDING");
     expect(plan.phases.map((phase) => phase.id)).toEqual([
       "phase-a-notes",
@@ -28,5 +30,19 @@ describe("organize planner", () => {
       false
     );
     expect(plan.workItems.some((item) => item.type === "MAINTAIN_MOC")).toBe(true);
+    expect(plan.workItems.every((item) => item.methodologyId === "lmwiki-v1")).toBe(true);
+  });
+
+  it("rejects unknown methodologies before creating a plan", async () => {
+    const inventory = await scanWorkspace({ workspaceRoot: fixtureRoot });
+
+    expect(() =>
+      createOrganizePlan({
+        runId: "run-test",
+        instruction: "整理全部知识库",
+        inventory,
+        methodologyId: "unknown"
+      })
+    ).toThrow("Unknown knowledge methodology: unknown");
   });
 });

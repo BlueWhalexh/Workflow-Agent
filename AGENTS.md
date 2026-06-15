@@ -15,7 +15,7 @@
 - SDK 只能作为 adapter，不允许成为领域架构中心。
 - 每个可验证切片都必须有 agent-readable 输出。
 - 不把 mock/fake 测试描述成真实 provider 链路。
-- 不提交真实 token、cookie、私钥或用户数据。
+- 允许在本地 ignored env 文件（如 `.env`、`.env.local`）中保存开发用 token/API key/cookie/私钥；这些文件必须被 `.gitignore` 忽略，不能提交、推送或写入文档、日志、测试 fixture、snapshot、artifact。
 
 ## 当前优先级
 
@@ -32,4 +32,3 @@
 - 不做旧 compile 兼容。
 - 不做博客发布或 L2 知识治理。
 - 不确定 LangGraph / DeepAgents / Claude SDK 的最终选型前，不做深度绑定。
-

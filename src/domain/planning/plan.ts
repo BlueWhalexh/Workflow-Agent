@@ -10,6 +10,8 @@ export interface OrganizePlan {
   runId: string;
   instruction: string;
   mode: "SEMI_AUTOMATIC";
+  methodologyId: string;
+  methodologyVersion: string;
   workspaceSnapshot: {
     workspaceRoot: string;
     rawCount: number;

@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: my-workflow-agent-backend
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  # Workspace JDBC persistence is opt-in through spring.profiles.active=jdbc.
+  # The default profile keeps the in-memory repository and does not require datasource properties.
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        exclude: "*"
+
+my-workflow:
+  backend:
+    schema-version: java-backend-api.v1
+    data-root: ${MY_WORKFLOW_BACKEND_DATA_ROOT:${java.io.tmpdir}/my-workflow-agent-backend}
+    agent-worker:
+      node-command: ${MY_WORKFLOW_AGENT_WORKER_NODE:node}
+      repo-root: ${MY_WORKFLOW_AGENT_WORKER_REPO_ROOT:}
+      timeout-ms: ${MY_WORKFLOW_AGENT_WORKER_TIMEOUT_MS:60000}
+    dev-principal:
+      user-id: dev-user
+      team-id: dev-team
+      display-name: Dev User

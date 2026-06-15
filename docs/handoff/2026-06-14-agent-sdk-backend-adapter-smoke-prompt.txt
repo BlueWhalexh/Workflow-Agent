@@ -1,0 +1,144 @@
+你在 /Users/didi/Documents/personal/My-Workflow-Agent 继续推进 Agent SDK Backend Adapter Smoke。
+
+先开启目标模式。如果有 goal tool，创建目标：
+完成 Phase 37：新增一个极薄的 backend adapter smoke，证明后端接入方只消费 `agent-sdk-run.v1`，不需要理解 fixed workflow / deterministic open-agent / OpenAgentGraph 的 runtime result shape。覆盖 answer、candidate patch、confirmation、fixed workflow preview/execution 的 adapter 映射、no-write evidence、token redaction scan、focused/full/typecheck/diff 验收，并更新 delivery report。
+不要把目标标记 complete，直到代码、测试、文档、验收报告全部完成。若 goal tool 不可用，在第一条进展里说明采用同等目标约束继续执行。
+
+先读这些 current truth：
+AGENTS.md
+docs/architecture/runtime-phase-sop.md
+docs/architecture/agent-sdk-mvp-phase1-spec.md
+docs/changes/2026-06-13-agent-sdk-mvp-phase1.md
+docs/superpowers/plans/2026-06-13-agent-sdk-mvp-phase1.md
+docs/architecture/sdk-tool-surface-spec.md
+docs/reports/runtime-work-item-execution-resume-delivery.md
+src/sdk/knowledge-workflow-agent.ts
+src/sdk/command-router.ts
+src/sdk/open-agent-runtime.ts
+src/runtime/open-agent/open-agent-graph.ts
+src/storage/artifact-slug.ts
+src/index.ts
+tests/unit/agent-sdk-run.test.ts
+tests/integration/agent-sdk-backend-sim.test.ts
+
+当前事实：
+Phase 35 已交付 `runAgent(request)` / `agent.runAgent(request)`，返回 `agent-sdk-run.v1`。Phase 36 review follow-up 已把 artifact slug 校验下沉到 artifact-writing public/advanced entries：`runAgent`、`runOrganize`、`runOpenAgentTask`、`runOpenAgentGraph`。当前 backend-facing 主路径应只消费 `runAgent()` 的 normalized envelope；不要让 backend adapter import `src/runtime/*` 或解析 runtime-specific result fields。
+
+开发 SOP：
+使用 `adaptive-dev-workflow` 路由。此阶段是 SDK adapter 行为新增，按 Small/Medium 谨慎处理。遵守 TDD：先写 RED tests，确认失败原因正确，再最小实现让 focused tests 变 GREEN。若 subagent 工具可用，可以用只读 reviewer 审查 public contract、status mapping、workspace write boundary、provider artifact refs；否则内联自审。不要把 mock/fake/injected-provider 说成真实 provider。真实 MiMo smoke 只有用户明确要求时才跑，凭证走 Keychain、hidden stdin 或 ignored env，不写 repo。
+
+实现目标：
+新增一个薄 backend adapter，例如 `src/sdk/backend-adapter.ts`。
+建议 public API：
+
+```ts
+export interface BackendAgentRequest {
+  workspaceRoot: string;
+  userMessage: string;
+  runId?: string;
+  mode?: AgentSdkRunMode;
+  execute?: boolean;
+  autoApprove?: boolean;
+  providerRuntime?: AgentSdkProviderRuntimeConfig;
+  providerRuntimeDependencies?: AgentSdkProviderRuntimeDependencies;
+}
+
+export interface BackendAgentResponse {
+  schemaVersion: "agent-backend-response.v1";
+  runId: string;
+  status: AgentSdkRunStatus;
+  outputKind: AgentSdkOutputKind;
+  displayText: string | null;
+  requiresConfirmation: boolean;
+  requiresApproval: boolean;
+  artifactRefs: string[];
+  wroteWorkspace: boolean;
+  targetWorkspacePaths: string[];
+  source: AgentSdkRunResult;
+}
+```
+
+Adapter 规则：
+- 内部只调用 `createKnowledgeWorkflowAgent().runAgent()` 或 `runAgent()`。
+- 不 import `src/runtime/*`。
+- 不解析 `openAgent`、`openAgentGraph`、`workflow` 等旧 runtime result shape。
+- `displayText`：
+  - answer -> answer text；
+  - draft -> draft content；
+  - candidate-patch -> candidate patch rationale 或第一段 candidate content 的简短摘要；
+  - confirmation -> confirmation questions joined；
+  - workflow-report / route-preview / none -> `null` 或稳定短文本，测试中明确期望。
+- `requiresConfirmation` 仅对 `outputKind: "confirmation"` 为 true。
+- `requiresApproval` 对 `candidate-patch` 和 `route-preview` 为 true；对 answer/draft/confirmation/fixed execution 为 false。
+- `artifactRefs` 只包含 SDK envelope 中的 artifact refs：`artifactPath`、`reportPath`、`tracePath`、`rawProviderRefs`；不包含 raw provider payload。
+- `wroteWorkspace` 直接来自 `AgentSdkRunResult.artifacts.wroteWorkspace`。
+- candidate patch 的 `targetWorkspacePaths` 只表示建议目标，不表示已写入。
+
+注意事项：
+- 不做 HTTP server、DB schema、auth、approval UI、真实 backend controller。
+- 不新增生产依赖。
+- 不改变 `agent-sdk-run.v1` contract。
+- 不改变 OpenAgent candidate patch artifact-only 边界。
+- 不把 fixed workflow preview 误标成已执行。
+- 不把 mock/fake/injected-provider 验证描述成真实 provider。
+- 如果需要修改超过 5 个文件，先暂停说明。
+
+建议文件范围：
+- 新增 `src/sdk/backend-adapter.ts`
+- 修改 `src/index.ts` 导出 adapter 和类型
+- 新增 `tests/integration/agent-sdk-backend-adapter.test.ts`
+- 修改 `docs/reports/runtime-work-item-execution-resume-delivery.md`
+
+测试与验收：
+RED evidence：
+- 先新增 `tests/integration/agent-sdk-backend-adapter.test.ts`，运行：
+  - `npm test -- tests/integration/agent-sdk-backend-adapter.test.ts`
+- 失败原因应是 adapter/API 尚不存在或未导出，而不是测试 fixture 错误。
+
+Focused GREEN：
+- `npm test -- tests/integration/agent-sdk-backend-adapter.test.ts`
+- `npm test -- tests/unit/agent-sdk-run.test.ts tests/integration/agent-sdk-backend-sim.test.ts tests/integration/agent-sdk-backend-adapter.test.ts`
+
+Full verification：
+- `npm test`
+- `npm run typecheck`
+- `git diff --check`
+- `rg -n "t[p]-[a-z0-9]|Bearer t[p]-|MIMO_API_KEY=t[p]-" src tests docs`
+
+No-write evidence：
+- candidate adapter case returns `wroteWorkspace === false`
+- candidate adapter case returns `requiresApproval === true`
+- candidate target file under temp fixture workspace does not exist
+- repo-level `knowledge-base/drafts/sdk-candidate.md` remains absent
+
+Redaction evidence：
+- if adapter test uses injected provider, raw provider artifact refs must remain refs only
+- scan must find no real token pattern
+- do not record token values in docs/report
+
+Delivery report update：
+Append a Phase 37 section to `docs/reports/runtime-work-item-execution-resume-delivery.md` containing:
+- changed files
+- RED evidence
+- focused/full verification
+- mock/fake/injected/real evidence classification
+- no-write evidence
+- redaction/token scan evidence
+- residual risks
+
+Stop conditions：
+- 需要新的真实凭证且用户未授权。
+- 需要联网真实 provider 但用户未明确要求。
+- 需要安装依赖或改生产依赖。
+- 实现需要改变 `agent-sdk-run.v1` public contract、workspace write boundary 或安全边界。
+- 预计修改超过 5 个文件。
+- 连续两轮验证失败仍无法定位。
+- 发现 spec 与代码事实冲突且影响验收语义。
+
+最终回复必须包含：
+- Goal 是否 complete
+- changed files
+- 验证命令和结果
+- mock/fake/injected/real evidence 分类
+- no-write 和 token/redaction 证据
+- Review 重点：public backend adapter contract、status/outputKind mapping、workspace write boundary、provider artifact refs

@@ -1,0 +1,45 @@
+你在 /Users/didi/Documents/personal/My-Workflow-Agent 继续推进 Agent SDK MVP Phase 1。
+
+先开启目标模式。如果有 goal tool，创建目标：
+完成 Agent SDK MVP Phase 1：新增后端可接入的 runAgent() / agent.runAgent() 统一 SDK 入口，返回 agent-sdk-run.v1，覆盖 mock/fake/injected provider 验证、no-write evidence、token redaction scan、focused/full/typecheck/diff 验收，并更新 delivery report。
+不要把目标标记 complete，直到代码、测试、文档、验收报告全部完成。若 goal tool 不可用，在第一条进展里说明采用同等目标约束继续执行。
+
+先读这些 current truth：
+AGENTS.md
+docs/architecture/runtime-phase-sop.md
+docs/architecture/agent-sdk-mvp-phase1-spec.md
+docs/changes/2026-06-13-agent-sdk-mvp-phase1.md
+docs/superpowers/plans/2026-06-13-agent-sdk-mvp-phase1.md
+docs/architecture/sdk-tool-surface-spec.md
+docs/reports/runtime-work-item-execution-resume-delivery.md
+src/sdk/knowledge-workflow-agent.ts
+src/sdk/command-router.ts
+src/sdk/open-agent-runtime.ts
+src/runtime/open-agent/open-agent-graph.ts
+src/index.ts
+tests/unit/sdk.test.ts
+
+当前事实：
+Phase 34 已把 OpenAgentGraph 迁到 LangGraph StateGraph。SDK facade 已有 runOrganize、inspectRun、handleCommand、runOpenAgentTask、runOpenAgentGraph、runOpenAgentRealSmoke。本阶段只做 SDK MVP Phase 1：新增统一入口 runAgent() 和 agent-sdk-run.v1，让后端不需要理解多个 runtime result shape。.agent-runs 是一期持久化层；不做 DB、HTTP server、auth、approval UI。OpenAgent candidate patch 只能写 artifact，不能直接写 knowledge-base 目标文件。
+
+开发 SOP：
+使用 adaptive-dev-workflow 路由；这是 public SDK contract 变更，按 Medium/Large 谨慎处理。按 implementation plan 执行，不临时改目标。TDD：先写 RED tests，确认失败原因正确，再最小实现让 focused tests 变 GREEN。若 subagent 工具可用，用 subagent-driven-development 做任务后 review；否则内联执行并逐任务自审。不要把 mock/fake/injected-provider 说成真实 provider。真实 MiMo smoke 只有用户明确要求或计划要求时才跑，凭证走 Keychain、hidden stdin 或 ignored env，不写 repo。
+
+实现目标：
+public SDK 导出 runAgent(request)。createKnowledgeWorkflowAgent() 暴露 agent.runAgent(request)。新增并导出 RunAgentRequest、AgentSdkRunResult、AgentSdkRunStatus、AgentSdkOutputKind。返回 schemaVersion 为 agent-sdk-run.v1。统一入口覆盖 read-only answer、draft artifact、candidate patch proposal、confirmation required、fixed workflow route preview、fixed workflow execution、fixed-workflow mode route failure。result 包含 route、status、capabilityId、outputKind、output、artifacts、diagnostics。后端模拟测试要展示“用户请求 -> SDK -> runtime -> .agent-runs artifact -> response envelope”的数据链路。
+
+注意事项：
+mode=llm-open-agent 必须强制走 OpenAgentGraph，不能因为消息含“落库”就被 handleCommand 提前拦成 confirmation。mode=fixed-workflow 只允许固定 workflow；非固定 workflow 消息返回 FAILED_ROUTE。candidate patch 的 artifacts.wroteWorkspace 必须是 false，targetWorkspacePaths 只表示建议目标。rawProviderRefs 只返回 artifact refs，不返回 token 或原始请求内容。Provider diagnostics 要从 RunOpenAgentGraphResult 的 synthesis、providerCalls、rawProviderRefs 等当前真实字段映射，不虚构字段。后端 public SDK 调用方不应 import src/runtime/*。不做无关重构，不新增生产依赖。
+
+测试与验收：
+RED evidence：npm test -- tests/unit/agent-sdk-run.test.ts，失败原因必须是 runAgent/types/normalizer 缺失。
+Focused GREEN：npm test -- tests/unit/agent-sdk-run.test.ts；npm test -- tests/integration/agent-sdk-backend-sim.test.ts。
+Full verification：npm test；npm run typecheck；git diff --check；rg -n "t[p]-[a-z0-9]|Bearer t[p]-|MIMO_API_KEY=t[p]-" src tests docs。
+No-write evidence：knowledge-base/drafts/sdk-candidate.md 不存在；artifacts.wroteWorkspace === false；candidatePatch.publishable === false。
+Redaction evidence：token pattern scan 无真实 token；raw provider request artifact 中 Authorization 如存在必须为 [REDACTED]。
+Delivery report 必须更新 docs/reports/runtime-work-item-execution-resume-delivery.md，记录 changed files、RED evidence、focused/full verification、mock/fake/injected/real evidence 分类、no-write、redaction、未覆盖风险。
+
+Stop conditions：
+需要新的真实凭证且用户未授权；需要联网真实 provider 但用户未明确要求；需要安装依赖或改生产依赖；实现需要改变 spec 的 public contract、workspace write boundary 或安全边界；连续两轮验证失败仍无法定位；发现 spec 与代码事实冲突且影响验收语义。
+
+最终回复必须包含：Goal 是否 complete、changed files、验证命令和结果、mock/fake/injected/real evidence 分类、no-write 和 token/redaction 证据、Review 重点：public SDK contract、status mapping、workspace write boundary、provider artifact refs。

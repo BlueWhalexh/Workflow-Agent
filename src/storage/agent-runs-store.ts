@@ -35,7 +35,9 @@ export class AgentRunsStore {
   async writeJson(relativePath: string, value: unknown): Promise<void> {
     const absolutePath = this.artifactPath(relativePath);
     await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-    await fs.writeFile(absolutePath, stableJson(value), "utf8");
+    const tempPath = `${absolutePath}.${process.pid}.${Date.now()}.tmp`;
+    await fs.writeFile(tempPath, stableJson(value), "utf8");
+    await fs.rename(tempPath, absolutePath);
   }
 
   async readJson<T>(relativePath: string): Promise<T> {
@@ -46,6 +48,8 @@ export class AgentRunsStore {
   async writeText(relativePath: string, value: string): Promise<void> {
     const absolutePath = this.artifactPath(relativePath);
     await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-    await fs.writeFile(absolutePath, value.endsWith("\n") ? value : `${value}\n`, "utf8");
+    const tempPath = `${absolutePath}.${process.pid}.${Date.now()}.tmp`;
+    await fs.writeFile(tempPath, value.endsWith("\n") ? value : `${value}\n`, "utf8");
+    await fs.rename(tempPath, absolutePath);
   }
 }

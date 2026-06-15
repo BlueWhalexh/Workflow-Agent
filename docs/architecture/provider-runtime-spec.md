@@ -13,21 +13,28 @@
 - `LlmNoteProvider` adapter interface 已存在。
 - `fake` note provider 已存在，并能驱动 note agent 生成 `PatchBundle`。
 - `ProviderRuntimeConfig` 已存在，当前支持 `provider: "fake"`。
+- `ProviderRuntimeConfig` 支持 opt-in `deepseek-real`，但 config 不保存 API key，只保存 env key 名称。
 - Provider registry 已存在，默认选择 fake note provider。
 - `runOrganizeWorkflow` 已接受 `providerRuntime` 配置。
 - `organize` CLI 已支持 `--provider fake`。
 - `deepseek-fixture` provider 已存在，使用本地 OpenAI-compatible fixture response。
 - `claude-code-fixture` provider 已存在，使用本地 Claude Code result fixture。
+- `mimo-vllm-fixture` provider 已接入为无 token 的 MiMo-compatible fixture/local runtime，用于验证本地 vLLM 形态的 provider contract。
+- `mimo-real` 已接入为 opt-in OpenAI-compatible MiMo runtime provider，API key 只能从 env 读取。
+- `mimo-real-smoke` 已用真实 `/v1/models` 和 `/chat/completions` 验证；`mimo-v2.5` 通过，旧 fixture 模型名 `XiaomiMiMo/MiMo-7B-RL-0530` 被真实 API 拒绝。
+- DeepSeek/MiMo real provider 已复用共享 OpenAI-compatible note provider factory，后续同类 provider 不再复制 request/response/redaction 逻辑。
 - Provider error classification 已存在，覆盖 timeout/auth/schema 等稳定类别。
 - Failure harness 已存在，能验证 timeout 不发布、invalid content 被 Validator 阻断。
 - Optional real smoke harness 已存在，默认无 env 时跳过，不发起真实外部调用。
+- DeepSeek real adapter smoke 已存在，使用 fetch-based adapter 和 injected fake fetch 单测验证；真实调用仍需显式 opt-in。
 - LLM trace canonical JSONL、provider normalizers、mock agent trace 写入已存在。
 
 尚未完成：
 
 - 未接入真实 Claude Code Agent SDK。
-- 未接入真实 DeepSeek API。
-- 未接入真实 MiMo API 或本地 MiMo engine。
+- 未在默认测试中执行真实 DeepSeek API 调用。
+- 未在默认测试中执行真实 MiMo API 调用；真实 MiMo API 已通过 opt-in smoke 验证。
+- 未接入本地 MiMo engine。
 - 未实现真实 provider fallback、rate limit。
 - 未实现 durable LangGraph checkpoint saver。
 
@@ -95,6 +102,33 @@ Provider 不能：
 - 跳过 `PatchBundle`、`MergeGuard`、`Validator`。
 - 读取超出 work item scope 的任意 workspace 内容。
 
+### 1.1 OpenAI-Compatible Provider 复用规则
+
+DeepSeek、MiMo 等 OpenAI-compatible chat completions provider 必须优先复用：
+
+```ts
+createOpenAiCompatibleNoteProvider(...)
+```
+
+新增同类 provider 时，只允许在 wrapper 中定义：
+
+- provider-specific env names。
+- default base URL / model。
+- trace provider id。
+- provider call suffix。
+- provider display name。
+- provider-specific error class。
+
+不得重新复制：
+
+- `/chat/completions` URL 拼接。
+- messages 构造。
+- Authorization header 构造。
+- usage / finish reason / content mapping。
+- raw envelope redaction。
+
+只有 provider API schema 明显偏离 OpenAI-compatible contract 时，才允许新建独立 adapter，并必须补 spec 说明偏离点。
+
 ### 2. Agent Node 负责封装
 
 Agent node 可以调用 provider，但它对 workflow 暴露的输出仍然只能是：
@@ -144,8 +178,11 @@ Raw provider envelope 只能作为 redacted debug attachment。Trace 不参与 p
 2. `deepseek-fixture`: OpenAI-compatible fixture provider，用本地 fixture 验证 request/response mapping。
 3. `claude-code-fixture`: Claude Code Agent SDK transcript fixture provider，用本地 fixture 验证 event/session/result mapping。
 4. `deepseek-real-smoke`: optional real provider smoke，只在显式 env 和用户批准下运行。
-5. `claude-code-real-smoke`: optional real SDK smoke，只在 SDK、认证、env 都明确时运行。
-6. `mimo-fixture`: 次优先级，只验证接口不排斥 MiMo API / vLLM / SGLang raw envelope。
+5. `deepseek-real`: opt-in runtime provider，只从 env 读取 API key，默认测试不调用真实网络。
+6. `claude-code-real-smoke`: optional real SDK smoke，只在 SDK、认证、env 都明确时运行。
+7. `mimo-vllm-fixture`: 无 token MiMo-compatible fixture/local provider，验证 MiMo vLLM envelope 到 agent loop 的接入。
+8. `mimo-real-smoke`: optional real provider smoke，只在显式 env 和用户批准下运行。
+9. `mimo-real`: opt-in MiMo API runtime provider，只从 env 读取 API key，默认测试不调用真实网络。
 
 MiMo 不阻塞主线。
 
@@ -155,11 +192,13 @@ MiMo 不阻塞主线。
 
 ```ts
 interface ProviderRuntimeConfig {
-  provider: "fake" | "deepseek-fixture" | "claude-code-fixture";
+  provider: "fake" | "deepseek-fixture" | "claude-code-fixture" | "deepseek-real" | "mimo-vllm-fixture" | "mimo-real";
   model?: string;
   timeoutMs: number;
   temperature?: number;
   maxTokens?: number;
+  baseUrl?: string;
+  apiKeyEnvName?: string;
 }
 ```
 

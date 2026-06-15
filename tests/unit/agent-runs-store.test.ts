@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -23,6 +23,15 @@ describe("AgentRunsStore", () => {
       runId: "run-test",
       mode: "SEMI_AUTOMATIC"
     });
+  });
+
+  it("writes JSON artifacts through an atomic temp file protocol", async () => {
+    const store = new AgentRunsStore(tempRoot, "run-test");
+    await store.writeJson("agent-loop/rewrite-tools.json", { ok: true });
+
+    await expect(store.readJson<{ ok: boolean }>("agent-loop/rewrite-tools.json")).resolves.toEqual({ ok: true });
+    const entries = await readdir(path.join(tempRoot, ".agent-runs/run-test/agent-loop"));
+    expect(entries).toEqual(["rewrite-tools.json"]);
   });
 
   it("returns the latest run id from agent run artifacts", async () => {

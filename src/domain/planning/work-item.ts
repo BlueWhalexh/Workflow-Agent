@@ -18,9 +18,21 @@ export type WorkItemStatus =
   | "PUBLISHED"
   | "NEEDS_REPLAN";
 
+export type WorkItemFailureSource = "provider" | "loop" | "validator" | "merge" | "context";
+
+export interface WorkItemAttempt {
+  attempt: number;
+  status: WorkItemStatus;
+  message: string;
+  failureSource?: WorkItemFailureSource;
+  failureReason?: string;
+  retryable?: boolean;
+}
+
 export interface WorkItem {
   id: string;
   type: WorkItemType;
+  methodologyId?: string;
   phase: "phase-a-notes" | "phase-b-indexes" | "phase-c-global";
   status: WorkItemStatus;
   sourcePaths: string[];
@@ -29,10 +41,6 @@ export interface WorkItem {
   risk: "LOW" | "MEDIUM" | "HIGH";
   requiresApproval: boolean;
   reason: string;
-  attempts: Array<{
-    attempt: number;
-    status: WorkItemStatus;
-    message: string;
-  }>;
+  attempts: WorkItemAttempt[];
   publishPolicy?: "AUTO_PUBLISH" | "CANDIDATE_PATCH_ONLY";
 }

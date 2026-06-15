@@ -52,4 +52,18 @@ describe("resume inspector", () => {
 
     expect(result.action).toBe("REPLAN");
   });
+
+  it("reports non-retryable validator blocks instead of rerunning them", async () => {
+    const result = await inspectResumeWorkItem({
+      workspaceRoot: tempRoot,
+      workItem: {
+        id: "rewrite-tools",
+        status: "BLOCKED_BY_VALIDATOR",
+        targetPaths: ["knowledge-base/topics/tools/Skill vs CLI Tool 决策.md"],
+        retryable: false
+      }
+    });
+
+    expect(result.action).toBe("REPORT_FAILED");
+  });
 });

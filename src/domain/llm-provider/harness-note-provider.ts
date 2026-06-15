@@ -27,3 +27,41 @@ export function createInvalidContentNoteProvider(): LlmNoteProvider {
     }
   };
 }
+
+export function createWeakRelationsNoteProvider(): LlmNoteProvider {
+  return {
+    async generateNote(input: LlmNoteProviderInput): Promise<LlmNoteProviderResult> {
+      const sourcePath = input.workItem.sourcePaths[0];
+      return {
+        providerCallId: `${input.workItem.id}:weak-relations-fixture`,
+        provider: "fake",
+        model: "weak-relations-fixture",
+        finishReason: "stop",
+        usage: {
+          inputTokens: 1,
+          outputTokens: 1,
+          totalTokens: 2
+        },
+        content: `# Skill vs CLI Tool 决策
+
+<!-- agent-meta
+state: AGENT_ORGANIZED
+contentSha: pending
+-->
+
+## 摘要
+
+这篇 note 用于验证 agent node 会执行确定性质量自检。
+
+## 来源追踪
+
+- ${sourcePath}
+
+## 关键决策
+
+- 缺失的低风险质量段落应由 agent loop 修复。
+`
+      };
+    }
+  };
+}

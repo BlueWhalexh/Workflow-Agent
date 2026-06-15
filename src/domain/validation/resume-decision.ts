@@ -21,7 +21,7 @@ export function decideResumeAction(input: {
     return input.retryable ? "RETRY" : "REPORT_FAILED";
   }
   if (input.status === "BLOCKED_BY_VALIDATOR") {
-    return "RETRY";
+    return input.retryable === false ? "REPORT_FAILED" : "RETRY";
   }
   if (input.status === "WAITING_APPROVAL") {
     return "WAIT_FOR_APPROVAL";

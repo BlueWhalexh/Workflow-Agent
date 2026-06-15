@@ -1,7 +1,11 @@
 export type ProviderRuntimeName =
   | "fake"
   | "deepseek-fixture"
+  | "deepseek-real"
   | "claude-code-fixture"
+  | "mimo-vllm-fixture"
+  | "mimo-real"
+  | "weak-relations-fixture"
   | "timeout-fixture"
   | "invalid-content-fixture";
 
@@ -11,6 +15,8 @@ export interface ProviderRuntimeConfig {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  baseUrl?: string;
+  apiKeyEnvName?: string;
 }
 
 export const DEFAULT_PROVIDER_RUNTIME_CONFIG: ProviderRuntimeConfig = {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createClaudeCodeFixtureNoteProvider } from "../../src/domain/llm-provider/claude-code-fixture-provider.js";
 import { createDeepSeekFixtureNoteProvider } from "../../src/domain/llm-provider/deepseek-fixture-provider.js";
+import { createMimoVllmFixtureNoteProvider } from "../../src/domain/llm-provider/mimo-vllm-fixture-provider.js";
 import { redactProviderEnvelope } from "../../src/domain/llm-provider/redaction.js";
 import type { WorkItem } from "../../src/domain/planning/work-item.js";
 
@@ -104,10 +105,34 @@ describe("fixture providers", () => {
     expect(result.content).toContain("## 来源追踪");
   });
 
+  it("maps MiMo vLLM fixture output to note provider result", async () => {
+    const provider = createMimoVllmFixtureNoteProvider({
+      model: "XiaomiMiMo/MiMo-7B-RL-0530",
+      generated_text: validNote,
+      finish_reason: "stop",
+      prompt_token_ids: [1, 2, 3],
+      output_token_ids: [4, 5]
+    });
+
+    const result = await provider.generateNote({
+      runId: "run-fixture",
+      workItem,
+      sourceContent: "# source\n"
+    });
+
+    expect(result.provider).toBe("mimo-vllm");
+    expect(result.model).toBe("XiaomiMiMo/MiMo-7B-RL-0530");
+    expect(result.finishReason).toBe("stop");
+    expect(result.usage).toEqual({ inputTokens: 3, outputTokens: 2, totalTokens: 5 });
+    expect(result.content).toContain("state: AGENT_ORGANIZED");
+  });
+
   it("redacts auth-like fields from provider envelopes", () => {
     const redacted = redactProviderEnvelope({
       Authorization: "Bearer secret",
       api_key: "secret",
+      access_token: "secret",
+      prompt_tokens: 12,
       nested: {
         cookie: "session=secret",
         safe: "kept"
@@ -117,6 +142,8 @@ describe("fixture providers", () => {
     expect(redacted).toEqual({
       Authorization: "[REDACTED]",
       api_key: "[REDACTED]",
+      access_token: "[REDACTED]",
+      prompt_tokens: 12,
       nested: {
         cookie: "[REDACTED]",
         safe: "kept"

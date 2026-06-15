@@ -69,6 +69,53 @@ contentSha: def
     expect(result.allowed).toBe(true);
     expect(result.hardBlockers).toEqual([]);
   });
+
+  it("blocks profile placeholder blockers through methodology", () => {
+    const content = `# Skill vs CLI Tool 决策
+
+## 摘要
+
+TODO
+
+## 来源追踪
+
+- raw/tools/Skill vs CLI Tool 决策.md
+
+## 关键决策
+
+- Skill 适合流程和判断。
+
+## 相关链接
+
+暂无相关链接。`;
+
+    const result = validateBundle({
+      targetPaths: ["knowledge-base/topics/tools/Skill vs CLI Tool 决策.md"],
+      methodologyId: "lmwiki-v1",
+      files: [
+        {
+          path: "knowledge-base/topics/tools/Skill vs CLI Tool 决策.md",
+          changeType: "MODIFIED",
+          baseSha: "base",
+          contentSha: sha256(content),
+          content
+        }
+      ]
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.hardBlockers).toContain("PLACEHOLDER_CONTENT_BLOCKED");
+  });
+
+  it("rejects unknown methodology ids", () => {
+    expect(() =>
+      validateBundle({
+        targetPaths: ["knowledge-base/topics/tools/Skill vs CLI Tool 决策.md"],
+        methodologyId: "unknown",
+        files: []
+      })
+    ).toThrow("Unknown knowledge methodology: unknown");
+  });
 });
 
 describe("resume decision", () => {
