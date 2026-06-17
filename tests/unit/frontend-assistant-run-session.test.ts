@@ -208,6 +208,105 @@ describe("frontend assistant run session", () => {
     expect(pollCount).toBe(2);
     expect(Date.now() - startedAt).toBeGreaterThanOrEqual(15);
   });
+
+  test("runAssistantTask streams lifecycle events into interim session updates", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const updates: unknown[] = [];
+    const fetcher = async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+
+      if (url === "/v1/workspaces/ws_123/agent-runs") {
+        return jsonEnvelope(runEnvelope({
+          status: "QUEUED",
+          outputKind: "none",
+          displayText: null,
+        }));
+      }
+
+      if (url === "/v1/agent-runs/run_123/events/stream") {
+        return sseResponse([
+          sseEvent({
+            id: "evt_1",
+            event: "RUNNING",
+            data: {
+              eventId: "evt_1",
+              runId: "run_123",
+              eventType: "RUNNING",
+              status: "RUNNING",
+              message: "Worker attempt running",
+              createdAt: "2026-06-17T10:00:01Z",
+            },
+          }),
+          sseEvent({
+            id: "evt_2",
+            event: "COMPLETED",
+            data: {
+              eventId: "evt_2",
+              runId: "run_123",
+              eventType: "COMPLETED",
+              status: "SUCCEEDED",
+              message: "Worker response recorded",
+              createdAt: "2026-06-17T10:00:02Z",
+            },
+          }),
+        ]);
+      }
+
+      if (url === "/v1/agent-runs/run_123") {
+        return jsonEnvelope(runEnvelope({
+          status: "SUCCEEDED",
+          outputKind: "answer",
+          displayText: "已完成",
+        }));
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const session = await runAssistantTask(fetcher, {
+      workspaceId: "ws_123",
+      userMessage: "总结当前知识库",
+      streamEvents: true,
+      maxPolls: 1,
+      onUpdate: (update) => {
+        updates.push(update);
+      },
+    });
+
+    expect(updates).toMatchObject([
+      {
+        runId: "run_123",
+        status: "RUNNING",
+        title: "Run 正在执行",
+        progress: 55,
+        events: [{ time: "10:00:01", label: "Worker attempt running" }],
+      },
+      {
+        runId: "run_123",
+        status: "SUCCEEDED",
+        title: "Run 已完成",
+        progress: 100,
+        events: [
+          { time: "10:00:01", label: "Worker attempt running" },
+          { time: "10:00:02", label: "Worker response recorded" },
+        ],
+      },
+    ]);
+    expect(session).toMatchObject({
+      runId: "run_123",
+      status: "SUCCEEDED",
+      displayText: "已完成",
+      events: [
+        { time: "10:00:01", label: "Worker attempt running" },
+        { time: "10:00:02", label: "Worker response recorded" },
+      ],
+    });
+    expect(calls.map((call) => call.url)).toEqual([
+      "/v1/workspaces/ws_123/agent-runs",
+      "/v1/agent-runs/run_123/events/stream",
+      "/v1/agent-runs/run_123",
+    ]);
+  });
 });
 
 function runEnvelope(overrides: Record<string, unknown>) {
@@ -245,4 +344,30 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function sseResponse(chunks: string[]) {
+  return Promise.resolve(
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      }),
+      {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+        },
+      },
+    ),
+  );
+}
+
+function sseEvent(input: { id: string; event: string; data: unknown }) {
+  return `id:${input.id}\nevent:${input.event}\ndata:${JSON.stringify(input.data)}\n\n`;
 }

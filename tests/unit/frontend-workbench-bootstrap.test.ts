@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   applyApprovalDecisionToWorkbench,
+  applyAssistantRunProgressToWorkbench,
   activeWorkspaceIdFromWorkbench,
   applyArtifactContentToWorkbench,
   applyAssistantRunSessionToWorkbench,
@@ -168,6 +169,33 @@ describe("frontend workbench bootstrap", () => {
     });
     expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
+  });
+
+  test("applyAssistantRunProgressToWorkbench refreshes run status without appending chat messages", () => {
+    const nextWorkbench = applyAssistantRunProgressToWorkbench(workbenchFixture, {
+      runId: "run_stream",
+      status: "RUNNING",
+      terminal: false,
+      title: "Run 正在执行",
+      progress: 55,
+      displayText: null,
+      events: [{ time: "10:00:01", label: "Worker attempt running" }],
+      approval: {
+        status: "NONE",
+        artifactRefs: [],
+        targetWorkspacePaths: [],
+        wroteWorkspace: false,
+      },
+    });
+
+    expect(nextWorkbench.assistant.run).toEqual({
+      title: "Run 正在执行",
+      id: "run_stream",
+      progress: 55,
+      events: [{ time: "10:00:01", label: "Worker attempt running" }],
+    });
+    expect(nextWorkbench.assistant.messages).toEqual(workbenchFixture.assistant.messages);
+    expect(nextWorkbench.assistant.approval).toEqual(workbenchFixture.assistant.approval);
   });
 
   test("applyArtifactContentToWorkbench maps a read artifact into a safe approval preview", () => {

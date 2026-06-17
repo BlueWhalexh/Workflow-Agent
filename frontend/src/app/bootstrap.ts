@@ -106,6 +106,24 @@ export function applyAssistantRunSessionToWorkbench(
   });
 }
 
+export function applyAssistantRunProgressToWorkbench(
+  data: WorkbenchViewModel,
+  session: AssistantRunSessionView,
+): WorkbenchViewModel {
+  return publicWorkbench({
+    ...data,
+    assistant: {
+      ...data.assistant,
+      run: {
+        title: session.title,
+        id: session.runId,
+        progress: session.progress,
+        events: session.events,
+      },
+    },
+  });
+}
+
 export function applyArtifactContentToWorkbench(
   data: WorkbenchViewModel,
   artifact: ArtifactContentView,

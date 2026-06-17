@@ -7,11 +7,14 @@ import {
   type CreateAgentRunInput,
   type RunEventView,
 } from "../runs/run-api.js";
+import { streamRunEvents } from "../runs/run-event-stream.js";
 
 export type AssistantRunTaskInput = CreateAgentRunInput & {
   workspaceId: string;
   maxPolls?: number;
+  onUpdate?: (session: AssistantRunSessionView) => void | Promise<void>;
   pollDelayMs?: number;
+  streamEvents?: boolean;
 };
 
 export type AssistantRunSessionView = {
@@ -53,14 +56,39 @@ export async function runAssistantTask(
     providerRuntimeRef: input.providerRuntimeRef,
     remoteRunnerRef: input.remoteRunnerRef,
   });
+  const streamedEvents = input.streamEvents
+    ? await streamRunEventsForSession(fetcher, createdRun, input.onUpdate)
+    : [];
   const finalRun = await pollRun(
     fetcher,
     createdRun,
     input.maxPolls ?? DEFAULT_MAX_POLLS,
     input.pollDelayMs ?? DEFAULT_POLL_DELAY_MS,
   );
-  const events = await listRunEvents(fetcher, finalRun.runId);
+  const events = streamedEvents.length > 0 ? streamedEvents : await listRunEvents(fetcher, finalRun.runId);
   return toSessionView(finalRun, events);
+}
+
+async function streamRunEventsForSession(
+  fetcher: ApiFetch,
+  createdRun: AgentRunView,
+  onUpdate: AssistantRunTaskInput["onUpdate"],
+): Promise<RunEventView[]> {
+  const streamedEvents: RunEventView[] = [];
+  return streamRunEvents(fetcher, createdRun.runId, {
+    onEvent: async (event) => {
+      streamedEvents.push(event);
+      await onUpdate?.(toSessionView(runFromEvent(createdRun, event), streamedEvents));
+    },
+  });
+}
+
+function runFromEvent(run: AgentRunView, event: RunEventView): AgentRunView {
+  return {
+    ...run,
+    status: event.status,
+    updatedAt: event.createdAt,
+  };
 }
 
 async function pollRun(

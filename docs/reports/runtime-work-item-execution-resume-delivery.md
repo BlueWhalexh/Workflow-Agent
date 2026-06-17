@@ -4681,6 +4681,93 @@ Evidence boundaries:
 - Approval mutation is metadata-only in the current backend: it records `DECIDED/APPROVED` but does not execute or publish the candidate patch.
 - This does not prove production remote runner dispatch/fanout, production secret manager lookup, OAuth session lifecycle, artifact upload from a remote runner, or real external provider E2E.
 
+## Frontend Run Event SSE Browser Runtime Smoke
+
+Status: implemented and verified as a frontend SSE consumption slice over the existing Java run event stream.
+
+Scope delivered:
+
+- Added a thin frontend SSE client for `GET /v1/agent-runs/{runId}/events/stream`.
+- The client sends `Accept: text/event-stream` and optional `Last-Event-ID`.
+- The client parses backend SSE `data` payloads into the same public run event view used by JSON event listing.
+- The client sanitizes public UI fields and drops runtime-private/provider-like payload fields.
+- `runAssistantTask` can now opt into `streamEvents: true` and emit interim `onUpdate` session snapshots as SSE lifecycle events arrive.
+- The React app opts into `streamEvents: true` for assistant submissions.
+- Added `applyAssistantRunProgressToWorkbench` so interim run updates refresh only the run card title/progress/events and do not append duplicate chat messages or mutate approval state.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-run-event-stream.test.ts`
+  - Failed because `frontend/src/features/runs/run-event-stream.ts` did not exist.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - Failed because the old implementation ignored `streamEvents` and still requested `/v1/agent-runs/{runId}/events`.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Failed because `applyAssistantRunProgressToWorkbench` was not exported/implemented.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-run-event-stream.test.ts`
+  - 1 test passed.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-run-event-stream.test.ts`
+  - 2 test files / 6 tests passed.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-run-event-stream.test.ts`
+  - 3 test files / 13 tests passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+
+Real local browser/backend/runtime smoke:
+
+- Java backend ran on `http://127.0.0.1:18080`.
+- Vite frontend ran on `http://127.0.0.1:5173` with backend proxy.
+- Created workspace `ws_fa9582dc06824dc9a6d6cd36e330ddbc` through the real Java HTTP API.
+- Browser loaded the React workbench and rendered `SSE Browser Runtime Smoke` with `后端已连接`.
+- Browser submitted `总结当前知识库的 SSE 运行状态` through the assistant composer.
+- UI reached `Run 已完成` for `run_b0068b04e13241b0b3b02a307253a297`.
+- UI displayed lifecycle events from the backend run stream: `Run queued`, `Worker attempt running`, and `Worker response recorded`.
+- UI displayed the backend answer artifact ref `.agent-runs/open-agent/run_b0068b04e13241b0b3b02a307253a297.json` and retained `wroteWorkspace: false`.
+- Browser-visible text did not contain `apiKeySecretRef`, `secret://`, `rawProviderPayload`, `ANTHROPIC_AUTH_TOKEN`, `MIMO_API_KEY`, or `tp-*` token-shaped values.
+- Browser console error log was empty.
+
+Direct backend/SSE evidence:
+
+- Vite-proxied `GET /health`
+  - Returned `java-backend-api.v1` with `status: ok`.
+- `GET /v1/agent-runs/run_b0068b04e13241b0b3b02a307253a297`
+  - Returned `SUCCEEDED`, `outputKind: answer`, `requiresApproval: false`, and `wroteWorkspace: false`.
+- `GET /v1/agent-runs/run_b0068b04e13241b0b3b02a307253a297/events`
+  - Returned `RUN_QUEUED -> RUNNING -> COMPLETED`.
+- `GET /v1/agent-runs/run_b0068b04e13241b0b3b02a307253a297/events/stream`
+  - Returned `text/event-stream` frames with `id`, `event`, and public JSON `data` for `RUN_QUEUED`, `RUNNING`, and `COMPLETED`.
+
+Full verification and static gates:
+
+- `npm test`
+  - 55 test files / 212 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - Frontend `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 162 backend tests passed; `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" frontend/src tests/unit docs/reports/runtime-work-item-execution-resume-delivery.md --glob '!dist/**'`
+  - No trailing whitespace or merge-conflict marker matches.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}|ANTHROPIC_AUTH_TOKEN=tp-[A-Za-z0-9]{20,}" frontend/src tests/unit docs/reports/runtime-work-item-execution-resume-delivery.md src backend --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No token-shaped matches.
+
+Evidence boundaries:
+
+- This is a real local browser + Java backend + local TypeScript worker smoke.
+- It proves frontend code can consume the Java SSE stream and update the run card from lifecycle events.
+- It does not prove browser EventSource specifically; the frontend client uses `fetch` + `ReadableStream` to consume SSE frames so it can test and keep the backend public shape explicit.
+- Stream EOF is not terminal evidence by itself; terminal evidence still comes from the public run status/event status.
+- This does not prove production multi-node fanout, broker-backed streaming, remote runner live event streaming, OAuth session lifecycle, production secret manager lookup, artifact upload from a remote runner, or real external provider E2E.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

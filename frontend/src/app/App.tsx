@@ -8,6 +8,7 @@ import {
   activeWorkspaceIdFromWorkbench,
   applyApprovalDecisionToWorkbench,
   applyArtifactContentToWorkbench,
+  applyAssistantRunProgressToWorkbench,
   applyAssistantRunSessionToWorkbench,
   loadWorkbenchBootstrapView,
   type WorkbenchBootstrapView,
@@ -58,6 +59,13 @@ export function App() {
         workspaceId,
         userMessage,
         mode: modeForAssistantMessage(userMessage),
+        streamEvents: true,
+        onUpdate: (update) => {
+          setBootstrap((current) => ({
+            ...current,
+            data: applyAssistantRunProgressToWorkbench(current.data, update),
+          }));
+        },
       });
       setBootstrap((current) => ({
         ...current,
