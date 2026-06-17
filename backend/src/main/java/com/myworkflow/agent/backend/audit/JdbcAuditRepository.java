@@ -33,22 +33,41 @@ public class JdbcAuditRepository implements AuditRepository {
       String message,
       Instant createdAt
   ) {
-    AuditEventRecord event = new AuditEventRecord(
-        "aud_" + UUID.randomUUID().toString().replace("-", ""),
+    String auditEventId = "aud_" + UUID.randomUUID().toString().replace("-", "");
+    String previousRecordDigest = previousRecordDigest(workspaceId);
+    AuditRecordIntegrity.IntegrityFields integrity = AuditRecordIntegrity.forEvent(
+        auditEventId,
         actorUserId,
         teamId,
         workspaceId,
         runId,
         eventType,
         message,
-        createdAt
+        createdAt.toString(),
+        previousRecordDigest
+    );
+    AuditEventRecord event = new AuditEventRecord(
+        auditEventId,
+        actorUserId,
+        teamId,
+        workspaceId,
+        runId,
+        eventType,
+        message,
+        createdAt,
+        integrity.recordDigest(),
+        integrity.previousRecordDigest(),
+        integrity.chainDigest(),
+        integrity.signatureKind(),
+        integrity.signatureValue()
     );
     jdbcTemplate.update(
         """
             INSERT INTO audit_events (
-              id, actor_user_id, team_id, workspace_id, run_id, event_type, message, created_at
+              id, actor_user_id, team_id, workspace_id, run_id, event_type, message, created_at,
+              record_digest, previous_record_digest, chain_digest, signature_kind, signature_value
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
         event.auditEventId(),
         event.actorUserId(),
@@ -57,7 +76,12 @@ public class JdbcAuditRepository implements AuditRepository {
         event.runId(),
         event.eventType(),
         event.message(),
-        Timestamp.from(event.createdAt())
+        Timestamp.from(event.createdAt()),
+        event.recordDigest(),
+        event.previousRecordDigest(),
+        event.chainDigest(),
+        event.signatureKind(),
+        event.signatureValue()
     );
     return event;
   }
@@ -67,6 +91,7 @@ public class JdbcAuditRepository implements AuditRepository {
     return jdbcTemplate.query(
         """
             SELECT id, actor_user_id, team_id, workspace_id, run_id, event_type, message, created_at
+              , record_digest, previous_record_digest, chain_digest, signature_kind, signature_value
             FROM audit_events
             WHERE run_id = ?
             ORDER BY created_at ASC, id ASC
@@ -79,7 +104,8 @@ public class JdbcAuditRepository implements AuditRepository {
   @Override
   public List<AuditEventRecord> findByWorkspaceId(String workspaceId, AuditEventQuery query) {
     StringBuilder sql = new StringBuilder("""
-        SELECT id, actor_user_id, team_id, workspace_id, run_id, event_type, message, created_at
+        SELECT id, actor_user_id, team_id, workspace_id, run_id, event_type, message, created_at,
+          record_digest, previous_record_digest, chain_digest, signature_kind, signature_value
         FROM audit_events
         WHERE workspace_id = ?
         """);
@@ -113,7 +139,27 @@ public class JdbcAuditRepository implements AuditRepository {
         resultSet.getString("run_id"),
         resultSet.getString("event_type"),
         resultSet.getString("message"),
-        resultSet.getTimestamp("created_at").toInstant()
+        resultSet.getTimestamp("created_at").toInstant(),
+        resultSet.getString("record_digest"),
+        resultSet.getString("previous_record_digest"),
+        resultSet.getString("chain_digest"),
+        resultSet.getString("signature_kind"),
+        resultSet.getString("signature_value")
     );
+  }
+
+  private String previousRecordDigest(String workspaceId) {
+    List<String> previous = jdbcTemplate.queryForList(
+        """
+            SELECT chain_digest
+            FROM audit_events
+            WHERE workspace_id = ? AND chain_digest IS NOT NULL
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+        String.class,
+        workspaceId
+    );
+    return previous.isEmpty() ? null : previous.get(0);
   }
 }

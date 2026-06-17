@@ -24,15 +24,38 @@ public class InMemoryAuditRepository implements AuditRepository {
       String message,
       Instant createdAt
   ) {
-    AuditEventRecord event = new AuditEventRecord(
-        "aud_" + UUID.randomUUID().toString().replace("-", ""),
+    String auditEventId = "aud_" + UUID.randomUUID().toString().replace("-", "");
+    String previousRecordDigest = events.stream()
+        .filter((event) -> workspaceId.equals(event.workspaceId()))
+        .max(Comparator.comparing(AuditEventRecord::createdAt)
+            .thenComparing(AuditEventRecord::auditEventId))
+        .map(AuditEventRecord::chainDigest)
+        .orElse(null);
+    AuditRecordIntegrity.IntegrityFields integrity = AuditRecordIntegrity.forEvent(
+        auditEventId,
         actorUserId,
         teamId,
         workspaceId,
         runId,
         eventType,
         message,
-        createdAt
+        createdAt.toString(),
+        previousRecordDigest
+    );
+    AuditEventRecord event = new AuditEventRecord(
+        auditEventId,
+        actorUserId,
+        teamId,
+        workspaceId,
+        runId,
+        eventType,
+        message,
+        createdAt,
+        integrity.recordDigest(),
+        integrity.previousRecordDigest(),
+        integrity.chainDigest(),
+        integrity.signatureKind(),
+        integrity.signatureValue()
     );
     events.add(event);
     return event;

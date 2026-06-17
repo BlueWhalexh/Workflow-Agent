@@ -6,11 +6,7 @@ import com.myworkflow.agent.backend.api.ApiEnvelope;
 import com.myworkflow.agent.backend.api.ApiError;
 import com.myworkflow.agent.backend.workspace.WorkspaceForbiddenException;
 import com.myworkflow.agent.backend.workspace.WorkspaceNotFoundException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -142,32 +138,12 @@ public class AuditController {
         event.eventType(),
         event.message(),
         event.createdAt(),
-        recordDigest(event)
+        event.recordDigest(),
+        event.previousRecordDigest(),
+        event.chainDigest(),
+        event.signatureKind(),
+        event.signatureValue()
     );
-  }
-
-  private static String recordDigest(AuditEventRecord event) {
-    String canonical = String.join("\n",
-        nullToEmpty(event.auditEventId()),
-        nullToEmpty(event.actorUserId()),
-        nullToEmpty(event.teamId()),
-        nullToEmpty(event.workspaceId()),
-        nullToEmpty(event.runId()),
-        nullToEmpty(event.eventType()),
-        nullToEmpty(event.message()),
-        event.createdAt().toString()
-    );
-    try {
-      byte[] digest = MessageDigest.getInstance("SHA-256")
-          .digest(canonical.getBytes(StandardCharsets.UTF_8));
-      return "sha256:" + HexFormat.of().formatHex(digest);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 digest algorithm is unavailable", exception);
-    }
-  }
-
-  private static String nullToEmpty(String value) {
-    return value == null ? "" : value;
   }
 
   public record AuditEventResponse(
@@ -179,7 +155,11 @@ public class AuditController {
       String eventType,
       String message,
       Instant createdAt,
-      String recordDigest
+      String recordDigest,
+      String previousRecordDigest,
+      String chainDigest,
+      String signatureKind,
+      String signatureValue
   ) {
   }
 }

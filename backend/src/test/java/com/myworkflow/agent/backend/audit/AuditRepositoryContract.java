@@ -11,7 +11,7 @@ final class AuditRepositoryContract {
 
   static void assertWorkspaceAuditQueryContract(AuditRepository repository) {
     String workspaceId = "ws_audit_contract";
-    appendEvent(
+    AuditEventRecord created = appendEvent(
         repository,
         workspaceId,
         null,
@@ -19,7 +19,7 @@ final class AuditRepositoryContract {
         "Workspace created",
         "2030-01-01T00:00:00Z"
     );
-    appendEvent(
+    AuditEventRecord memberGranted = appendEvent(
         repository,
         workspaceId,
         null,
@@ -61,9 +61,20 @@ final class AuditRepositoryContract {
     assertThat(repository.findByWorkspaceId(workspaceId, new AuditEventQuery(10, 0, null, "run_contract_2")))
         .extracting(AuditEventRecord::eventType)
         .containsExactly("APPROVAL_DECIDED");
+    assertThat(created.recordDigest()).matches("sha256:[0-9a-f]{64}");
+    assertThat(created.previousRecordDigest()).isNull();
+    assertThat(created.chainDigest()).matches("sha256:[0-9a-f]{64}");
+    assertThat(created.signatureKind()).isEqualTo("sha256-chain-v1");
+    assertThat(created.signatureValue()).isEqualTo(created.chainDigest());
+    assertThat(memberGranted.recordDigest()).matches("sha256:[0-9a-f]{64}");
+    assertThat(memberGranted.previousRecordDigest()).isEqualTo(created.chainDigest());
+    assertThat(memberGranted.chainDigest()).matches("sha256:[0-9a-f]{64}");
+    assertThat(memberGranted.chainDigest()).isNotEqualTo(created.chainDigest());
+    assertThat(memberGranted.signatureKind()).isEqualTo("sha256-chain-v1");
+    assertThat(memberGranted.signatureValue()).isEqualTo(memberGranted.chainDigest());
   }
 
-  private static void appendEvent(
+  private static AuditEventRecord appendEvent(
       AuditRepository repository,
       String workspaceId,
       String runId,
@@ -71,7 +82,7 @@ final class AuditRepositoryContract {
       String message,
       String createdAt
   ) {
-    repository.append(
+    return repository.append(
         "owner_audit_contract",
         "team_audit_contract",
         workspaceId,

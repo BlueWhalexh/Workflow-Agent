@@ -3263,6 +3263,60 @@ Evidence boundaries:
 - J27A tests use MockMvc and in-memory repositories. No real external provider call was executed.
 - J27A is policy metadata only. It does not implement destructive purge, retention execution, async export-before-purge, object storage, persisted signed audit records, hash chain, external KMS, or public audit write API.
 
+## Phase J28A - Java Audit Signed Record Integrity Baseline
+
+Status: implemented for J28A. The Java backend now persists audit integrity metadata at repository append time and exposes those persisted fields through the existing owner-only audit list/export APIs. This is a local SHA-256 hash-chain integrity baseline, not an external KMS/private-key signature system.
+
+Scope delivered:
+
+- Added `recordDigest`, `previousRecordDigest`, `chainDigest`, `signatureKind`, and `signatureValue` to `AuditEventRecord`.
+- Added `AuditRecordIntegrity` for canonical public metadata digest and workspace-level chain digest generation.
+- Updated in-memory audit append path to compute and store integrity metadata.
+- Added Flyway migration `V10__audit_event_integrity_baseline.sql` for JDBC audit integrity columns.
+- Updated JDBC audit append/query paths to persist and read integrity metadata.
+- Updated audit list/export response to return persisted integrity fields instead of recalculating digest in the controller.
+- Updated Java backend platform spec, phase-one audit, delivery report, and J28A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=InMemoryAuditRepositoryContractTest,AuditControllerTest test`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `AuditEventRecord` did not yet expose `recordDigest()`, `previousRecordDigest()`, `chainDigest()`, `signatureKind()`, or `signatureValue()`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=InMemoryAuditRepositoryContractTest,AuditControllerTest test`
+  - 5 Java tests passed.
+  - Covers in-memory repository integrity chain contract and owner-only audit list/export public response fields.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=JdbcAuditRepositoryTest test`
+  - 1 Java test passed.
+  - Covers Flyway v10 migration, JDBC insert/select mapping, and repository contract under MySQL Testcontainers.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 103 Java tests passed.
+- `npm test`
+  - 44 TypeScript test files passed, 178 tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" ...`
+  - No trailing whitespace or conflict marker matches in touched backend/docs files.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-audit-signed-record-baseline.md`
+  - No unchecked J28A plan tasks remain.
+
+Evidence boundaries:
+
+- J28A tests use JUnit/MockMvc, in-memory repositories, and MySQL Testcontainers. No real external provider call was executed.
+- `signatureKind="sha256-chain-v1"` and `signatureValue=chainDigest` are local integrity metadata. J28A does not implement external KMS, private-key signatures, non-repudiation, key rotation, historical row backfill, multi-node chain locking, retention execution, destructive purge, or public audit write API.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

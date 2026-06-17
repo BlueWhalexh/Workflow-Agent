@@ -10,6 +10,11 @@ public record AuditEventRecord(
     String runId,
     String eventType,
     String message,
-    Instant createdAt
+    Instant createdAt,
+    String recordDigest,
+    String previousRecordDigest,
+    String chainDigest,
+    String signatureKind,
+    String signatureValue
 ) {
 }

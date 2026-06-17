@@ -151,10 +151,18 @@ class AuditControllerTest {
         .andExpect(jsonPath("$.data[0].eventType").value("ARTIFACT_READ"))
         .andExpect(jsonPath("$.data[0].runId").value("run-audit-page-1"))
         .andExpect(jsonPath("$.data[0].recordDigest").isString())
+        .andExpect(jsonPath("$.data[0].previousRecordDigest").isString())
+        .andExpect(jsonPath("$.data[0].chainDigest").isString())
+        .andExpect(jsonPath("$.data[0].signatureKind").value("sha256-chain-v1"))
+        .andExpect(jsonPath("$.data[0].signatureValue").isString())
         .andReturn();
     String filteredBody = filtered.getResponse().getContentAsString();
     String digest = JsonPath.read(filteredBody, "$.data[0].recordDigest");
+    String chainDigest = JsonPath.read(filteredBody, "$.data[0].chainDigest");
+    String signatureValue = JsonPath.read(filteredBody, "$.data[0].signatureValue");
     assertThat(digest).matches("sha256:[0-9a-f]{64}");
+    assertThat(chainDigest).matches("sha256:[0-9a-f]{64}");
+    assertThat(signatureValue).isEqualTo(chainDigest);
     assertThat(filteredBody)
         .doesNotContain("workspaceRoot")
         .doesNotContain("serverStorageRef")
@@ -221,7 +229,11 @@ class AuditControllerTest {
         .contains("\"workspaceId\":\"%s\"".formatted(workspaceId))
         .contains("\"runId\":\"run-audit-export-1\"")
         .contains("\"eventType\":\"ARTIFACT_READ\"")
-        .contains("\"recordDigest\":\"sha256:");
+        .contains("\"recordDigest\":\"sha256:")
+        .contains("\"previousRecordDigest\":\"sha256:")
+        .contains("\"chainDigest\":\"sha256:")
+        .contains("\"signatureKind\":\"sha256-chain-v1\"")
+        .contains("\"signatureValue\":\"sha256:");
     assertThat(body)
         .doesNotContain("workspaceRoot")
         .doesNotContain("serverStorageRef")

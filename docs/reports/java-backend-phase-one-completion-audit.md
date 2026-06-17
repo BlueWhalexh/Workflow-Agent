@@ -29,7 +29,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider runtime ref policy | J9A/J23A/J23B config-backed ref, raw secret guard, env-name guard | Implemented baseline |
 | Workspace member management | J10A member grant/list, J12A removal, J15A owner transfer | Implemented baseline |
 | Team discovery/listing | J13A current team, J14A backend-known team members | Implemented baseline |
-| Audit visibility | J11A owner list, J16A pagination/filtering, J18A NDJSON export, J19A digest | Implemented baseline |
+| Audit visibility | J11A owner list, J16A pagination/filtering, J18A NDJSON export, J19A digest, J28A persisted integrity chain | Implemented baseline |
 | Audit retention policy | J27A owner-visible report-only retention metadata, no destructive purge | Implemented baseline |
 | Run event streaming | J17A SSE, J22A reconnect cursor and JDBC event sequence | Implemented baseline |
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
@@ -39,31 +39,31 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Secret manager / non-env injection | J24D validates refs; J24E executes only `env://`; no lookup/injection path | Not implemented |
 | Full OIDC/OAuth | Dev header/local principal only | Not implemented |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
-| Persisted signed audit records | Digest exists; no persisted signatures/hash chain | Not implemented |
+| Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards exist; no runner registry, heartbeat, leases, authz, artifact upload, remote cancellation, or secret distribution | Not implemented |
 
 ## Latest Gate Resolution
 
-J27A: `Java Audit Retention Policy Baseline` is now implemented as an approved scope expansion.
+J28A: `Java Audit Signed Record Baseline` is now implemented as an approved scope expansion.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-audit-retention-policy-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-audit-signed-record-baseline.md`
 
 Scope that required approval:
 
-- Adds public API.
-- Changes audit policy visibility boundary.
-- Requires controller/service/config/tests/docs/report updates.
+- Extends existing audit list/export public response with persisted integrity metadata.
+- Adds JDBC audit-event integrity columns through Flyway.
+- Requires repository/controller/tests/docs/report updates.
 - Touched more than five files.
 
 SOP result:
 
 - User approved the scope expansion.
-- Workspace owners can read report-only audit retention metadata through the audit API.
-- The policy is configuration-backed through `my-workflow.backend.audit.retention-days`.
-- J27A does not delete, purge, mutate, or compact audit records.
+- Workspace owners can read persisted audit integrity metadata through the existing audit list/export APIs.
+- Newly appended audit events persist `recordDigest`, `previousRecordDigest`, `chainDigest`, `signatureKind`, and `signatureValue`.
+- J28A is a local SHA-256 hash-chain baseline. It does not implement external KMS, private-key signatures, non-repudiation, key rotation, history backfill, retention execution, or public audit write API.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -82,9 +82,9 @@ SOP result:
    - Configurable retention metadata and owner-visible policy.
    - No destructive purge until a separate explicit phase defines retention execution and audit export safeguards.
 
-4. J28A: persisted signed audit record baseline.
-   - Persist signature/digest metadata separately from public response.
-   - Keep existing J19A digest stable.
+4. J28A: persisted signed audit record baseline. Completed baseline.
+   - Persist signature/digest metadata at repository append time.
+   - Keep existing J19A digest semantics stable while adding hash-chain metadata.
 
 5. J29A: remote runner registration/lease design and baseline.
    - Registry, heartbeat, lease lifecycle, runner authz boundaries.
@@ -110,4 +110,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J27A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, signed audit records, production runner platform, and identity hardening.
+No J28A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, production runner platform, identity hardening, and multi-node stream fanout.
