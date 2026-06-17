@@ -52,6 +52,7 @@ public class OpsController {
       boolean audienceConfigured,
       boolean oauthIntrospectionConfigured,
       boolean oauthClientAuthConfigured,
+      boolean oauthSessionCookieConfigured,
       String userIdClaim,
       String teamIdClaim,
       String displayNameClaim
@@ -67,6 +68,7 @@ public class OpsController {
             false,
             true,
             oauth.clientAuthConfigured(),
+            oauth.sessionCookieConfigured(),
             oauth.userIdClaim(),
             oauth.teamIdClaim(),
             oauth.displayNameClaim()
@@ -79,6 +81,7 @@ public class OpsController {
           oidc.issuerConfigured(),
           oidc.jwksUriConfigured(),
           oidc.audienceConfigured(),
+          false,
           false,
           false,
           oidc.userIdClaim(),

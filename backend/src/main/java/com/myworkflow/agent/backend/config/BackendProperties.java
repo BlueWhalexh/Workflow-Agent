@@ -39,6 +39,7 @@ public class BackendProperties {
       @Value("${my-workflow.backend.oauth.introspection-uri:}") String oauthIntrospectionUri,
       @Value("${my-workflow.backend.oauth.client-id:}") String oauthClientId,
       @Value("${my-workflow.backend.oauth.client-secret-env-name:}") String oauthClientSecretEnvName,
+      @Value("${my-workflow.backend.oauth.session-cookie-name:}") String oauthSessionCookieName,
       @Value("${my-workflow.backend.oauth.user-id-claim:sub}") String oauthUserIdClaim,
       @Value("${my-workflow.backend.oauth.team-id-claim:team_id}") String oauthTeamIdClaim,
       @Value("${my-workflow.backend.oauth.display-name-claim:name}") String oauthDisplayNameClaim
@@ -67,6 +68,7 @@ public class BackendProperties {
         oauthIntrospectionUri,
         oauthClientId,
         oauthClientSecretEnvName,
+        oauthSessionCookieName,
         oauthUserIdClaim,
         oauthTeamIdClaim,
         oauthDisplayNameClaim
@@ -74,6 +76,55 @@ public class BackendProperties {
     if (this.oauthIntrospection.enabled() && !"disabled".equals(this.oidc.mode())) {
       throw new IllegalArgumentException("OAuth introspection and OIDC JWT verification are mutually exclusive");
     }
+  }
+
+  public BackendProperties(
+      String dataRoot,
+      String devUserId,
+      String devTeamId,
+      String devDisplayName,
+      String providerSecretFileRoot,
+      int auditRetentionDays,
+      String oidcIssuerUri,
+      String oidcIssuer,
+      String oidcJwksUri,
+      String oidcAudience,
+      String oidcUserIdClaim,
+      String oidcTeamIdClaim,
+      String oidcDisplayNameClaim,
+      String oauthIntrospectionUri,
+      String oauthClientId,
+      String oauthClientSecretEnvName,
+      String oauthSessionCookieName,
+      String oauthUserIdClaim,
+      String oauthTeamIdClaim,
+      String oauthDisplayNameClaim
+  ) {
+    this(
+        dataRoot,
+        devUserId,
+        devTeamId,
+        devDisplayName,
+        providerSecretFileRoot,
+        "",
+        "",
+        5_000,
+        auditRetentionDays,
+        oidcIssuerUri,
+        oidcIssuer,
+        oidcJwksUri,
+        oidcAudience,
+        oidcUserIdClaim,
+        oidcTeamIdClaim,
+        oidcDisplayNameClaim,
+        oauthIntrospectionUri,
+        oauthClientId,
+        oauthClientSecretEnvName,
+        oauthSessionCookieName,
+        oauthUserIdClaim,
+        oauthTeamIdClaim,
+        oauthDisplayNameClaim
+    );
   }
 
   public BackendProperties(
@@ -103,9 +154,6 @@ public class BackendProperties {
         devTeamId,
         devDisplayName,
         providerSecretFileRoot,
-        "",
-        "",
-        5_000,
         auditRetentionDays,
         oidcIssuerUri,
         oidcIssuer,
@@ -117,6 +165,7 @@ public class BackendProperties {
         oauthIntrospectionUri,
         oauthClientId,
         oauthClientSecretEnvName,
+        "",
         oauthUserIdClaim,
         oauthTeamIdClaim,
         oauthDisplayNameClaim
@@ -146,6 +195,7 @@ public class BackendProperties {
         "sub",
         "team_id",
         "name",
+        "",
         "",
         "",
         "",
@@ -304,6 +354,7 @@ public class BackendProperties {
       String introspectionUri,
       String clientId,
       String clientSecretEnvName,
+      String sessionCookieName,
       String userIdClaim,
       String teamIdClaim,
       String displayNameClaim
@@ -312,6 +363,7 @@ public class BackendProperties {
       introspectionUri = blankToNull(introspectionUri).orElse(null);
       clientId = blankToNull(clientId).orElse(null);
       clientSecretEnvName = blankToNull(clientSecretEnvName).orElse(null);
+      sessionCookieName = blankToNull(sessionCookieName).orElse(null);
       userIdClaim = requiredClaimName(userIdClaim, "sub");
       teamIdClaim = requiredClaimName(teamIdClaim, "team_id");
       displayNameClaim = requiredClaimName(displayNameClaim, "name");
@@ -323,6 +375,9 @@ public class BackendProperties {
       if (clientSecretEnvName != null && !clientSecretEnvName.matches("[A-Z_][A-Z0-9_]*")) {
         throw new IllegalArgumentException("OAuth introspection client-secret-env-name must be an env var name");
       }
+      if (sessionCookieName != null && !sessionCookieName.matches("[A-Za-z][A-Za-z0-9_-]{0,63}")) {
+        throw new IllegalArgumentException("OAuth session cookie name must be a safe cookie name");
+      }
     }
 
     public boolean enabled() {
@@ -331,6 +386,29 @@ public class BackendProperties {
 
     public boolean clientAuthConfigured() {
       return clientId != null;
+    }
+
+    public boolean sessionCookieConfigured() {
+      return sessionCookieName != null;
+    }
+
+    public OAuthIntrospection(
+        String introspectionUri,
+        String clientId,
+        String clientSecretEnvName,
+        String userIdClaim,
+        String teamIdClaim,
+        String displayNameClaim
+    ) {
+      this(
+          introspectionUri,
+          clientId,
+          clientSecretEnvName,
+          null,
+          userIdClaim,
+          teamIdClaim,
+          displayNameClaim
+      );
     }
   }
 

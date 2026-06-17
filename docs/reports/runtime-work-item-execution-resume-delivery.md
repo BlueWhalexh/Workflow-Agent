@@ -4768,6 +4768,57 @@ Evidence boundaries:
 - Stream EOF is not terminal evidence by itself; terminal evidence still comes from the public run status/event status.
 - This does not prove production multi-node fanout, broker-backed streaming, remote runner live event streaming, OAuth session lifecycle, production secret manager lookup, artifact upload from a remote runner, or real external provider E2E.
 
+## OAuth Introspection Browser Session Cookie Bridge
+
+Status: implemented and verified as a narrow backend browser-session bridge over the existing OAuth introspection verifier.
+
+Scope delivered:
+
+- Added `my-workflow.backend.oauth.session-cookie-name` as an optional backend configuration property.
+- The backend validates the configured cookie name as a safe cookie identifier.
+- `BearerTokenAuthenticationFilter` now keeps `Authorization: Bearer` as the first credential source and falls back to the configured session cookie only when the header is absent.
+- The cookie value is verified through the existing `BearerTokenVerifier`, so OAuth introspection and OIDC/JWT verifier behavior remains the trust boundary.
+- `/v1/ops/auth-config` now exposes only `oauthSessionCookieConfigured: true/false`; it does not expose the cookie name, token, introspection URI, client secret, or authorization material.
+- Backward-compatible Java constructors were retained for existing tests and local helper construction paths.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionHttpIntegrationTest,OpsOAuthAuthConfigControllerTest`
+  - Failed as expected before implementation.
+  - `prodProfileUsesConfiguredOAuthSessionCookieForBrowserPrincipal` returned `401` for `Cookie: MWA_SESSION=active-token`.
+  - `authConfigReturnsRedactedOAuthIntrospectionMetadata` failed because `$.data.oauthSessionCookieConfigured` did not exist.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionHttpIntegrationTest,OpsOAuthAuthConfigControllerTest`
+  - 4 tests passed; Maven reported `BUILD SUCCESS`.
+
+Full verification:
+
+- `npm test`
+  - 55 test files / 212 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - Frontend `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 163 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" backend/src docs/reports/runtime-work-item-execution-resume-delivery.md --glob '!backend/target/**'`
+  - No trailing whitespace or merge-conflict marker matches.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*`
+  - No token-shaped matches.
+- Fixture-name scan did find expected local test fixtures such as `active-token` and `MWA_SESSION`; these are not real credentials and are confined to tests/report evidence.
+
+Evidence boundaries:
+
+- This proves a configured browser cookie can carry an OAuth/OIDC token into the same backend verifier path as the `Authorization: Bearer` header.
+- This does not implement OAuth authorization-code redirect, callback handling, refresh-token rotation, server-side session storage, CSRF protection for login/callback endpoints, IdP logout, or frontend login UI.
+- Because it is not a full OAuth login/session lifecycle, the integration contract still keeps `oauthLoginSession: false`.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

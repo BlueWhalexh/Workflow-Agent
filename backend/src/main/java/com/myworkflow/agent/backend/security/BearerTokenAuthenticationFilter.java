@@ -1,8 +1,10 @@
 package com.myworkflow.agent.backend.security;
 
 import com.myworkflow.agent.backend.identity.BackendPrincipal;
+import com.myworkflow.agent.backend.config.BackendProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -21,9 +23,14 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final ObjectProvider<BearerTokenVerifier> verifierProvider;
+  private final BackendProperties properties;
 
-  public BearerTokenAuthenticationFilter(ObjectProvider<BearerTokenVerifier> verifierProvider) {
+  public BearerTokenAuthenticationFilter(
+      ObjectProvider<BearerTokenVerifier> verifierProvider,
+      BackendProperties properties
+  ) {
     this.verifierProvider = verifierProvider;
+    this.properties = properties;
   }
 
   @Override
@@ -32,7 +39,8 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
       HttpServletResponse response,
       FilterChain filterChain
   ) throws ServletException, IOException {
-    Optional<String> bearerToken = bearerToken(request);
+    Optional<String> bearerToken = bearerToken(request)
+        .or(() -> sessionCookieToken(request, properties.oauthIntrospection().sessionCookieName()));
     if (bearerToken.isPresent()) {
       BearerTokenVerifier verifier = verifierProvider.getIfAvailable();
       if (verifier != null) {
@@ -60,5 +68,18 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
       return Optional.empty();
     }
     return Optional.of(token);
+  }
+
+  private static Optional<String> sessionCookieToken(HttpServletRequest request, String cookieName) {
+    if (cookieName == null || cookieName.isBlank() || request.getCookies() == null) {
+      return Optional.empty();
+    }
+    for (Cookie cookie : request.getCookies()) {
+      if (cookieName.equals(cookie.getName())) {
+        String token = cookie.getValue() == null ? "" : cookie.getValue().trim();
+        return token.isEmpty() ? Optional.empty() : Optional.of(token);
+      }
+    }
+    return Optional.empty();
   }
 }

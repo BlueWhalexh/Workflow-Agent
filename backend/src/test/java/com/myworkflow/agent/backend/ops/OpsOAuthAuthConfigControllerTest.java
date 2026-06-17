@@ -20,7 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
         "my-workflow.backend.oauth.introspection-uri=http://127.0.0.1:65535/introspect",
         "my-workflow.backend.oauth.user-id-claim=email",
         "my-workflow.backend.oauth.team-id-claim=tenant_id",
-        "my-workflow.backend.oauth.display-name-claim=display_name"
+        "my-workflow.backend.oauth.display-name-claim=display_name",
+        "my-workflow.backend.oauth.session-cookie-name=MWA_SESSION"
     }
 )
 @AutoConfigureMockMvc
@@ -42,14 +43,17 @@ class OpsOAuthAuthConfigControllerTest {
         .andExpect(jsonPath("$.data.audienceConfigured").value(false))
         .andExpect(jsonPath("$.data.oauthIntrospectionConfigured").value(true))
         .andExpect(jsonPath("$.data.oauthClientAuthConfigured").value(false))
+        .andExpect(jsonPath("$.data.oauthSessionCookieConfigured").value(true))
         .andExpect(jsonPath("$.data.userIdClaim").value("email"))
         .andExpect(jsonPath("$.data.teamIdClaim").value("tenant_id"))
         .andExpect(jsonPath("$.data.displayNameClaim").value("display_name"))
         .andExpect(jsonPath("$.data.introspectionUri").doesNotExist())
+        .andExpect(jsonPath("$.data.sessionCookieName").doesNotExist())
         .andExpect(jsonPath("$.data.token").doesNotExist())
         .andExpect(jsonPath("$.data.secret").doesNotExist())
         .andExpect(jsonPath("$.data.authorization").doesNotExist())
         .andExpect(content().string(not(containsString("127.0.0.1:65535"))))
+        .andExpect(content().string(not(containsString("MWA_SESSION"))))
         .andExpect(content().string(not(containsString("Authorization"))))
         .andExpect(content().string(not(containsString("token"))))
         .andExpect(content().string(not(containsString("secret"))));

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.myworkflow.agent.backend.BackendApplication;
 import com.sun.net.httpserver.HttpServer;
+import jakarta.servlet.http.Cookie;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.AfterAll;
@@ -25,7 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.profiles.active=prod",
         "my-workflow.backend.dev-principal.user-id=prod-fallback-user",
         "my-workflow.backend.dev-principal.team-id=prod-fallback-team",
-        "my-workflow.backend.dev-principal.display-name=Prod Fallback"
+        "my-workflow.backend.dev-principal.display-name=Prod Fallback",
+        "my-workflow.backend.oauth.session-cookie-name=MWA_SESSION"
     }
 )
 @AutoConfigureMockMvc
@@ -54,6 +56,18 @@ class OAuthIntrospectionHttpIntegrationTest {
   void prodProfileUsesOAuthIntrospectionVerifierForBearerPrincipal() throws Exception {
     mockMvc.perform(get("/v1/me")
             .header("Authorization", "Bearer active-token"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.userId").value("oauth-user"))
+        .andExpect(jsonPath("$.data.teamId").value("team-oauth"))
+        .andExpect(jsonPath("$.data.displayName").value("OAuth User"))
+        .andExpect(jsonPath("$.data.token").doesNotExist())
+        .andExpect(jsonPath("$.error").doesNotExist());
+  }
+
+  @Test
+  void prodProfileUsesConfiguredOAuthSessionCookieForBrowserPrincipal() throws Exception {
+    mockMvc.perform(get("/v1/me")
+            .cookie(new Cookie("MWA_SESSION", "active-token")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.userId").value("oauth-user"))
         .andExpect(jsonPath("$.data.teamId").value("team-oauth"))
