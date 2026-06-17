@@ -56,7 +56,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.capabilities.oauthLoginSession").value(false))
         .andExpect(jsonPath("$.data.capabilities.tokenIntrospection").value(true))
         .andExpect(jsonPath("$.data.capabilities.externalDirectorySync").value(true))
-        .andExpect(jsonPath("$.data.capabilities.productionSecretManager").value(false))
+        .andExpect(jsonPath("$.data.capabilities.productionSecretManager").value(true))
         .andExpect(jsonPath("$.data.capabilities.remoteRunnerDispatch").value(true))
         .andExpect(jsonPath("$.data.capabilities.multiNodeStreamFanout").value(false))
         .andReturn();

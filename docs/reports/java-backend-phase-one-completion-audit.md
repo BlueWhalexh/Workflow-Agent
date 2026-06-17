@@ -19,7 +19,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Area | Current evidence | Status |
 | --- | --- | --- |
 | Java platform skeleton | J1 report and backend Maven/Spring Boot skeleton | Implemented baseline |
-| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true; J40A marks external directory snapshot sync baseline true; J41A marks registered remote runner dispatch baseline true while keeping remaining production gaps false | Implemented baseline |
+| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true; J40A marks external directory snapshot sync baseline true; J41A marks registered remote runner dispatch baseline true; J42A marks HTTP external secret manager resolver baseline true while keeping remaining production gaps false | Implemented baseline |
 | Workspace / identity baseline | J2 workspace API, path guard, JDBC repository, Flyway/Testcontainers | Implemented baseline |
 | Async run/job bridge | J3A async `agent-runs`, job/attempt schema, local TS worker bridge | Implemented baseline |
 | Artifact registry | J4A artifact ref registry/list/safe read | Implemented baseline |
@@ -41,7 +41,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
-| External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
+| External secret manager / KMS | J42A HTTP external secret manager resolver baseline exists; no vendor KMS/Vault/Keychain SDK, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
 | Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, J36A JWKS verifier baseline, J37A issuer discovery/auth diagnostics, and J39A OAuth token introspection baseline exist; no SSO, sessions, OAuth login flow, refresh tokens, directory claim sync, or real IdP smoke | Partially implemented baseline |
 | User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; J40A external directory snapshot import API; no SCIM/LDAP/IdP connector, scheduler, team-scoped audit schema, or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
@@ -49,6 +49,30 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Production remote runner platform | Contract/signature guards, J30A workspace-scoped registry/heartbeat/lease metadata, and J41A explicit registered-runner dispatch exist; no real runner identity, artifact upload, remote cancellation, multi-node scheduler, or runner-scoped secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J42A: `Java HTTP Secret Manager Resolver Baseline` is now implemented as a provider secret resolver slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-http-secret-manager-resolver-baseline.md`
+
+Scope that required approval:
+
+- Adds `my-workflow.backend.provider-secrets.http-resolver-uri`.
+- Adds optional `my-workflow.backend.provider-secrets.http-auth-token-env-name` and bounded `http-timeout-ms`.
+- Adds `HttpProviderSecretResolver` behind the existing `ProviderSecretResolver` SPI.
+- Resolves only `secret://...` refs through ref-only JSON request `provider-secret-resolve-request.v1`.
+- Accepts only `provider-secret-resolve-response.v1` with a nonblank bounded `secretValue`.
+- Keeps raw secret value in memory-only worker env injection.
+- Updates `/v1/ops/integration-contract` to set `productionSecretManager=true`.
+
+SOP result:
+
+- DB-backed provider credentials can now use `secret://...` refs backed by an external HTTP secret manager endpoint instead of only local fake/in-memory or local file resolver paths.
+- Public API responses, DB metadata, worker request JSON, provider runtime map, ops response, docs, and reports do not include raw secret, `apiKeySecretRef`, secret manager auth token, Authorization material, or provider API key.
+- J42A local HTTP stub tests are fake integration evidence for backend resolver behavior, not a real Vault/KMS/Keychain or production secret manager smoke.
+- J42A is not vendor KMS/Vault/Keychain SDK, key rotation, secret registration UI/API, team-scoped credential API, remote runner secret distribution, or real provider smoke.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J41A: `Java Remote Runner Dispatch Baseline` is now implemented as a registered-runner explicit dispatch slice.
 
@@ -136,9 +160,9 @@ SOP result:
 
 - Frontend and runtime integrators can discover the backend contract without parsing OpenAPI or dated docs first.
 - Implemented baseline capabilities such as async runs, SSE events, approvals, artifacts, provider credential metadata, and OIDC JWT bearer are marked true.
-- Incomplete capabilities such as OAuth login/session, production secret manager, remote artifact upload/cancellation, and multi-node stream fanout remain false.
+- Incomplete capabilities such as OAuth login/session, remote artifact upload/cancellation, and multi-node stream fanout remain false.
 - The contract response does not expose access token, refresh token, API key, `apiKeySecretRef`, Authorization material, issuer/JWKS URI values, workspace root, provider runtime, or raw provider payload.
-- J38A is not frontend API integration, runtime E2E, production OAuth/session, production secret management, external directory sync, production remote runner platform, remote artifact upload/cancellation, or multi-node fanout.
+- J38A is not frontend API integration, runtime E2E, production OAuth/session, vendor KMS/key rotation, external directory sync, production remote runner platform, remote artifact upload/cancellation, or multi-node fanout.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J37A: `Java OIDC Discovery Auth Diagnostics Baseline` is now implemented as a narrow issuer discovery and redacted configuration diagnostics slice.
@@ -287,6 +311,10 @@ SOP result:
    - `remoteRunnerRef` on run creation dispatches to a same-workspace registered online runner with `agent-backend-response.v1` capability.
    - Still no production runner identity, mTLS, runner-scoped secret distribution, remote artifact upload callback, remote cancellation callback, automatic scheduler, multi-node fanout, or real remote runner E2E.
 
+18. J42A: HTTP external secret manager resolver baseline. Completed baseline.
+   - `secret://...` provider credential refs can resolve through a configured HTTP secret manager endpoint.
+   - Still no vendor KMS/Vault/Keychain SDK, key rotation, public secret registration, team-scoped credential API, remote runner secret distribution, or real secret manager smoke.
+
 ## Completion Criteria For Backend Phase One
 
 Phase one should not be marked complete until all of the following are true and freshly verified:
@@ -303,4 +331,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J41A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, OAuth login/session flow, external directory connector/scheduler/credential storage, team-scoped audit schema, real email invite delivery/link-token handling, production runner identity/artifact upload/remote cancellation, and multi-node stream fanout.
+No J42A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, vendor KMS/Keychain/Vault integration, secret rotation, OAuth login/session flow, external directory connector/scheduler/credential storage, team-scoped audit schema, real email invite delivery/link-token handling, production runner identity/artifact upload/remote cancellation, and multi-node stream fanout.

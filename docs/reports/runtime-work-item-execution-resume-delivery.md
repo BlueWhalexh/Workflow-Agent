@@ -4008,6 +4008,60 @@ Evidence boundaries:
 - Test literals such as `runnerToken`, `signatureSecret`, and `apiKey` are fake no-leak fixtures, not real credentials.
 - J41A is not production runner identity, mTLS, runner-scoped secret distribution, remote artifact upload callback, remote cancellation callback, automatic scheduler, multi-node fanout, or real remote runner E2E.
 
+## Java HTTP Secret Manager Resolver Baseline
+
+Status: implemented as J42A backend provider-secret resolver baseline.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-http-secret-manager-resolver-baseline.md`
+
+Scope delivered:
+
+- Added `my-workflow.backend.provider-secrets.http-resolver-uri`.
+- Added optional `my-workflow.backend.provider-secrets.http-auth-token-env-name`.
+- Added bounded `my-workflow.backend.provider-secrets.http-timeout-ms`.
+- Added `HttpProviderSecretResolver` behind the existing `ProviderSecretResolver` SPI.
+- The resolver handles only `secret://...` refs and ignores non-secret refs.
+- The resolver sends ref-only JSON with `schemaVersion=provider-secret-resolve-request.v1`.
+- Optional bearer auth is read from an environment variable name and is never stored in public config/docs/responses.
+- The resolver accepts only `provider-secret-resolve-response.v1` with a nonblank bounded `secretValue`.
+- Run creation with a DB-backed provider credential can resolve `secret://...` through HTTP and inject the raw value only through `AgentWorkerSecretInjection`.
+- `/v1/ops/integration-contract` now sets `productionSecretManager=true`.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=HttpProviderSecretResolverTest,HttpProviderSecretRunControllerTest,OpsIntegrationContractControllerTest`
+  - Initial RED: test compilation failed because `HttpProviderSecretResolver` and `BackendProperties.HttpSecretManager` did not exist.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=HttpProviderSecretResolverTest,HttpProviderSecretRunControllerTest,OpsIntegrationContractControllerTest`
+  - 6 Java tests passed.
+  - Covers HTTP resolver request/response schema, env-backed bearer auth, fail-fast missing auth env, invalid response fail-closed behavior, run-path secret injection, no raw secret/ref echo, and ops capability state.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=HttpProviderSecretResolverTest,HttpProviderSecretRunControllerTest,ProviderCredentialRunControllerTest,FileProviderSecretRunControllerTest,OpsIntegrationContractControllerTest`
+  - 11 Java tests passed.
+  - Covers compatibility with DB-backed credential refs, local file secret resolver behavior, provider credential run path, HTTP resolver run path, and ops contract state.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 161 Java tests passed, 0 failures, 0 errors, 0 skipped.
+- `npm run typecheck`
+  - `tsc --noEmit` passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `git diff --cached --check`
+  - Passed with no whitespace errors for the staged J42A file set.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+
+Evidence boundaries:
+
+- J42A uses local JDK `HttpServer` fixtures and Testcontainers-backed JDBC coverage. No real Vault, KMS, Keychain, enterprise secret manager, real provider, or external network service was called.
+- Test literals such as `manager-auth-token-not-real` and `http-provider-secret-not-real` are fake fixtures, not real credentials.
+- J42A is not vendor KMS/Vault/Keychain SDK, key rotation, public secret registration API, team-scoped credential API, remote runner secret distribution, or real provider smoke.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

@@ -1,5 +1,6 @@
 package com.myworkflow.agent.backend.config;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ public class BackendProperties {
 
   private final Path dataRoot;
   private final Path providerSecretFileRoot;
+  private final HttpSecretManager httpSecretManager;
   private final DevPrincipal devPrincipal;
   private final AuditRetention auditRetention;
   private final Oidc oidc;
@@ -23,6 +25,9 @@ public class BackendProperties {
       @Value("${my-workflow.backend.dev-principal.team-id:dev-team}") String devTeamId,
       @Value("${my-workflow.backend.dev-principal.display-name:Dev User}") String devDisplayName,
       @Value("${my-workflow.backend.provider-secrets.file-root:}") String providerSecretFileRoot,
+      @Value("${my-workflow.backend.provider-secrets.http-resolver-uri:}") String providerSecretHttpResolverUri,
+      @Value("${my-workflow.backend.provider-secrets.http-auth-token-env-name:}") String providerSecretHttpAuthTokenEnvName,
+      @Value("${my-workflow.backend.provider-secrets.http-timeout-ms:5000}") int providerSecretHttpTimeoutMs,
       @Value("${my-workflow.backend.audit.retention-days:365}") int auditRetentionDays,
       @Value("${my-workflow.backend.oidc.issuer-uri:}") String oidcIssuerUri,
       @Value("${my-workflow.backend.oidc.issuer:}") String oidcIssuer,
@@ -42,6 +47,11 @@ public class BackendProperties {
     this.providerSecretFileRoot = blankToNull(providerSecretFileRoot)
         .map(value -> Path.of(value).toAbsolutePath().normalize())
         .orElse(null);
+    this.httpSecretManager = new HttpSecretManager(
+        providerSecretHttpResolverUri,
+        providerSecretHttpAuthTokenEnvName,
+        providerSecretHttpTimeoutMs
+    );
     this.devPrincipal = new DevPrincipal(devUserId, devTeamId, devDisplayName);
     this.auditRetention = new AuditRetention(auditRetentionDays, "REPORT_ONLY", false);
     this.oidc = new Oidc(
@@ -70,6 +80,53 @@ public class BackendProperties {
       String dataRoot,
       String devUserId,
       String devTeamId,
+      String devDisplayName,
+      String providerSecretFileRoot,
+      int auditRetentionDays,
+      String oidcIssuerUri,
+      String oidcIssuer,
+      String oidcJwksUri,
+      String oidcAudience,
+      String oidcUserIdClaim,
+      String oidcTeamIdClaim,
+      String oidcDisplayNameClaim,
+      String oauthIntrospectionUri,
+      String oauthClientId,
+      String oauthClientSecretEnvName,
+      String oauthUserIdClaim,
+      String oauthTeamIdClaim,
+      String oauthDisplayNameClaim
+  ) {
+    this(
+        dataRoot,
+        devUserId,
+        devTeamId,
+        devDisplayName,
+        providerSecretFileRoot,
+        "",
+        "",
+        5_000,
+        auditRetentionDays,
+        oidcIssuerUri,
+        oidcIssuer,
+        oidcJwksUri,
+        oidcAudience,
+        oidcUserIdClaim,
+        oidcTeamIdClaim,
+        oidcDisplayNameClaim,
+        oauthIntrospectionUri,
+        oauthClientId,
+        oauthClientSecretEnvName,
+        oauthUserIdClaim,
+        oauthTeamIdClaim,
+        oauthDisplayNameClaim
+    );
+  }
+
+  public BackendProperties(
+      String dataRoot,
+      String devUserId,
+      String devTeamId,
       String devDisplayName
   ) {
     this(
@@ -78,6 +135,9 @@ public class BackendProperties {
         devTeamId,
         devDisplayName,
         "",
+        "",
+        "",
+        5_000,
         365,
         "",
         "",
@@ -101,6 +161,10 @@ public class BackendProperties {
 
   public Optional<Path> providerSecretFileRoot() {
     return Optional.ofNullable(providerSecretFileRoot);
+  }
+
+  public HttpSecretManager httpSecretManager() {
+    return httpSecretManager;
   }
 
   public DevPrincipal devPrincipal() {
@@ -142,6 +206,41 @@ public class BackendProperties {
       if (retentionDays < 1 || retentionDays > 3650) {
         throw new IllegalArgumentException("Audit retention days must be between 1 and 3650");
       }
+    }
+  }
+
+  public record HttpSecretManager(
+      String resolverUri,
+      String authTokenEnvName,
+      int timeoutMs
+  ) {
+    public HttpSecretManager {
+      resolverUri = blankToNull(resolverUri).orElse(null);
+      authTokenEnvName = blankToNull(authTokenEnvName).orElse(null);
+      if (resolverUri != null) {
+        URI uri = URI.create(resolverUri);
+        String scheme = uri.getScheme();
+        if (scheme == null || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+          throw new IllegalArgumentException("Provider secret HTTP resolver URI must use http or https");
+        }
+        if (uri.getUserInfo() != null) {
+          throw new IllegalArgumentException("Provider secret HTTP resolver URI must not contain userinfo");
+        }
+      }
+      if (authTokenEnvName != null && !authTokenEnvName.matches("[A-Z_][A-Z0-9_]*")) {
+        throw new IllegalArgumentException("Provider secret HTTP auth token env name must be an env var name");
+      }
+      if (timeoutMs < 100 || timeoutMs > 30_000) {
+        throw new IllegalArgumentException("Provider secret HTTP timeout must be between 100 and 30000 ms");
+      }
+    }
+
+    public boolean enabled() {
+      return resolverUri != null;
+    }
+
+    public boolean authConfigured() {
+      return authTokenEnvName != null;
     }
   }
 
