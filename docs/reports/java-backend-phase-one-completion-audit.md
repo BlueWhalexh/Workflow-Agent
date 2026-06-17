@@ -19,7 +19,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Area | Current evidence | Status |
 | --- | --- | --- |
 | Java platform skeleton | J1 report and backend Maven/Spring Boot skeleton | Implemented baseline |
-| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true; J40A marks external directory snapshot sync baseline true while keeping remaining production gaps false | Implemented baseline |
+| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true; J40A marks external directory snapshot sync baseline true; J41A marks registered remote runner dispatch baseline true while keeping remaining production gaps false | Implemented baseline |
 | Workspace / identity baseline | J2 workspace API, path guard, JDBC repository, Flyway/Testcontainers | Implemented baseline |
 | Async run/job bridge | J3A async `agent-runs`, job/attempt schema, local TS worker bridge | Implemented baseline |
 | Artifact registry | J4A artifact ref registry/list/safe read | Implemented baseline |
@@ -46,9 +46,31 @@ Complete backend phase one under the project SOP: central Java backend control p
 | User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; J40A external directory snapshot import API; no SCIM/LDAP/IdP connector, scheduler, team-scoped audit schema, or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
-| Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
+| Production remote runner platform | Contract/signature guards, J30A workspace-scoped registry/heartbeat/lease metadata, and J41A explicit registered-runner dispatch exist; no real runner identity, artifact upload, remote cancellation, multi-node scheduler, or runner-scoped secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J41A: `Java Remote Runner Dispatch Baseline` is now implemented as a registered-runner explicit dispatch slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-remote-runner-dispatch-baseline.md`
+
+Scope that required approval:
+
+- Adds optional `remoteRunnerRef` to `POST /v1/workspaces/{workspaceId}/agent-runs`.
+- Resolves the runner from the workspace-scoped remote runner registry.
+- Requires the runner to be in the same workspace, `ONLINE`, and capability-compatible with `agent-backend-response.v1`.
+- Dispatches the run through existing `RemoteHttpAgentWorker` and records `workerKind=REMOTE_RUNNER`.
+- Updates `/v1/ops/integration-contract` to describe the `remoteRunnerRef` entry point and set `remoteRunnerDispatch=true`.
+
+SOP result:
+
+- Backend/runtime integration can explicitly target an already registered remote runner without changing the public run response shape.
+- The public run response does not include runner endpoint URL, runner token, signature secret, provider secret, Authorization material, raw provider payload, workspace root, or runtime-private result shape.
+- J41A local HTTP stub tests are fake integration evidence for backend dispatch behavior, not a real runner platform smoke.
+- J41A is not production runner identity, mTLS, runner-scoped secret distribution, remote artifact upload callback, remote cancellation callback, automatic scheduler, multi-node fanout, or real remote runner E2E.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J40A: `Java External Directory Sync Baseline` is now implemented as a backend-owned external directory snapshot import slice.
 
@@ -114,9 +136,9 @@ SOP result:
 
 - Frontend and runtime integrators can discover the backend contract without parsing OpenAPI or dated docs first.
 - Implemented baseline capabilities such as async runs, SSE events, approvals, artifacts, provider credential metadata, and OIDC JWT bearer are marked true.
-- Incomplete capabilities such as OAuth login/session, external directory sync, production secret manager, remote runner dispatch, and multi-node stream fanout remain false.
+- Incomplete capabilities such as OAuth login/session, production secret manager, remote artifact upload/cancellation, and multi-node stream fanout remain false.
 - The contract response does not expose access token, refresh token, API key, `apiKeySecretRef`, Authorization material, issuer/JWKS URI values, workspace root, provider runtime, or raw provider payload.
-- J38A is not frontend API integration, runtime E2E, production OAuth/session, production secret management, external directory sync, remote runner dispatch/artifact upload/cancellation, or multi-node fanout.
+- J38A is not frontend API integration, runtime E2E, production OAuth/session, production secret management, external directory sync, production remote runner platform, remote artifact upload/cancellation, or multi-node fanout.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J37A: `Java OIDC Discovery Auth Diagnostics Baseline` is now implemented as a narrow issuer discovery and redacted configuration diagnostics slice.
@@ -251,7 +273,7 @@ SOP result:
 
 14. J38A: backend integration readiness contract. Completed baseline.
    - `/v1/ops/integration-contract` exposes frontend/runtime endpoint lists and readiness flags.
-   - Still no frontend API integration, runtime real E2E, token introspection, OAuth login/session lifecycle, production secret manager, remote runner dispatch, external directory sync, or multi-node fanout.
+   - Still no frontend API integration, runtime real E2E, OAuth login/session lifecycle, production secret manager, production remote runner platform, remote artifact upload/cancellation, or multi-node fanout.
 
 15. J39A: OAuth token introspection bearer verifier. Completed baseline.
    - Configurable OAuth introspection endpoint validates opaque bearer tokens and maps active responses to backend principals.
@@ -260,6 +282,10 @@ SOP result:
 16. J40A: external directory snapshot sync baseline. Completed baseline.
    - Active team admins can import structured external member snapshots and optionally disable missing backend-known members.
    - Still no SCIM/LDAP/IdP connector, scheduler, external directory credential storage, team-scoped audit schema, global team CRUD, production RBAC sync, or real enterprise directory smoke.
+
+17. J41A: registered remote runner dispatch baseline. Completed baseline.
+   - `remoteRunnerRef` on run creation dispatches to a same-workspace registered online runner with `agent-backend-response.v1` capability.
+   - Still no production runner identity, mTLS, runner-scoped secret distribution, remote artifact upload callback, remote cancellation callback, automatic scheduler, multi-node fanout, or real remote runner E2E.
 
 ## Completion Criteria For Backend Phase One
 
@@ -277,4 +303,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J40A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, OAuth login/session flow, external directory connector/scheduler/credential storage, team-scoped audit schema, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
+No J41A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, OAuth login/session flow, external directory connector/scheduler/credential storage, team-scoped audit schema, real email invite delivery/link-token handling, production runner identity/artifact upload/remote cancellation, and multi-node stream fanout.

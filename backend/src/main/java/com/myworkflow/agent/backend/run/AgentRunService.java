@@ -39,6 +39,7 @@ public class AgentRunService {
   private final ProviderRuntimePolicy providerRuntimePolicy;
   private final ObjectProvider<ProviderCredentialService> providerCredentialServiceProvider;
   private final ObjectProvider<ProviderSecretResolver> providerSecretResolverProvider;
+  private final RemoteRunnerDispatchService remoteRunnerDispatchService;
   private final AgentWorker worker;
   private final ExecutorService executorService;
 
@@ -53,6 +54,7 @@ public class AgentRunService {
       ProviderRuntimePolicy providerRuntimePolicy,
       ObjectProvider<ProviderCredentialService> providerCredentialServiceProvider,
       ObjectProvider<ProviderSecretResolver> providerSecretResolverProvider,
+      RemoteRunnerDispatchService remoteRunnerDispatchService,
       AgentWorker worker,
       ExecutorService executorService
   ) {
@@ -66,6 +68,7 @@ public class AgentRunService {
     this.providerRuntimePolicy = providerRuntimePolicy;
     this.providerCredentialServiceProvider = providerCredentialServiceProvider;
     this.providerSecretResolverProvider = providerSecretResolverProvider;
+    this.remoteRunnerDispatchService = remoteRunnerDispatchService;
     this.worker = worker;
     this.executorService = executorService;
   }
@@ -76,7 +79,8 @@ public class AgentRunService {
       String mode,
       boolean execute,
       boolean autoApprove,
-      String providerRuntimeRef
+      String providerRuntimeRef,
+      String remoteRunnerRef
   ) {
     WorkspaceRecord workspace = workspaceService.requireWorkspaceRole(workspaceId, WorkspaceRole.WORKSPACE_EDITOR);
     BackendPrincipal principal = principalProvider.currentPrincipal();
@@ -102,13 +106,15 @@ public class AgentRunService {
         execute,
         providerRuntimeRef
     );
-    if (!providerRuntime.secretInjection().isEmpty() && !worker.supportsSecretInjection()) {
+    AgentWorker selectedWorker = remoteRunnerDispatchService.resolveWorker(workspace.workspaceId(), remoteRunnerRef)
+        .orElse(worker);
+    if (!providerRuntime.secretInjection().isEmpty() && !selectedWorker.supportsSecretInjection()) {
       throw new IllegalArgumentException("Provider credential secret refs require a worker that supports secret injection");
     }
     repository.create(run, job);
     auditService.record(run.workspaceId(), run.runId(), "AGENT_RUN_REQUESTED", "Agent run requested");
     appendEvent(run.runId(), "RUN_QUEUED", AgentRunStatus.QUEUED, "Run queued", now);
-    executorService.submit(() -> executeRun(run, job, workspaceRoot, providerRuntime));
+    executorService.submit(() -> executeRun(run, job, workspaceRoot, providerRuntime, selectedWorker));
     return run;
   }
 
@@ -135,9 +141,10 @@ public class AgentRunService {
       AgentRunRecord run,
       AgentJobRecord job,
       Path workspaceRoot,
-      ResolvedProviderRuntime providerRuntime
+      ResolvedProviderRuntime providerRuntime,
+      AgentWorker selectedWorker
   ) {
-    String workerKind = worker.workerKind();
+    String workerKind = selectedWorker.workerKind();
     for (int attempt = 1; attempt <= job.maxAttempts(); attempt++) {
       Instant startedAt = Instant.now();
       AgentRunStatus beforeRunning = currentStatus(run.runId());
@@ -154,7 +161,7 @@ public class AgentRunService {
         return;
       }
       try {
-        AgentWorkerResponse response = worker.run(new AgentWorkerRequest(
+        AgentWorkerResponse response = selectedWorker.run(new AgentWorkerRequest(
             run.runId(),
             workspaceRoot.toString(),
             run.userMessage(),

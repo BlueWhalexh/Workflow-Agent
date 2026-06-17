@@ -114,7 +114,11 @@ public class OpsController {
           new IntegrationEndpoint("GET", "/v1/me", "current principal"),
           new IntegrationEndpoint("GET", "/v1/teams", "current team discovery"),
           new IntegrationEndpoint("GET", "/v1/workspaces", "workspace listing"),
-          new IntegrationEndpoint("POST", "/v1/workspaces/{workspaceId}/agent-runs", "create async agent run"),
+          new IntegrationEndpoint(
+              "POST",
+              "/v1/workspaces/{workspaceId}/agent-runs",
+              "create async agent run; optional remoteRunnerRef dispatches to a registered online runner"
+          ),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}", "poll run state"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events", "durable run events"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events/stream", "SSE run event stream"),
@@ -132,7 +136,11 @@ public class OpsController {
 
     private static List<IntegrationEndpoint> runtimeEndpointContract() {
       return List.of(
-          new IntegrationEndpoint("POST", "/v1/workspaces/{workspaceId}/agent-runs", "create async agent run"),
+          new IntegrationEndpoint(
+              "POST",
+              "/v1/workspaces/{workspaceId}/agent-runs",
+              "create async agent run; optional remoteRunnerRef dispatches to a registered online runner"
+          ),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}", "poll mapped backend run response"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events", "read durable lifecycle events"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/artifacts", "list backend artifact refs"),
@@ -181,7 +189,7 @@ public class OpsController {
           true,
           true,
           false,
-          false,
+          true,
           false
       );
     }

@@ -3953,6 +3953,61 @@ Evidence boundaries:
 - J40A does not write audit events because the current audit schema is workspace-scoped and requires a non-null workspace foreign key. Team-scoped audit storage remains a separate backend gap.
 - J40A is not OAuth login/session claim reconciliation, SCIM/LDAP/IdP connector polling, external directory credential storage, global team CRUD, production RBAC sync, or real enterprise directory smoke.
 
+## Java Remote Runner Dispatch Baseline
+
+Status: implemented as J41A backend runner dispatch baseline.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-remote-runner-dispatch-baseline.md`
+
+Scope delivered:
+
+- Added optional `remoteRunnerRef` to `POST /v1/workspaces/{workspaceId}/agent-runs`.
+- Added `RemoteRunnerDispatchService` to resolve same-workspace registered runners before job execution.
+- Requires the selected runner to be `ONLINE` and to advertise `agent-backend-response.v1`.
+- Dispatches through the existing `RemoteHttpAgentWorker` and records `workerKind=REMOTE_RUNNER`.
+- Keeps the default local worker path unchanged when `remoteRunnerRef` is absent.
+- Keeps provider credential secret injection fail-closed for workers that do not support secret injection.
+- Public run responses and ops responses do not expose runner endpoint URL, runner token, signature secret, provider secret, Authorization material, raw provider payload, workspace root, or runtime-private result fields.
+- `/v1/ops/integration-contract` now documents the `remoteRunnerRef` entry point and sets `remoteRunnerDispatch=true`.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=RemoteRunnerDispatchControllerTest,OpsIntegrationContractControllerTest`
+  - Initial RED: create-run requests with `remoteRunnerRef` returned `INVALID_REQUEST` because the public request type did not accept the field, and the integration contract still reported `remoteRunnerDispatch=false`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=RemoteRunnerDispatchControllerTest,RemoteRunnerControllerTest,RemoteHttpAgentWorkerControllerTest,OpsIntegrationContractControllerTest`
+  - 8 Java tests passed.
+  - Covers registered online runner dispatch, offline runner rejection, no secret echo, attempt `workerKind=REMOTE_RUNNER`, remote runner registry compatibility, remote HTTP worker compatibility, and ops contract capability/purpose exposure.
+
+Debugging note:
+
+- First post-doc focused run failed because the ops contract purpose update only landed on the frontend endpoint list; the runtime endpoint list still had the old purpose text.
+- Fix: update the runtime endpoint purpose to mention `remoteRunnerRef` and keep the assertion on the runtime-facing contract.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 156 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+
+Evidence boundaries:
+
+- J41A uses local JDK `HttpServer` fixtures and Testcontainers-backed JDBC coverage. No real remote runner service, real provider, real artifact upload callback, or production runner identity path was called.
+- Test literals such as `runnerToken`, `signatureSecret`, and `apiKey` are fake no-leak fixtures, not real credentials.
+- J41A is not production runner identity, mTLS, runner-scoped secret distribution, remote artifact upload callback, remote cancellation callback, automatic scheduler, multi-node fanout, or real remote runner E2E.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

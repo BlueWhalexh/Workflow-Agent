@@ -38,7 +38,8 @@ public class AgentRunController {
         request.mode(),
         Boolean.TRUE.equals(request.execute()),
         Boolean.TRUE.equals(request.autoApprove()),
-        request.providerRuntimeRef()
+        request.providerRuntimeRef(),
+        request.remoteRunnerRef()
     )));
   }
 
@@ -75,7 +76,8 @@ public class AgentRunController {
       String mode,
       Boolean execute,
       Boolean autoApprove,
-      String providerRuntimeRef
+      String providerRuntimeRef,
+      String remoteRunnerRef
   ) {
   }
 

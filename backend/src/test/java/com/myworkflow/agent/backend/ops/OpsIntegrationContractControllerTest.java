@@ -40,6 +40,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/teams/{teamId}/directory-sync')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/ops/auth-config')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/agent-runs')]").exists())
+        .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.path == '/v1/workspaces/{workspaceId}/agent-runs' && @.purpose =~ /.*remoteRunnerRef.*/)]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/events')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/artifacts')]").exists())
@@ -56,7 +57,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.capabilities.tokenIntrospection").value(true))
         .andExpect(jsonPath("$.data.capabilities.externalDirectorySync").value(true))
         .andExpect(jsonPath("$.data.capabilities.productionSecretManager").value(false))
-        .andExpect(jsonPath("$.data.capabilities.remoteRunnerDispatch").value(false))
+        .andExpect(jsonPath("$.data.capabilities.remoteRunnerDispatch").value(true))
         .andExpect(jsonPath("$.data.capabilities.multiNodeStreamFanout").value(false))
         .andReturn();
 
