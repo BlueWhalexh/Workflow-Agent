@@ -3,707 +3,1000 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Workflow Agent Control Plane</title>
+  <title>我的工作流知识空间</title>
   <style>
     :root {
       color-scheme: light;
-      --ink: #1f2528;
-      --muted: #697176;
-      --line: #d9dedc;
-      --paper: #f5f3ed;
-      --panel: #fffdfa;
-      --panel-strong: #ece8de;
-      --green: #26745f;
-      --green-soft: #dcebe5;
+      --ink: #202526;
+      --ink-soft: #4d5859;
+      --muted: #758082;
+      --line: #d7ddda;
+      --line-strong: #b9c3bf;
+      --paper: #f1f4ef;
+      --surface: #fbfcf8;
+      --surface-cool: #f4f7f8;
+      --side: #202928;
+      --side-soft: #2a3433;
+      --green: #24745f;
+      --green-soft: #dcece5;
       --blue: #315f89;
-      --blue-soft: #dce8f2;
-      --amber: #9a6921;
-      --amber-soft: #f3e4c8;
-      --red: #a9443d;
-      --red-soft: #f1d8d5;
-      --graphite: #2e3335;
-      --shadow: 0 18px 40px rgba(31, 37, 40, 0.12);
+      --blue-soft: #dfeaf2;
+      --clay: #9b5546;
+      --clay-soft: #f0dfdb;
+      --gold: #a87a2a;
+      --gold-soft: #f0e4c9;
+      --shadow: 0 22px 48px rgba(32, 37, 38, 0.12);
+      --mono: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Helvetica Neue", sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html {
+      min-height: 100%;
+      background: var(--paper);
+    }
+
     body {
       margin: 0;
-      min-width: 1080px;
-      background:
-        linear-gradient(90deg, rgba(31, 37, 40, 0.035) 1px, transparent 1px),
-        linear-gradient(rgba(31, 37, 40, 0.035) 1px, transparent 1px),
-        var(--paper);
-      background-size: 28px 28px;
+      min-height: 100vh;
       color: var(--ink);
-      font-family: "Avenir Next", "Gill Sans", "Helvetica Neue", sans-serif;
+      font-family: var(--sans);
       letter-spacing: 0;
+      background:
+        linear-gradient(90deg, rgba(32, 37, 38, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(32, 37, 38, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
     }
 
     button,
-    input,
-    select {
+    input {
       font: inherit;
       letter-spacing: 0;
     }
 
-    .app {
+    button {
+      cursor: pointer;
+    }
+
+    .workspace {
       display: grid;
-      grid-template-columns: 236px minmax(844px, 1fr);
+      grid-template-columns: minmax(236px, 258px) minmax(640px, 1fr) minmax(330px, 356px);
       min-height: 100vh;
     }
 
-    .side {
-      background: #252b2d;
-      color: #f4f1ea;
-      padding: 20px 14px;
-      border-right: 1px solid #141819;
+    .sidebar {
+      min-width: 0;
+      padding: 16px 12px 18px 16px;
+      color: #edf3ef;
+      background:
+        linear-gradient(180deg, rgba(51, 95, 75, 0.16), transparent 340px),
+        var(--side);
+      border-right: 1px solid #111817;
     }
 
     .brand {
-      display: grid;
-      grid-template-columns: 34px 1fr;
-      gap: 10px;
+      display: flex;
       align-items: center;
-      margin-bottom: 26px;
-      padding: 0 6px;
+      gap: 11px;
+      padding: 2px 4px 16px;
     }
 
     .brand-mark {
       display: grid;
       place-items: center;
-      width: 34px;
-      height: 34px;
-      background: #d8b25d;
-      color: #1f2528;
-      border: 1px solid #f2dfaa;
-      border-radius: 6px;
-      font-weight: 800;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(239, 216, 153, 0.88);
+      border-radius: 7px;
+      background: #d9b45f;
+      color: #1d2524;
+      font-weight: 900;
     }
 
-    .brand-title {
+    .brand-text strong {
+      display: block;
       font-size: 14px;
-      line-height: 1.1;
+      line-height: 1.05;
+    }
+
+    .brand-text span {
+      color: #aebbb6;
+      font-size: 11px;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      margin: 0 2px 16px;
+      border: 1px solid #3f4b49;
+      border-radius: 7px;
+      background: #192120;
+      color: #b9c6c1;
+      padding: 0 10px;
+    }
+
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #edf3ef;
+      padding-left: 9px;
+      font-size: 13px;
+    }
+
+    .search input::placeholder {
+      color: #86948e;
+    }
+
+    .side-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 20px 4px 8px;
+      color: #aebbb6;
+      font-size: 11px;
       font-weight: 800;
     }
 
-    .brand-subtitle {
-      color: #b8c1bd;
-      font-size: 11px;
-      margin-top: 3px;
-    }
-
-    .nav {
-      display: grid;
-      gap: 4px;
-    }
-
-    .nav button {
-      width: 100%;
-      height: 38px;
-      border: 0;
+    .icon-button,
+    .mini-button {
+      border: 1px solid transparent;
       border-radius: 6px;
       background: transparent;
-      color: #dfe4df;
-      text-align: left;
-      padding: 0 10px;
-      cursor: pointer;
+      color: inherit;
     }
 
-    .nav button.active {
-      background: #f4f1ea;
-      color: #1f2528;
-      font-weight: 700;
+    .icon-button {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      color: #dbe5df;
     }
 
-    .nav button:hover:not(.active) {
-      background: #343b3e;
+    .icon-button:hover {
+      border-color: #4c5a57;
+      background: #2b3634;
     }
 
-    .side-section {
-      margin-top: 28px;
-      padding: 12px 10px;
-      border: 1px solid #454d50;
-      border-radius: 8px;
-      background: #2c3335;
+    .tree {
+      display: grid;
+      gap: 3px;
     }
 
-    .side-section h2 {
-      margin: 0 0 8px;
+    .tree-item {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: #dce5e0;
+      font-size: 13px;
+    }
+
+    .tree-item span:nth-child(2) {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-item.depth {
+      padding-left: 20px;
+      color: #c3cec9;
+    }
+
+    .tree-item.active {
+      border-color: rgba(216, 180, 95, 0.42);
+      background: #f2efe6;
+      color: #202526;
+      font-weight: 800;
+    }
+
+    .tree-item:hover:not(.active) {
+      background: #2a3433;
+    }
+
+    .tree-count {
+      color: #88958f;
       font-size: 11px;
-      color: #b8c1bd;
-      font-weight: 700;
-      text-transform: uppercase;
     }
 
-    .side-section p {
-      margin: 0;
+    .tree-item.active .tree-count {
+      color: #6d746f;
+    }
+
+    .section-card {
+      margin: 16px 2px 0;
+      padding: 12px;
+      border: 1px solid #43514e;
+      border-radius: 8px;
+      background: #26312f;
+    }
+
+    .section-card strong {
+      display: block;
+      margin-bottom: 6px;
       font-size: 12px;
-      line-height: 1.5;
-      color: #f4f1ea;
+    }
+
+    .section-card p {
+      margin: 0;
+      color: #c8d2cd;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .mini-graph {
+      position: relative;
+      height: 112px;
+      margin-top: 10px;
+      border: 1px solid #394744;
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 24px 26px, #d9b45f 0 4px, transparent 5px),
+        radial-gradient(circle at 98px 32px, #7cb39f 0 4px, transparent 5px),
+        radial-gradient(circle at 172px 28px, #82a7c3 0 4px, transparent 5px),
+        radial-gradient(circle at 62px 78px, #82a7c3 0 4px, transparent 5px),
+        radial-gradient(circle at 142px 82px, #d08f7f 0 4px, transparent 5px),
+        #1a2322;
+      overflow: hidden;
+    }
+
+    .mini-graph::before {
+      content: "";
+      position: absolute;
+      inset: 22px 34px 24px 28px;
+      border-top: 1px solid rgba(220, 229, 224, 0.28);
+      border-right: 1px solid rgba(220, 229, 224, 0.18);
+      transform: skewY(-18deg);
+    }
+
+    .view-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .view-switch button {
+      min-width: 0;
+      min-height: 30px;
+      border: 1px solid #41504d;
+      border-radius: 7px;
+      background: #1c2624;
+      color: #cfd9d4;
+      font-size: 12px;
+    }
+
+    .view-switch button.active {
+      border-color: #d9b45f;
+      background: #e8dfc8;
+      color: #202526;
+      font-weight: 800;
     }
 
     .main {
       min-width: 0;
-      padding: 18px 22px 28px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      background: rgba(251, 252, 248, 0.72);
     }
 
     .topbar {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .workspace-picker {
       display: flex;
-      gap: 10px;
       align-items: center;
+      justify-content: space-between;
       min-width: 0;
+      height: 62px;
+      padding: 0 clamp(18px, 3vw, 34px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(251, 252, 248, 0.86);
+      backdrop-filter: blur(12px);
     }
 
-    .workspace-picker select {
-      height: 38px;
-      min-width: 320px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--panel);
-      color: var(--ink);
-      padding: 0 10px;
-    }
-
-    .pill {
-      display: inline-flex;
+    .crumbs {
+      display: flex;
       align-items: center;
-      gap: 6px;
-      height: 28px;
-      padding: 0 9px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--panel);
+      gap: 8px;
+      min-width: 0;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       white-space: nowrap;
     }
 
-    .dot {
+    .crumbs b {
+      max-width: 34vw;
+      overflow: hidden;
+      color: var(--ink);
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .status-pill,
+    .article-chip,
+    .context-chip,
+    .toc-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      height: 29px;
+      padding: 0 10px;
+      background: var(--surface);
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    .status-dot {
       width: 7px;
       height: 7px;
       border-radius: 999px;
       background: var(--green);
     }
 
-    .button {
-      height: 38px;
-      border: 1px solid #202628;
-      border-radius: 6px;
-      background: var(--graphite);
-      color: #fffdfa;
-      padding: 0 14px;
-      cursor: pointer;
-    }
-
-    .button.secondary {
-      background: var(--panel);
+    .action-button {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface);
       color: var(--ink);
-      border-color: var(--line);
+      padding: 0 11px;
+      font-size: 13px;
     }
 
-    .button:hover {
+    .action-button.primary {
+      border-color: #1f4d42;
+      background: #1f4d42;
+      color: #fff;
+    }
+
+    .action-button:hover {
       transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(32, 37, 38, 0.1);
     }
 
-    .summary {
-      display: grid;
-      grid-template-columns: minmax(360px, 1.2fr) repeat(4, minmax(138px, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
+    .article-shell {
+      min-width: 0;
+      overflow: auto;
+      padding: 28px clamp(20px, 4vw, 62px) 48px;
     }
 
-    .summary-lead,
-    .metric,
-    .panel {
-      background: var(--panel);
+    .article {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 34px clamp(24px, 4vw, 58px) 46px;
       border: 1px solid var(--line);
       border-radius: 8px;
+      background: var(--surface);
       box-shadow: var(--shadow);
     }
 
-    .summary-lead {
-      padding: 16px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .eyebrow {
-      margin: 0;
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 800;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 30px;
-      line-height: 1.05;
-      font-family: Georgia, "Times New Roman", serif;
-      font-weight: 700;
-    }
-
-    .lead-meta {
+    .article-meta {
       display: flex;
-      gap: 8px;
       flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
     }
 
-    .metric {
-      padding: 14px;
-      min-height: 118px;
-    }
-
-    .metric-label {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 800;
-    }
-
-    .metric-value {
-      margin-top: 12px;
-      font-size: 26px;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .metric-note {
-      margin-top: 10px;
-      color: var(--muted);
+    .article-chip {
+      min-height: 26px;
+      padding: 0 9px;
+      background: #fff;
+      color: var(--ink-soft);
       font-size: 12px;
-      line-height: 1.35;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: minmax(580px, 1.4fr) minmax(330px, 0.8fr);
-      gap: 14px;
-      align-items: start;
+    .article-chip.green {
+      border-color: #b8d5ca;
+      background: var(--green-soft);
+      color: #1f5e50;
     }
 
-    .panel {
-      overflow: hidden;
+    .article h1 {
+      margin: 0 0 10px;
+      color: #171c1d;
+      font-family: var(--serif);
+      font-size: clamp(34px, 4vw, 54px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
     }
 
-    .panel-head {
+    .article .subtitle {
+      max-width: 820px;
+      margin: 0 0 22px;
+      color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .toc-strip {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      height: 46px;
-      padding: 0 14px;
-      border-bottom: 1px solid var(--line);
-      background: var(--panel-strong);
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 28px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-cool);
     }
 
-    .panel-head h2 {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    .table th,
-    .table td {
-      padding: 11px 12px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-      font-size: 13px;
-    }
-
-    .table th {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 800;
-      background: rgba(236, 232, 222, 0.45);
-    }
-
-    .table tr:last-child td {
-      border-bottom: 0;
-    }
-
-    .mono {
-      font-family: "SFMono-Regular", Consolas, monospace;
+    .toc-chip {
+      min-height: 28px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--ink-soft);
       font-size: 12px;
-      word-break: break-all;
+      text-decoration: none;
     }
 
-    .status {
-      display: inline-flex;
-      align-items: center;
-      height: 24px;
-      padding: 0 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
+    .toc-chip:hover {
+      border-color: #b8d5ca;
+      color: #1f5e50;
+    }
+
+    .article-content {
+      min-width: 0;
+      max-width: 820px;
+    }
+
+    .article-content h2 {
+      margin: 30px 0 10px;
+      padding-top: 4px;
+      color: #1f2828;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .article-content p,
+    .article-content li {
+      color: #303839;
+      font-size: 15px;
+      line-height: 1.78;
+    }
+
+    .article-content p {
+      margin: 0 0 14px;
+    }
+
+    .article-content ul {
+      margin: 0 0 14px 18px;
+      padding: 0;
+    }
+
+    .quote-note {
+      margin: 22px 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      background: #eef6f2;
+      color: #24453e;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .source-card {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .source-card strong,
+    .source-card span {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .status.green {
-      background: var(--green-soft);
-      color: var(--green);
-    }
-
-    .status.blue {
-      background: var(--blue-soft);
-      color: var(--blue);
-    }
-
-    .status.amber {
-      background: var(--amber-soft);
-      color: var(--amber);
-    }
-
-    .status.red {
-      background: var(--red-soft);
-      color: var(--red);
-    }
-
-    .stack {
-      display: grid;
-      gap: 14px;
-    }
-
-    .lane {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-    }
-
-    .item {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fffefa;
-      padding: 11px;
-    }
-
-    .item-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 7px;
-      font-weight: 800;
+    .source-card strong {
+      margin-bottom: 6px;
+      color: #26302f;
       font-size: 13px;
     }
 
-    .item p {
-      margin: 0;
+    .source-card span {
       color: var(--muted);
-      line-height: 1.45;
-      font-size: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
     }
 
-    .path-list {
-      margin: 8px 0 0;
-      padding: 0;
-      list-style: none;
+    .page-links {
       display: grid;
-      gap: 5px;
-    }
-
-    .path-list li {
-      padding: 6px 8px;
-      border: 1px solid #e3e0d8;
-      border-radius: 6px;
-      background: #f8f6f0;
-    }
-
-    .split-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
       margin-top: 10px;
     }
 
-    .audit-row {
+    .page-link {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      padding: 11px 12px;
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .copilot {
       display: grid;
-      grid-template-columns: 100px 1fr;
+      grid-template-rows: auto auto 1fr auto;
+      min-width: 0;
+      max-height: 100vh;
+      padding: 16px;
+      border-left: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(49, 95, 137, 0.08), transparent 310px),
+        #f7f9fb;
+    }
+
+    .copilot-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .copilot-head strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .copilot-head span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .context-chip {
+      min-height: 25px;
+      padding: 0 8px;
+      background: #fff;
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    .chat {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .message {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      box-shadow: 0 10px 22px rgba(32, 37, 38, 0.06);
+    }
+
+    .message.user {
+      border-color: #c7d8e6;
+      background: var(--blue-soft);
+    }
+
+    .message.ai {
+      border-color: #c9ddcf;
+      background: #f6fbf8;
+    }
+
+    .message strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1e2828;
+      font-size: 12px;
+    }
+
+    .message p {
+      margin: 0;
+      color: #313b3b;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .suggestion {
+      border: 1px solid #dcccb0;
+      border-radius: 8px;
+      background: #fffaf0;
+      padding: 12px;
+    }
+
+    .suggestion h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #684c1d;
+    }
+
+    .suggestion p {
+      margin: 0 0 10px;
+      color: #4a4131;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .suggestion-actions {
+      display: flex;
       gap: 8px;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--line);
+    }
+
+    .mini-button {
+      min-height: 30px;
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 0 10px;
       font-size: 12px;
     }
 
-    .audit-row:last-child {
-      border-bottom: 0;
+    .mini-button.primary {
+      border-color: #855541;
+      background: #855541;
+      color: #fff;
     }
 
-    .audit-row strong {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
     }
 
-    .footer-note {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 12px;
+    .composer input {
+      min-width: 0;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 0 12px;
+      color: var(--ink);
+      outline: 0;
+    }
+
+    .composer input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(49, 95, 137, 0.12);
+    }
+
+    .composer button {
+      width: 42px;
+      height: 40px;
+      border: 1px solid #1f4d42;
+      border-radius: 8px;
+      background: #1f4d42;
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    @media (max-width: 1240px) {
+      .workspace {
+        grid-template-columns: 236px minmax(0, 1fr);
+      }
+
+      .copilot {
+        grid-column: 1 / -1;
+        max-height: none;
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .workspace {
+        display: block;
+      }
+
+      .sidebar {
+        border-right: 0;
+      }
+
+      .topbar {
+        height: auto;
+        flex-wrap: wrap;
+        padding: 14px 16px;
+      }
+
+      .top-actions {
+        flex-wrap: wrap;
+      }
+
+      .article-shell {
+        padding: 16px;
+      }
+
+      .article {
+        padding: 24px 18px 30px;
+      }
+
+      .source-grid,
+      .page-links {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <aside class="side">
+  <div class="workspace">
+    <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">WA</div>
-        <div>
-          <div class="brand-title">Workflow Agent</div>
-          <div class="brand-subtitle">Control Plane</div>
+        <div class="brand-mark">MW</div>
+        <div class="brand-text">
+          <strong>我的工作流</strong>
+          <span>知识工作台</span>
         </div>
       </div>
 
-      <nav class="nav" aria-label="Primary">
-        <button class="active">Workspaces</button>
-        <button>Runs</button>
-        <button>Approvals</button>
-        <button>Artifacts</button>
-        <button>Audit</button>
-        <button>Credentials</button>
-        <button>Team</button>
+      <label class="search">
+        <span>/</span>
+        <input type="search" placeholder="搜索笔记、来源、任务">
+      </label>
+
+      <div class="side-title">
+        <span>知识目录</span>
+        <button class="icon-button" aria-label="新建笔记">+</button>
+      </div>
+      <nav class="tree" aria-label="知识库目录">
+        <div class="tree-item">
+          <span>▾</span>
+          <span>智能体 SDK</span>
+          <span class="tree-count">18</span>
+        </div>
+        <div class="tree-item depth active">
+          <span>•</span>
+          <span>后端适配器冒烟</span>
+          <span class="tree-count">打开</span>
+        </div>
+        <div class="tree-item depth">
+          <span>•</span>
+          <span>供应商运行时策略</span>
+          <span class="tree-count">7</span>
+        </div>
+        <div class="tree-item depth">
+          <span>•</span>
+          <span>产物边界</span>
+          <span class="tree-count">5</span>
+        </div>
+        <div class="tree-item">
+          <span>▸</span>
+          <span>Java 后端方案</span>
+          <span class="tree-count">42</span>
+        </div>
+        <div class="tree-item">
+          <span>▸</span>
+          <span>LLMWiki 方法论</span>
+          <span class="tree-count">12</span>
+        </div>
+        <div class="tree-item">
+          <span>▸</span>
+          <span>原始来源</span>
+          <span class="tree-count">31</span>
+        </div>
       </nav>
 
-      <section class="side-section">
-        <h2>Principal</h2>
-        <p>owner@local<br>team-platform<br>WORKSPACE_OWNER</p>
-      </section>
+      <div class="side-title">
+        <span>最近变更</span>
+      </div>
+      <div class="tree">
+        <div class="tree-item">
+          <span>•</span>
+          <span>密钥注入基线</span>
+          <span class="tree-count">2 分</span>
+        </div>
+        <div class="tree-item">
+          <span>•</span>
+          <span>审计完整性说明</span>
+          <span class="tree-count">1 时</span>
+        </div>
+        <div class="tree-item">
+          <span>•</span>
+          <span>OpenAgentGraph 契约</span>
+          <span class="tree-count">3 时</span>
+        </div>
+      </div>
 
-      <section class="side-section">
-        <h2>Boundary</h2>
-        <p>Public envelopes only. No provider token, no runtime-private result shape.</p>
-      </section>
+      <div class="section-card">
+        <strong>主题图谱</strong>
+        <p>当前页连接后端适配器、供应商凭证、产物化补丁和固定流程预览。</p>
+        <div class="mini-graph" aria-label="知识图谱预览"></div>
+        <div class="view-switch" aria-label="页面形态">
+          <button class="active" type="button">阅读</button>
+          <button type="button">编辑</button>
+          <button type="button">讨论</button>
+          <button type="button">发布</button>
+        </div>
+      </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div class="workspace-picker">
-          <select aria-label="Workspace">
-            <option>Knowledge Ops Workspace</option>
-            <option>Agent SDK Review Workspace</option>
-            <option>Runtime Evidence Lab</option>
-          </select>
-          <span class="pill"><span class="dot"></span> Local backend</span>
+        <div class="crumbs">
+          <span>我的工作流</span>
+          <span>/</span>
+          <span>智能体 SDK</span>
+          <span>/</span>
+          <b>后端适配器冒烟</b>
         </div>
-        <span class="pill">java-backend-api.v1</span>
-        <button class="button">New run</button>
+        <div class="top-actions">
+          <span class="status-pill"><i class="status-dot"></i> 已同步</span>
+          <button class="action-button">收起目录</button>
+          <button class="action-button">分栏阅读</button>
+          <button class="action-button primary">询问 AI</button>
+        </div>
       </header>
 
-      <section class="summary" aria-label="Workspace summary">
-        <div class="summary-lead">
-          <p class="eyebrow">Workspace</p>
-          <h1>Knowledge Ops Workspace</h1>
-          <div class="lead-meta">
-            <span class="status green">ACTIVE</span>
-            <span class="pill">branch main</span>
-            <span class="pill">retention 365d report-only</span>
+      <section class="article-shell">
+        <article class="article">
+          <div class="article-meta">
+            <span class="article-chip green">知识页 v1</span>
+            <span class="article-chip">agent-sdk-run.v1</span>
+            <span class="article-chip">无写入证据</span>
+            <span class="article-chip">10:55 更新</span>
+          </div>
+          <h1>后端适配器冒烟</h1>
+          <p class="subtitle">
+            这页跟踪后端接入方如何只消费标准化 SDK 信封，而不理解固定流程、确定性 open-agent 或 OpenAgentGraph 的运行时结果形状。
+          </p>
+
+          <nav class="toc-strip" aria-label="本页目录">
+            <a class="toc-chip" href="#summary">摘要</a>
+            <a class="toc-chip" href="#boundary">关键边界</a>
+            <a class="toc-chip" href="#evidence">运行证据</a>
+            <a class="toc-chip" href="#relations">关联页面</a>
+            <a class="toc-chip" href="#links">待补链接</a>
+          </nav>
+
+          <div class="article-content">
+            <h2 id="summary">摘要</h2>
+            <p>
+              后端适配器应该像一个很薄的翻译层：入口只调用 SDK 的 `runAgent()`，输出只映射 `agent-backend-response.v1`。后端 UI、审批、产物和审计链路都不需要知道运行时内部字段。
+            </p>
+            <p>
+              当前可验证结论是：回答、候选补丁、确认问题、路由预览和流程报告可以统一落到稳定的 `status`、`outputKind`、`displayText`、`artifactRefs` 与工作区写入标记。
+            </p>
+
+            <div class="quote-note">
+              候选补丁的 `targetWorkspacePaths` 表示建议写入目标，不表示已经写入。只有 SDK 信封里的 `artifacts.wroteWorkspace` 可以决定工作区写入状态。
+            </div>
+
+            <h2 id="boundary">关键边界</h2>
+            <ul>
+              <li>后端不导入 `src/runtime/*`，不解析 `openAgentGraph` 或流程专属结构。</li>
+              <li>`requiresApproval` 只跟候选补丁和路由预览对齐。</li>
+              <li>`artifactRefs` 只来自 SDK 信封，不包含原始供应商负载。</li>
+              <li>固定流程预览不能被标记成已执行。</li>
+            </ul>
+
+            <h2 id="evidence">运行证据</h2>
+            <p>
+              聚焦集成测试覆盖回答、候选补丁、确认问题和固定流程预览/执行映射。完整验收继续跑单元测试、集成测试、类型检查和 token 脱敏扫描。
+            </p>
+            <div class="source-grid">
+              <div class="source-card">
+                <strong>适配器集成测试</strong>
+                <span>tests/integration/agent-sdk-backend-adapter.test.ts</span>
+              </div>
+              <div class="source-card">
+                <strong>公开适配器入口</strong>
+                <span>src/sdk/backend-adapter.ts</span>
+              </div>
+              <div class="source-card">
+                <strong>交付报告</strong>
+                <span>docs/reports/runtime-work-item-execution-resume-delivery.md</span>
+              </div>
+            </div>
+
+            <h2 id="relations">关联页面</h2>
+            <div class="page-links">
+              <div class="page-link">智能体 SDK 一期方案</div>
+              <div class="page-link">Java 团队后端方案</div>
+              <div class="page-link">OpenAgentGraph 运行时</div>
+            </div>
+
+            <h2 id="links">待补链接</h2>
+            <p>
+              这页需要继续连接生成历史、来源浏览、相关笔记和写入确认。UI 层应该从当前页打开右侧 AI 建议，再把需要落到工作区的内容转成可审阅的变更草稿。
+            </p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <aside class="copilot">
+      <div class="copilot-head">
+        <div>
+          <strong>AI 助手</strong>
+          <span>上下文：当前页 + 关联来源</span>
+        </div>
+        <button class="icon-button" aria-label="折叠 AI 侧栏">−</button>
+      </div>
+
+      <div class="context">
+        <span class="context-chip">当前页</span>
+        <span class="context-chip">3 个来源</span>
+        <span class="context-chip">不写入</span>
+        <span class="context-chip">先确认</span>
+      </div>
+
+      <div class="chat">
+        <div class="message user">
+          <strong>你</strong>
+          <p>这页和 Java 后端的供应商凭证密钥注入有什么关系？</p>
+        </div>
+        <div class="message ai">
+          <strong>助手</strong>
+          <p>它们共享同一个原则：后端只消费稳定契约，密钥和运行时私有结构都不能进入公开请求、产物或 UI 展示层。</p>
+        </div>
+        <div class="message ai">
+          <strong>助手</strong>
+          <p>建议把“无写入证据”和“目标路径只是建议目标”提升到摘要下方，这样评审第一眼就能看到写入边界。</p>
+        </div>
+
+        <div class="suggestion">
+          <h3>变更草稿</h3>
+          <p>把关键边界改成检查清单，并追加一条“后端响应不暴露源负载”。</p>
+          <div class="suggestion-actions">
+            <button class="mini-button primary">加入草稿</button>
+            <button class="mini-button">对比</button>
           </div>
         </div>
-        <div class="metric">
-          <div class="metric-label">Runs</div>
-          <div class="metric-value">18</div>
-          <div class="metric-note">2 active, 1 waiting approval</div>
+
+        <div class="message ai">
+          <strong>来源</strong>
+          <p>命中了适配器集成测试、Java 团队后端方案和最新交付报告。</p>
         </div>
-        <div class="metric">
-          <div class="metric-label">Artifacts</div>
-          <div class="metric-value">42</div>
-          <div class="metric-note">public refs only</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Audit</div>
-          <div class="metric-value">v10</div>
-          <div class="metric-note">sha256-chain-v1</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Credentials</div>
-          <div class="metric-value">3</div>
-          <div class="metric-note">1 disabled</div>
-        </div>
-      </section>
+      </div>
 
-      <section class="grid">
-        <div class="stack">
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Run Queue</h2>
-              <button class="button secondary">Refresh</button>
-            </div>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th style="width: 22%">Run</th>
-                  <th style="width: 14%">Status</th>
-                  <th style="width: 18%">Mode</th>
-                  <th style="width: 18%">Worker</th>
-                  <th>Last event</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><span class="mono">run_78c7</span></td>
-                  <td><span class="status amber">Approval</span></td>
-                  <td>open-agent</td>
-                  <td>LOCAL_TS</td>
-                  <td>candidate patch requires owner decision</td>
-                </tr>
-                <tr>
-                  <td><span class="mono">run_9f21</span></td>
-                  <td><span class="status blue">Running</span></td>
-                  <td>fixed workflow</td>
-                  <td>REMOTE</td>
-                  <td>SSE cursor 0000000042 delivered</td>
-                </tr>
-                <tr>
-                  <td><span class="mono">run_5412</span></td>
-                  <td><span class="status green">Succeeded</span></td>
-                  <td>answer</td>
-                  <td>LOCAL_TS</td>
-                  <td>artifact registry updated</td>
-                </tr>
-                <tr>
-                  <td><span class="mono">run_3a91</span></td>
-                  <td><span class="status red">Failed</span></td>
-                  <td>route preview</td>
-                  <td>LOCAL_TS</td>
-                  <td>credential ref disabled before execution</td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Artifacts</h2>
-              <button class="button secondary">Open selected</button>
-            </div>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th style="width: 26%">Artifact ref</th>
-                  <th style="width: 18%">Kind</th>
-                  <th>Evidence</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><span class="mono">artifact_24f0</span></td>
-                  <td>report</td>
-                  <td>agent-backend-response.v1 mapping evidence</td>
-                </tr>
-                <tr>
-                  <td><span class="mono">artifact_6ac3</span></td>
-                  <td>candidate patch</td>
-                  <td>target paths are proposals, not confirmed writes</td>
-                </tr>
-                <tr>
-                  <td><span class="mono">trace_1288</span></td>
-                  <td>trace</td>
-                  <td>provider call metadata redacted</td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
-        </div>
-
-        <aside class="stack">
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Approval Lane</h2>
-              <span class="status amber">1 pending</span>
-            </div>
-            <div class="lane">
-              <article class="item">
-                <div class="item-title">
-                  <span>Candidate patch</span>
-                  <span class="mono">appr_931</span>
-                </div>
-                <p>Review proposed workspace targets before write execution.</p>
-                <ul class="path-list">
-                  <li><span class="mono">knowledge-base/drafts/runtime.md</span></li>
-                  <li><span class="mono">docs/reports/delivery.md</span></li>
-                </ul>
-                <div class="split-actions">
-                  <button class="button">Approve</button>
-                  <button class="button secondary">Reject</button>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Audit Evidence</h2>
-              <button class="button secondary">Export</button>
-            </div>
-            <div class="lane">
-              <div class="audit-row">
-                <strong>record</strong>
-                <span class="mono">sha256:f1c0...91aa</span>
-              </div>
-              <div class="audit-row">
-                <strong>previous</strong>
-                <span class="mono">sha256:a77b...0c4e</span>
-              </div>
-              <div class="audit-row">
-                <strong>chain</strong>
-                <span class="mono">sha256:9bd2...fb87</span>
-              </div>
-              <div class="audit-row">
-                <strong>signature</strong>
-                <span>sha256-chain-v1</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Credentials</h2>
-              <button class="button secondary">Add</button>
-            </div>
-            <div class="lane">
-              <article class="item">
-                <div class="item-title">
-                  <span>workspace-mimo</span>
-                  <span class="status green">Active</span>
-                </div>
-                <p>mimo-real / mimo-v2.5<br>https://token-plan-cn.xiaomimimo.com/v1</p>
-              </article>
-              <article class="item">
-                <div class="item-title">
-                  <span>legacy-smoke</span>
-                  <span class="status red">Disabled</span>
-                </div>
-                <p>Public metadata only. Secret reference withheld by backend.</p>
-              </article>
-            </div>
-          </section>
-        </aside>
-      </section>
-
-      <p class="footer-note">
-        Prototype only: static data, no network calls, no provider token, no server path, no runtime-private source.
-      </p>
-    </main>
+      <form class="composer">
+        <input type="text" value="把这页整理成发布说明">
+        <button type="button" aria-label="发送">›</button>
+      </form>
+    </aside>
   </div>
 </body>
 </html>

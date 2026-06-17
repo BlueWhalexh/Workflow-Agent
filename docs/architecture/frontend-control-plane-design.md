@@ -1,141 +1,108 @@
-# Frontend Control Plane Design
+# 前端知识工作台设计
 
-> Status: draft prototype for review. This is not the production frontend implementation.
+> 状态：评审用静态原型，不是生产前端实现。
 
-## Goal
+## 目标
 
-Build a team-facing Agent Control Plane console for the Java backend baseline. The first frontend should help operators and workspace owners inspect workspaces, runs, approvals, artifacts, audit evidence, and provider credentials without exposing runtime-private result shapes or provider secrets.
+My Workflow 的用户侧第一屏应更接近 Obsidian / LLMWiki 式知识工作台，而不是后台管理台。用户进入后应该能浏览目录、阅读或轻量编辑知识页，并在右侧 AI 面板里追问、改写、生成候选变更，再进入确认和审批。
 
-## Product Shape
+项目内面向用户的展示默认使用中文。技术契约、路径、接口名可以保留原文，但按钮、导航、状态、说明文案和交付文档不应中英混杂。
 
-The first screen is an operational workspace console, not a marketing page.
+## 产品形态
 
-Primary users:
+第一屏是知识工作区，不是后端控制台。
 
-- Workspace owner: manages members, provider credentials, approvals, audit export.
-- Workspace editor: starts and monitors agent runs.
-- Reviewer/operator: inspects evidence, artifacts, run events, and audit integrity.
+主要用户：
 
-Primary jobs:
+- 知识工作者：阅读、编辑和串联笔记。
+- 工作区编辑者：让 AI 总结、改写或准备候选补丁。
+- 评审者：检查来源、证据和待写入变更后再批准。
 
-- Pick a workspace and understand its current execution health.
-- Start or inspect an agent run.
-- Resolve pending approvals before workspace writes.
-- Open artifact refs and audit evidence without seeing server filesystem paths.
-- Confirm provider credential metadata and lifecycle status without seeing env names or secret refs.
+主要任务：
 
-## Navigation
+- 快速在目录树和搜索中定位知识页。
+- 在正文区域阅读完整文章，不让目录或辅助信息挤压正文。
+- 在右侧 AI 面板基于当前页和关联来源提问。
+- 把 AI 建议转成可审阅的变更草稿。
+- 不把运行时私有字段、供应商密钥或服务端路径暴露到 UI。
 
-Persistent left navigation:
+## V2 布局
 
-- Workspaces
-- Runs
-- Approvals
-- Artifacts
-- Audit
-- Credentials
-- Team
+静态原型位于 `docs/prototypes/backend-console.html`。当前版本仍使用三栏，但重新分配了信息密度：
 
-Top bar:
+- 左侧：紧凑知识目录、最近变更、主题图谱和页面形态入口。
+- 中间：正文优先的知识页。正文内部不再放窄侧栏，本页目录改成顶部横向索引。
+- 右侧：AI 助手，承载当前页上下文、来源命中、对话和变更草稿。
 
-- Current team/workspace selector.
-- Environment marker: Local / Staging / Production.
-- Principal display.
-- Connection status.
+这个处理保留了左侧小图和目录的导航感，同时避免目录和文章内部目录共同压缩正文。生产版可以继续演进为可折叠目录、悬浮目录抽屉或用户自定义栏宽，但默认阅读态应保证正文优先。
 
-## First Prototype Screen
+## 后端 API 方向
 
-The static prototype at `docs/prototypes/backend-console.html` represents the default workspace overview:
+未来用户侧前端可以复用 Java 后端控制面 API，但不要把 API 原样展示成后台仪表盘。后端数据应被组合成知识工作台语义：
 
-- Workspace summary band with status, branch, owner, and retention policy.
-- Run queue table with status, mode, approval state, worker kind, and last event.
-- Approval lane for candidate patch and route preview decisions.
-- Artifact lane with public refs only.
-- Audit lane with digest/chain metadata and export affordance.
-- Provider credential lane with public metadata only.
+- 工作区 / 成员 API 用于工作区选择、协作成员和共享控制。
+- 运行 API 用于 AI 任务状态、当前页生成历史和事件流。
+- 产物 API 用于来源引用、报告、trace 和候选补丁。
+- 审批 API 用于需要确认的 AI 写入建议。
+- 审计 API 作为证据入口存在，不作为主导航。
+- 供应商凭证 API 只出现在所有者或管理员设置页，不应占据用户工作台主界面。
 
-The prototype intentionally uses static sample data. It does not call the backend, store secrets, or execute real provider calls.
+## 数据安全
 
-## API Dependencies
+前端禁止展示或持久化：
 
-Existing backend endpoints that map directly to the first UI:
+- 原始供应商 token。
+- `apiKeySecretRef`。
+- 公开凭证响应里的环境变量名。
+- 服务端文件系统路径。
+- SDK 或 worker 内部的运行时私有 `source` 字段。
+- 日志中的 Authorization header 或 cookie。
 
-- `GET /me`
-- `GET /teams`
-- `GET /teams/{teamId}/members`
-- `GET /v1/workspaces`
-- `POST /v1/workspaces`
-- `GET /v1/workspaces/{workspaceId}`
-- `GET /v1/workspaces/{workspaceId}/members`
-- `POST /v1/workspaces/{workspaceId}/agent-runs`
-- `GET /v1/agent-runs/{runId}`
-- `POST /v1/agent-runs/{runId}/cancel`
-- `GET /v1/agent-runs/{runId}/events`
-- `GET /v1/agent-runs/{runId}/events/stream`
-- `GET /v1/agent-runs/{runId}/artifacts`
-- `GET /v1/artifacts/{artifactId}`
-- `GET /v1/agent-runs/{runId}/approvals`
-- `POST /v1/agent-runs/{runId}/approvals/{approvalId}/decision`
-- `GET /v1/workspaces/{workspaceId}/audit-events`
-- `GET /v1/workspaces/{workspaceId}/audit-events/export`
-- `GET /v1/workspaces/{workspaceId}/audit-events/retention-policy`
-- `GET /v1/workspaces/{workspaceId}/provider-credentials`
-- `PUT /v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}`
-- `POST /v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable`
+前端可以展示：
 
-## Data Safety
+- 后端返回的笔记路径和公开产物引用。
+- run 状态和当前页生成历史。
+- 候选补丁或路由预览的审批状态。
+- 来源行、反向链接、主题图谱提示和审计证据链接。
 
-The frontend must not display or persist:
+## 交互模型
 
-- Raw provider token values.
-- `apiKeySecretRef`.
-- Env var names from public credential responses.
-- Server filesystem paths.
-- Runtime-private `source` fields from SDK or worker internals.
-- Authorization headers or cookies in logs.
+知识导航：
 
-The frontend may display:
+1. 用户从左侧目录或搜索选择知识页。
+2. 中间展示正文、来源、关联页面和待补链接。
+3. 右侧 AI 面板自动继承当前页和关联来源作为上下文。
 
-- Public credential ref, provider, model, base URL, status.
-- Artifact refs returned by backend.
-- Audit `recordDigest`, `previousRecordDigest`, `chainDigest`, `signatureKind`, `signatureValue`.
-- Run status, output kind, approval flags, worker kind, event history.
+AI 协作：
 
-## Interaction Model
+1. 用户在右侧提问或请求修改。
+2. AI 返回解释、带来源回答或候选变更草稿。
+3. 变更草稿保持待审状态，审批流确认后才能写入工作区。
+4. UI 必须把 `targetWorkspacePaths` 和真实工作区写入状态分开展示。
 
-Run lifecycle:
+## 后续页面
 
-1. User creates a run from a selected workspace and provider credential ref.
-2. UI shows queued/running terminal status from polling or SSE.
-3. If approval is required, UI routes the user to the approval lane.
-4. After decision, UI keeps artifact and audit evidence visible.
+后续可以沿同一套信息架构扩展，不需要每个页面都重新发明布局：
 
-Approval lifecycle:
+- 在线编辑页：中间从阅读态切到编辑器，右侧 AI 继续作为改写、补全和来源校验面板。
+- 讨论页：中间是线程和引用上下文，右侧 AI 做摘要、待办提取和证据回链。
+- 技术博客页：中间是发布预览和结构化元数据，右侧 AI 做摘要、标题、标签和发布前检查。
+- 管理页：凭证、成员、审计和保留策略放到次级入口，不进入用户工作台第一屏。
 
-1. Candidate patch or route preview appears as an approval card.
-2. UI shows target workspace paths as proposed targets, not confirmed writes.
-3. Approve/reject actions post a decision.
-4. UI refreshes run events and audit evidence.
+## 构建顺序
 
-Credential lifecycle:
+1. 静态知识工作台原型和设计评审。
+2. 最小类型化 API 客户端和信封处理。
+3. 工作区目录和知识页阅读视图。
+4. AI 助手面板，接入运行创建和事件轮询 / SSE。
+5. 来源、反向链接和产物面板。
+6. 审批保护的写入建议。
+7. 凭证、审计、成员和保留策略等管理面。
 
-1. Owner adds credential metadata using provider/model/base URL and a secret reference mechanism controlled by backend.
-2. Public list shows status and metadata only.
-3. Disable action marks credential unavailable for future runs.
+## Review 重点
 
-## Future Frontend Build Order
-
-1. Static console prototype and design review.
-2. Minimal API client with typed envelope handling.
-3. Workspace and run list pages.
-4. Run detail page with events, artifacts, approvals.
-5. Credential and audit pages.
-6. SSE stream integration.
-7. OAuth-backed identity integration after backend J32.
-
-## Review Focus
-
-- Information architecture matches the Java backend API surface.
-- Secret and runtime-private boundaries are preserved.
-- First screen supports repeated operational work, not marketing.
-- Prototype stays static until API client work is explicitly started.
+- 第一屏是否像用户知识工作台，而不是后台控制台。
+- 左侧目录是否帮助导航，同时不挤压正文阅读宽度。
+- AI 面板是否支持来源驱动的问答和审批保护的编辑。
+- 密钥、运行时私有字段、服务端路径是否仍被隔离。
+- 静态原型是否和生产 API 集成保持清晰边界。
