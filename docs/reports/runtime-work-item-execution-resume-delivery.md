@@ -3901,6 +3901,58 @@ Evidence boundaries:
 - The literal `client-secret` in unit tests is a fake fixture value used only to assert Basic auth encoding; no real secret or runtime/config secret value is committed.
 - J39A is not OAuth authorization-code login, browser session/cookie management, refresh token lifecycle, external user/team directory sync, production RBAC sync, remote runner authorization, or real IdP smoke.
 
+## Java External Directory Sync Baseline
+
+Status: implemented as J40A backend identity/directory baseline.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-external-directory-sync-baseline.md`
+
+Scope delivered:
+
+- Added `POST /v1/teams/{teamId}/directory-sync`.
+- Added `TeamDirectorySyncService` behind the existing team membership repository boundary.
+- The endpoint accepts structured snapshots with `source`, `disableMissing`, and `members[]`.
+- The endpoint rejects raw external directory payload/secret aliases: `token`, `authorization`, `Authorization`, `secret`, and `rawPayload`.
+- Active `TEAM_ADMIN` is required; non-admin team members receive `TEAM_FORBIDDEN`.
+- Imported members are upserted as active backend-known team members.
+- `disableMissing=true` disables active backend-known members absent from the snapshot while protecting the current admin from self-disable.
+- `/v1/ops/integration-contract` now advertises `POST /v1/teams/{teamId}/directory-sync` and `externalDirectorySync=true`.
+- Java backend phase audit and Java backend platform spec now record J40A and its remaining boundaries.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamDirectorySyncControllerTest,OpsIntegrationContractControllerTest`
+  - Initial RED: directory sync API returned 404 for all new route tests; integration contract did not include the endpoint and still had `externalDirectorySync=false`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamDirectorySyncControllerTest,OpsIntegrationContractControllerTest`
+  - 5 Java tests passed.
+  - Covers admin snapshot import, non-admin forbidden boundary, raw payload alias rejection/no echo, `disableMissing` behavior, current-admin self-disable protection, public response shape, and ops contract capability/endpoint exposure.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 154 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+
+Evidence boundaries:
+
+- J40A uses MockMvc/local repositories and existing JDBC coverage from the full backend suite. No real SCIM, LDAP, IdP directory, enterprise IAM, external directory scheduler, or real provider was called.
+- Test literals such as `raw-directory-token` and `raw-directory-secret` are fake rejection fixtures, not real credentials.
+- J40A does not write audit events because the current audit schema is workspace-scoped and requires a non-null workspace foreign key. Team-scoped audit storage remains a separate backend gap.
+- J40A is not OAuth login/session claim reconciliation, SCIM/LDAP/IdP connector polling, external directory credential storage, global team CRUD, production RBAC sync, or real enterprise directory smoke.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

@@ -125,6 +125,7 @@ public class OpsController {
           new IntegrationEndpoint("POST", "/v1/agent-runs/{runId}/cancel", "cancel queued or running run"),
           new IntegrationEndpoint("GET", "/v1/workspaces/{workspaceId}/audit-events", "owner audit listing"),
           new IntegrationEndpoint("GET", "/v1/workspaces/{workspaceId}/provider-credentials", "owner credential metadata"),
+          new IntegrationEndpoint("POST", "/v1/teams/{teamId}/directory-sync", "admin external directory snapshot sync"),
           new IntegrationEndpoint("GET", "/v1/ops/auth-config", "redacted auth diagnostics")
       );
     }
@@ -178,7 +179,7 @@ public class OpsController {
           true,
           false,
           true,
-          false,
+          true,
           false,
           false,
           false

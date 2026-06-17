@@ -20,15 +20,18 @@ public class IdentityController {
 
   private final PrincipalProvider principalProvider;
   private final TeamDirectoryService teamDirectoryService;
+  private final TeamDirectorySyncService teamDirectorySyncService;
   private final TeamInviteService teamInviteService;
 
   public IdentityController(
       PrincipalProvider principalProvider,
       TeamDirectoryService teamDirectoryService,
+      TeamDirectorySyncService teamDirectorySyncService,
       TeamInviteService teamInviteService
   ) {
     this.principalProvider = principalProvider;
     this.teamDirectoryService = teamDirectoryService;
+    this.teamDirectorySyncService = teamDirectorySyncService;
     this.teamInviteService = teamInviteService;
   }
 
@@ -79,6 +82,35 @@ public class IdentityController {
       @PathVariable String userId
   ) {
     return ApiEnvelope.ok(toTeamMemberResponse(teamDirectoryService.disableCurrentTeamMember(teamId, userId)));
+  }
+
+  @PostMapping(path = "/teams/{teamId}/directory-sync", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ApiEnvelope<DirectorySyncResponse> syncTeamDirectory(
+      @PathVariable String teamId,
+      @Valid @RequestBody DirectorySyncRequest request
+  ) {
+    rejectRawDirectoryPayloadAliases(request);
+    TeamDirectorySyncService.DirectorySyncResult result = teamDirectorySyncService.syncCurrentTeamDirectory(
+        teamId,
+        request.source(),
+        Boolean.TRUE.equals(request.disableMissing()),
+        request.members().stream()
+            .map((member) -> new TeamDirectorySyncService.DirectorySyncMemberInput(
+                member.userId(),
+                member.displayName(),
+                member.role()
+            ))
+            .toList()
+    );
+    return ApiEnvelope.ok(new DirectorySyncResponse(
+        result.teamId(),
+        result.source(),
+        result.importedCount(),
+        result.disabledCount(),
+        result.members().stream()
+            .map(IdentityController::toTeamMemberResponse)
+            .toList()
+    ));
   }
 
   @PostMapping(path = "/teams/{teamId}/invites", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -141,6 +173,16 @@ public class IdentityController {
     );
   }
 
+  private static void rejectRawDirectoryPayloadAliases(DirectorySyncRequest request) {
+    if (request.token() != null
+        || request.authorization() != null
+        || request.Authorization() != null
+        || request.secret() != null
+        || request.rawPayload() != null) {
+      throw new IllegalArgumentException("Raw directory payloads are not accepted");
+    }
+  }
+
   public record MeResponse(
       String userId,
       String teamId,
@@ -167,6 +209,34 @@ public class IdentityController {
   public record UpsertTeamMemberRequest(
       String displayName,
       @NotNull TeamRole role
+  ) {
+  }
+
+  public record DirectorySyncRequest(
+      String source,
+      Boolean disableMissing,
+      @NotNull List<DirectorySyncMemberRequest> members,
+      String token,
+      String authorization,
+      String Authorization,
+      String secret,
+      String rawPayload
+  ) {
+  }
+
+  public record DirectorySyncMemberRequest(
+      String userId,
+      String displayName,
+      @NotNull TeamRole role
+  ) {
+  }
+
+  public record DirectorySyncResponse(
+      String teamId,
+      String source,
+      int importedCount,
+      int disabledCount,
+      List<TeamMemberResponse> members
   ) {
   }
 

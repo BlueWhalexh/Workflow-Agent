@@ -19,7 +19,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Area | Current evidence | Status |
 | --- | --- | --- |
 | Java platform skeleton | J1 report and backend Maven/Spring Boot skeleton | Implemented baseline |
-| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true while keeping remaining production gaps false | Implemented baseline |
+| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true; J40A marks external directory snapshot sync baseline true while keeping remaining production gaps false | Implemented baseline |
 | Workspace / identity baseline | J2 workspace API, path guard, JDBC repository, Flyway/Testcontainers | Implemented baseline |
 | Async run/job bridge | J3A async `agent-runs`, job/attempt schema, local TS worker bridge | Implemented baseline |
 | Artifact registry | J4A artifact ref registry/list/safe read | Implemented baseline |
@@ -43,12 +43,37 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
 | Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, J36A JWKS verifier baseline, J37A issuer discovery/auth diagnostics, and J39A OAuth token introspection baseline exist; no SSO, sessions, OAuth login flow, refresh tokens, directory claim sync, or real IdP smoke | Partially implemented baseline |
-| User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; no external directory sync or full team CRUD | Partially implemented baseline |
+| User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; J40A external directory snapshot import API; no SCIM/LDAP/IdP connector, scheduler, team-scoped audit schema, or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J40A: `Java External Directory Sync Baseline` is now implemented as a backend-owned external directory snapshot import slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-external-directory-sync-baseline.md`
+
+Scope that required approval:
+
+- Adds `POST /v1/teams/{teamId}/directory-sync`.
+- Accepts structured external directory member snapshots only: `source`, `disableMissing`, and `members[]`.
+- Rejects raw external payload/secret aliases: `token`, `authorization`, `Authorization`, `secret`, and `rawPayload`.
+- Requires the current principal to be an active `TEAM_ADMIN` for the current team.
+- Upserts imported members as active backend-known team members.
+- Optionally disables active backend-known members that are absent from the snapshot while protecting the current admin from self-disable.
+- Updates `GET /v1/ops/integration-contract` to advertise the frontend endpoint and `externalDirectorySync=true`.
+
+SOP result:
+
+- A backend-facing frontend/admin integration can now push a normalized external directory snapshot through the Java backend instead of mutating team membership ad hoc.
+- Public responses include only `teamId`, `source`, `importedCount`, `disabledCount`, and member public metadata.
+- Responses do not include raw payload, token, secret, Authorization material, workspace root, or server storage ref.
+- J40A is not SCIM, LDAP, IdP directory connector polling, OAuth login/session claim reconciliation, external directory credential storage, global team CRUD, production RBAC sync, or real enterprise directory smoke.
+- J40A does not write audit events because the current audit schema is workspace-scoped and requires a non-null workspace foreign key. Team-scoped audit storage remains a separate backend gap.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J39A: `Java OAuth Token Introspection Baseline` is now implemented as a configurable bearer verifier slice.
 
@@ -228,8 +253,13 @@ SOP result:
    - `/v1/ops/integration-contract` exposes frontend/runtime endpoint lists and readiness flags.
    - Still no frontend API integration, runtime real E2E, token introspection, OAuth login/session lifecycle, production secret manager, remote runner dispatch, external directory sync, or multi-node fanout.
 
-15. J39A+: external directory sync / production OAuth completion.
-   - User/team CRUD, external invite delivery, OAuth login/session integration, and role sync.
+15. J39A: OAuth token introspection bearer verifier. Completed baseline.
+   - Configurable OAuth introspection endpoint validates opaque bearer tokens and maps active responses to backend principals.
+   - Still no OAuth login/session lifecycle, refresh tokens, directory claim sync, production role sync, or real IdP smoke.
+
+16. J40A: external directory snapshot sync baseline. Completed baseline.
+   - Active team admins can import structured external member snapshots and optionally disable missing backend-known members.
+   - Still no SCIM/LDAP/IdP connector, scheduler, external directory credential storage, team-scoped audit schema, global team CRUD, production RBAC sync, or real enterprise directory smoke.
 
 ## Completion Criteria For Backend Phase One
 
@@ -247,4 +277,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J38A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, token introspection/OAuth session flow, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
+No J40A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, OAuth login/session flow, external directory connector/scheduler/credential storage, team-scoped audit schema, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
