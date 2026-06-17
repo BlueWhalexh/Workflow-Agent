@@ -118,6 +118,7 @@ describe("agent SDK backend adapter smoke", () => {
       for (const response of responses) {
         expect(response.schemaVersion).toBe("agent-backend-response.v1");
         expect(response.source.schemaVersion).toBe("agent-sdk-run.v1");
+        expect(response.artifactRefs).toEqual([...new Set(response.artifactRefs)]);
       }
 
       expect(answer).toMatchObject({

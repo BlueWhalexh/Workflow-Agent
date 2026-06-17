@@ -55,12 +55,12 @@ function displayTextFromRun(result: AgentSdkRunResult): string | null {
 }
 
 function artifactRefsFromRun(result: AgentSdkRunResult): string[] {
-  return [
+  return [...new Set([
     result.artifacts.artifactPath,
     result.artifacts.reportPath,
     result.artifacts.tracePath,
     ...result.artifacts.rawProviderRefs
-  ].filter((ref): ref is string => Boolean(ref));
+  ].filter((ref): ref is string => Boolean(ref)))];
 }
 
 export function toBackendAgentResponse(result: AgentSdkRunResult): BackendAgentResponse {

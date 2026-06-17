@@ -4263,6 +4263,68 @@ Evidence boundaries:
 - This slice uses fake `fetch` unit tests and does not call a real Java backend.
 - This slice does not wire the React UI to live controls, timers, EventSource/SSE, cancellation, artifact reads, approval decisions, or real runtime execution.
 
+## Java Backend Local Runtime Smoke
+
+Status: implemented as a local backend/runtime handoff smoke and adapter contract cleanup.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-backend-local-runtime-smoke-phase5.md`
+
+Scope delivered:
+
+- Started the Java backend on `http://127.0.0.1:18080`.
+- Verified `GET /health` returned `java-backend-api.v1` with `ok: true`.
+- Verified `GET /v1/me` returned the dev principal `dev-user/dev-team`.
+- Created a workspace through the real local HTTP API.
+- Seeded local fixture content into the backend-managed workspace content directory.
+- Created agent runs through `POST /v1/workspaces/{workspaceId}/agent-runs`.
+- Verified `GET /v1/agent-runs/{runId}` returned the public backend response shape for `SUCCEEDED`, `outputKind: answer`, and `wroteWorkspace: false`.
+- Verified `GET /v1/agent-runs/{runId}/events` returned `RUN_QUEUED -> RUNNING -> COMPLETED`.
+- Fixed the SDK backend adapter so projected `artifactRefs` are stable and de-duplicated.
+
+RED evidence:
+
+- `npm test -- tests/integration/agent-sdk-backend-adapter.test.ts`
+  - Failed because `adapter-answer` returned duplicated `.agent-runs/open-agent/adapter-answer.json` refs.
+
+Focused verification:
+
+- `npm test -- tests/integration/agent-sdk-backend-adapter.test.ts`
+  - 2 tests passed.
+- `npm test -- tests/unit/agent-sdk-run.test.ts tests/integration/agent-sdk-backend-sim.test.ts tests/integration/agent-sdk-backend-adapter.test.ts`
+  - 3 test files / 16 tests passed.
+- Real local Java HTTP post-fix smoke:
+  - `run_50e51b4cce8a4df292a0c5dd8c055b53` returned `SUCCEEDED`, `outputKind: answer`, `wroteWorkspace: false`.
+  - `artifactRefs` returned exactly one `.agent-runs/open-agent/run_50e51b4cce8a4df292a0c5dd8c055b53.json`.
+  - Events returned `RUN_QUEUED -> RUNNING -> COMPLETED`.
+
+Full verification:
+
+- `npm test`
+  - 51 test files / 198 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 161 Java backend tests passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Strict token scan for real token-shaped values returned no matches:
+  - `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, `ANTHROPIC_AUTH_TOKEN=tp-*`.
+- Broad fake-value scan matches existing `test-api-key` fixtures in tests/docs only; these are not real provider credentials.
+
+Evidence boundaries:
+
+- This was a real local Java backend HTTP call and a real local TypeScript worker process invocation.
+- This was not a real external provider E2E.
+- This was not a browser/frontend UI smoke.
+- The fixture seed used local temporary backend data only and did not write user workspace files.
+- Remaining production gaps stay open: OAuth/session token introspection, external directory sync, production secret manager rollout, remote runner artifact upload/fanout, frontend live run controls, approval mutation UI, and real provider/runtime E2E.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
