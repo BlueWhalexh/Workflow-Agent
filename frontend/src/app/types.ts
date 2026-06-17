@@ -71,7 +71,7 @@ export type AssistantViewModel = {
     summary: string;
     artifact: string;
     target: string;
-    wroteWorkspace: false;
+    wroteWorkspace: boolean;
   };
   composerText: string;
 };

@@ -4325,6 +4325,54 @@ Evidence boundaries:
 - The fixture seed used local temporary backend data only and did not write user workspace files.
 - Remaining production gaps stay open: OAuth/session token introspection, external directory sync, production secret manager rollout, remote runner artifact upload/fanout, frontend live run controls, approval mutation UI, and real provider/runtime E2E.
 
+## Frontend Assistant Live Run Wiring
+
+Status: implemented as the first UI-level assistant run submit wiring.
+
+Scope delivered:
+
+- Wired the existing assistant composer to `runAssistantTask`.
+- Selected the active workspace from the sanitized workbench tree before creating a run.
+- Merged the returned run session into the assistant panel view model.
+- Preserved backend `wroteWorkspace` as a boolean instead of forcing `false`.
+- Kept runtime-private/source-like fields out of the renderable workbench view model.
+- Added a connected-state guard so fixture fallback or empty workspace state does not create a run.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Failed because `applyAssistantRunSessionToWorkbench` was not exported/implemented.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 4 tests passed.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-public-safety.test.ts`
+  - 4 test files / 12 tests passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+
+Full verification:
+
+- `npm test`
+  - 51 test files / 199 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed after moving live run view-model helpers out of `App.tsx`.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Strict token scan for real token-shaped values returned no matches:
+  - `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, `ANTHROPIC_AUTH_TOKEN=tp-*`.
+
+Evidence boundaries:
+
+- This is a frontend unit-level and typecheck-verified wiring slice.
+- It does not prove browser click behavior against a running Java backend.
+- It does not implement approval mutation UI, artifact read UI, SSE/EventSource streaming, real external provider execution, or remote runner artifact upload/fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

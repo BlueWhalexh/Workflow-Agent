@@ -1,3 +1,4 @@
+import type { AssistantRunSessionView } from "../features/assistant/run-session.js";
 import { loadWorkspaceBootstrap, type WorkspaceSummaryView } from "../features/workspace/workspace-api.js";
 import type { ApiFetch } from "../shared/api/envelope.js";
 import { sanitizeForPublicUi } from "../shared/safety/public-fields.js";
@@ -66,4 +67,39 @@ function workspaceTreeItems(workspaces: WorkspaceSummaryView[], selectedWorkspac
 
 function publicWorkbench(data: WorkbenchViewModel): WorkbenchViewModel {
   return sanitizeForPublicUi(data) as WorkbenchViewModel;
+}
+
+export function activeWorkspaceIdFromWorkbench(data: WorkbenchViewModel): string | null {
+  return data.treeItems.find((item) => item.active)?.id ?? data.treeItems[0]?.id ?? null;
+}
+
+export function applyAssistantRunSessionToWorkbench(
+  data: WorkbenchViewModel,
+  session: AssistantRunSessionView,
+  userMessage: string,
+): WorkbenchViewModel {
+  return publicWorkbench({
+    ...data,
+    assistant: {
+      ...data.assistant,
+      run: {
+        title: session.title,
+        id: session.runId,
+        progress: session.progress,
+        events: session.events,
+      },
+      messages: [
+        ...data.assistant.messages,
+        { author: "你", kind: "user", text: userMessage },
+        { author: "助手", kind: "ai", text: session.displayText ?? session.title },
+      ],
+      approval: {
+        title: session.approval.status === "PENDING" ? "审批草稿" : "运行结果",
+        summary: session.displayText ?? session.title,
+        artifact: session.approval.artifactRefs[0] ?? "无",
+        target: session.approval.targetWorkspacePaths[0] ?? "无",
+        wroteWorkspace: session.approval.wroteWorkspace,
+      },
+    },
+  });
 }

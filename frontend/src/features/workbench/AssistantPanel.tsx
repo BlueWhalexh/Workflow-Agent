@@ -1,10 +1,24 @@
+import type { FormEvent } from "react";
 import type { AssistantViewModel } from "../../app/types";
 
 type AssistantPanelProps = {
   assistant: AssistantViewModel;
+  isSubmitting?: boolean;
+  onSubmit?: (userMessage: string) => void | Promise<void>;
 };
 
-export function AssistantPanel({ assistant }: AssistantPanelProps) {
+export function AssistantPanel({ assistant, isSubmitting = false, onSubmit }: AssistantPanelProps) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const userMessage = String(formData.get("userMessage") ?? "").trim();
+    if (!userMessage) {
+      return;
+    }
+    void onSubmit?.(userMessage);
+  }
+
   return (
     <aside className="copilot">
       <div className="copilot-head">
@@ -80,10 +94,15 @@ export function AssistantPanel({ assistant }: AssistantPanelProps) {
         ))}
       </div>
 
-      <form className="composer">
-        <textarea aria-label="向 AI 提问" defaultValue={assistant.composerText} />
-        <button type="button" aria-label="发送">
-          ›
+      <form className="composer" onSubmit={handleSubmit}>
+        <textarea
+          aria-label="向 AI 提问"
+          defaultValue={assistant.composerText}
+          disabled={isSubmitting}
+          name="userMessage"
+        />
+        <button type="submit" aria-label="发送" disabled={isSubmitting}>
+          {isSubmitting ? "…" : "›"}
         </button>
       </form>
     </aside>

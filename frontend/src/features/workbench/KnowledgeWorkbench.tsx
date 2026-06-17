@@ -6,9 +6,16 @@ import { Sidebar } from "./Sidebar";
 type KnowledgeWorkbenchProps = {
   backendStatusLabel: string;
   data: WorkbenchViewModel;
+  assistantSubmitting?: boolean;
+  onAssistantSubmit?: (userMessage: string) => void | Promise<void>;
 };
 
-export function KnowledgeWorkbench({ backendStatusLabel, data }: KnowledgeWorkbenchProps) {
+export function KnowledgeWorkbench({
+  backendStatusLabel,
+  data,
+  assistantSubmitting,
+  onAssistantSubmit,
+}: KnowledgeWorkbenchProps) {
   return (
     <div className="app">
       <Sidebar data={data} />
@@ -40,7 +47,11 @@ export function KnowledgeWorkbench({ backendStatusLabel, data }: KnowledgeWorkbe
         </header>
         <ArticleView article={data.article} />
       </main>
-      <AssistantPanel assistant={data.assistant} />
+      <AssistantPanel
+        assistant={data.assistant}
+        isSubmitting={assistantSubmitting}
+        onSubmit={onAssistantSubmit}
+      />
     </div>
   );
 }

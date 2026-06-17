@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { loadWorkbenchBootstrapView } from "../../frontend/src/app/bootstrap.js";
+import {
+  activeWorkspaceIdFromWorkbench,
+  applyAssistantRunSessionToWorkbench,
+  loadWorkbenchBootstrapView,
+} from "../../frontend/src/app/bootstrap.js";
+import { workbenchFixture } from "../../frontend/src/app/fixtures.js";
+import type { AssistantRunSessionView } from "../../frontend/src/features/assistant/run-session.js";
 
 describe("frontend workbench bootstrap", () => {
   test("loadWorkbenchBootstrapView maps backend workspace bootstrap into the workbench view model", async () => {
@@ -103,6 +109,61 @@ describe("frontend workbench bootstrap", () => {
     expect(bootstrap.data.workspaceName).toBe("暂无工作区");
     expect(bootstrap.data.treeItems).toEqual([]);
     expect(bootstrap.data.breadcrumb[0]).toBe("暂无工作区");
+  });
+
+  test("applyAssistantRunSessionToWorkbench maps a live run session into the assistant panel safely", () => {
+    const unsafeSession: AssistantRunSessionView & { source: unknown } = {
+      runId: "run_live",
+      status: "SUCCEEDED",
+      terminal: true,
+      title: "Run 已完成",
+      progress: 100,
+      displayText: "已整理当前知识页",
+      events: [{ time: "10:12:13", label: "Worker response recorded" }],
+      approval: {
+        status: "NONE",
+        artifactRefs: [".agent-runs/run_live/report.md"],
+        targetWorkspacePaths: ["knowledge-base/topics/live.md"],
+        wroteWorkspace: true,
+      },
+      source: {
+        apiKeySecretRef: "secret://must-not-render",
+        rawProviderPayload: "must-not-render",
+      },
+    };
+
+    const nextWorkbench = applyAssistantRunSessionToWorkbench(
+      {
+        ...workbenchFixture,
+        treeItems: [
+          { id: "ws_123", icon: "▾", label: "主工作区", count: "ACTIVE", active: true },
+          { id: "ws_456", icon: "•", label: "备用工作区", count: "ACTIVE", depth: true },
+        ],
+      },
+      unsafeSession,
+      "整理当前页",
+    );
+
+    expect(activeWorkspaceIdFromWorkbench(nextWorkbench)).toBe("ws_123");
+    expect(nextWorkbench.assistant.run).toEqual({
+      title: "Run 已完成",
+      id: "run_live",
+      progress: 100,
+      events: [{ time: "10:12:13", label: "Worker response recorded" }],
+    });
+    expect(nextWorkbench.assistant.messages.slice(-2)).toEqual([
+      { author: "你", kind: "user", text: "整理当前页" },
+      { author: "助手", kind: "ai", text: "已整理当前知识页" },
+    ]);
+    expect(nextWorkbench.assistant.approval).toEqual({
+      title: "运行结果",
+      summary: "已整理当前知识页",
+      artifact: ".agent-runs/run_live/report.md",
+      target: "knowledge-base/topics/live.md",
+      wroteWorkspace: true,
+    });
+    expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
   });
 });
 
