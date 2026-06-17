@@ -4327,7 +4327,7 @@ Evidence boundaries:
 
 ## Frontend Assistant Live Run Wiring
 
-Status: implemented as the first UI-level assistant run submit wiring.
+Status: implemented as the first UI-level assistant run submit wiring and verified through a real local browser/backend/runtime smoke.
 
 Scope delivered:
 
@@ -4337,25 +4337,42 @@ Scope delivered:
 - Preserved backend `wroteWorkspace` as a boolean instead of forcing `false`.
 - Kept runtime-private/source-like fields out of the renderable workbench view model.
 - Added a connected-state guard so fixture fallback or empty workspace state does not create a run.
+- Added bounded poll delay support to `runAssistantTask` so real browser submissions can observe terminal backend runs instead of stopping on an early `RUNNING` response.
 
 RED evidence:
 
 - `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
   - Failed because `applyAssistantRunSessionToWorkbench` was not exported/implemented.
+- Real browser smoke initially created `run_dcff79beeed547438bedc3a42c238d5d` and the backend completed it as `SUCCEEDED`, but the UI stayed at `Run 正在执行`.
+  - Root cause: `runAssistantTask` used a short immediate polling window and stopped before the real local worker completion was visible to the browser.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - Failed because `pollDelayMs` was ignored and elapsed polling time stayed below the expected delay.
 
 Focused verification:
 
 - `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
   - 4 tests passed.
 - `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-public-safety.test.ts`
-  - 4 test files / 12 tests passed.
+  - 4 test files / 13 tests passed.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - 3 tests passed.
 - `npm run frontend:typecheck`
   - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- Real local browser/backend/runtime smoke after the polling fix:
+  - Java backend ran on `http://127.0.0.1:18080`.
+  - Vite frontend ran on `http://127.0.0.1:5173` with backend proxy.
+  - Created workspace `ws_7f5f7a92c0ed4551802ac05bf930ec2d` and seeded local fixture content.
+  - Browser loaded `Browser Runtime E2E Smoke` with `后端已连接`.
+  - Browser clicked the assistant `发送` button.
+  - UI reached `Run 已完成` for `run_6bef5cbee7744794811fe31788df5592`, displayed `Worker response recorded`, draft output, artifact ref, and `wroteWorkspace: false`.
+  - Page text did not contain `apiKeySecretRef`, `secret://`, `rawProviderPayload`, the fake unsafe marker, or `tp-*` token-shaped values.
+  - Direct backend `GET /v1/agent-runs/run_6bef5cbee7744794811fe31788df5592` returned `SUCCEEDED`, `outputKind: draft`, and `wroteWorkspace: false`.
+  - Direct backend `GET /v1/agent-runs/run_6bef5cbee7744794811fe31788df5592/events` returned `RUN_QUEUED -> RUNNING -> COMPLETED`.
 
 Full verification:
 
 - `npm test`
-  - 51 test files / 199 tests passed.
+  - 51 test files / 200 tests passed.
 - `npm run typecheck`
   - Root `tsc --noEmit` passed after moving live run view-model helpers out of `App.tsx`.
 - `npm run frontend:typecheck`
@@ -4370,7 +4387,8 @@ Full verification:
 Evidence boundaries:
 
 - This is a frontend unit-level and typecheck-verified wiring slice.
-- It does not prove browser click behavior against a running Java backend.
+- It now proves browser click behavior against a running local Java backend and local TypeScript worker.
+- It is still not a real external provider E2E and not a production remote runner E2E.
 - It does not implement approval mutation UI, artifact read UI, SSE/EventSource streaming, real external provider execution, or remote runner artifact upload/fanout.
 
 ## Boundaries

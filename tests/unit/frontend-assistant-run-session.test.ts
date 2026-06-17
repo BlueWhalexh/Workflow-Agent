@@ -149,6 +149,59 @@ describe("frontend assistant run session", () => {
       progress: 55,
     });
   });
+
+  test("runAssistantTask waits between running polls so browser submissions can observe terminal runs", async () => {
+    let pollCount = 0;
+    const startedAt = Date.now();
+    const fetcher = async (url: string) => {
+      if (url === "/v1/workspaces/ws_123/agent-runs") {
+        return jsonEnvelope(runEnvelope({
+          status: "QUEUED",
+          outputKind: "none",
+          displayText: null,
+        }));
+      }
+
+      if (url === "/v1/agent-runs/run_123") {
+        pollCount += 1;
+        return jsonEnvelope(runEnvelope(pollCount < 2
+          ? {
+              status: "RUNNING",
+              outputKind: "none",
+              displayText: null,
+            }
+          : {
+              status: "SUCCEEDED",
+              outputKind: "answer",
+              displayText: "已完成",
+            }));
+      }
+
+      if (url === "/v1/agent-runs/run_123/events") {
+        return jsonEnvelope([]);
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const session = await runAssistantTask(fetcher, {
+      workspaceId: "ws_123",
+      userMessage: "继续整理",
+      maxPolls: 3,
+      pollDelayMs: 15,
+    });
+
+    expect(session).toMatchObject({
+      runId: "run_123",
+      status: "SUCCEEDED",
+      terminal: true,
+      title: "Run 已完成",
+      progress: 100,
+      displayText: "已完成",
+    });
+    expect(pollCount).toBe(2);
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(15);
+  });
 });
 
 function runEnvelope(overrides: Record<string, unknown>) {

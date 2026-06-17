@@ -11,6 +11,7 @@ import {
 export type AssistantRunTaskInput = CreateAgentRunInput & {
   workspaceId: string;
   maxPolls?: number;
+  pollDelayMs?: number;
 };
 
 export type AssistantRunSessionView = {
@@ -32,7 +33,8 @@ export type AssistantRunSessionView = {
   };
 };
 
-const DEFAULT_MAX_POLLS = 3;
+const DEFAULT_MAX_POLLS = 20;
+const DEFAULT_POLL_DELAY_MS = 250;
 
 export async function runAssistantTask(
   fetcher: ApiFetch,
@@ -46,7 +48,12 @@ export async function runAssistantTask(
     providerRuntimeRef: input.providerRuntimeRef,
     remoteRunnerRef: input.remoteRunnerRef,
   });
-  const finalRun = await pollRun(fetcher, createdRun, input.maxPolls ?? DEFAULT_MAX_POLLS);
+  const finalRun = await pollRun(
+    fetcher,
+    createdRun,
+    input.maxPolls ?? DEFAULT_MAX_POLLS,
+    input.pollDelayMs ?? DEFAULT_POLL_DELAY_MS,
+  );
   const events = await listRunEvents(fetcher, finalRun.runId);
   return toSessionView(finalRun, events);
 }
@@ -55,12 +62,20 @@ async function pollRun(
   fetcher: ApiFetch,
   createdRun: AgentRunView,
   maxPolls: number,
+  pollDelayMs: number,
 ): Promise<AgentRunView> {
   let currentRun = createdRun;
   for (let pollIndex = 0; pollIndex < maxPolls && !isTerminalStatus(currentRun.status); pollIndex += 1) {
+    if (pollIndex > 0 && pollDelayMs > 0) {
+      await delay(pollDelayMs);
+    }
     currentRun = await getAgentRun(fetcher, currentRun.runId);
   }
   return currentRun;
+}
+
+function delay(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 function toSessionView(run: AgentRunView, events: RunEventView[]): AssistantRunSessionView {
