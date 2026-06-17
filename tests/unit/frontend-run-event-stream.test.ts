@@ -69,6 +69,7 @@ describe("frontend run event stream adapter", () => {
       {
         url: "/v1/agent-runs/run_123/events/stream",
         init: {
+          credentials: "include",
           headers: {
             Accept: "text/event-stream",
             "Last-Event-ID": "evt_0",

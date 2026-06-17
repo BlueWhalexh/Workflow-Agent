@@ -4819,6 +4819,53 @@ Evidence boundaries:
 - This does not implement OAuth authorization-code redirect, callback handling, refresh-token rotation, server-side session storage, CSRF protection for login/callback endpoints, IdP logout, or frontend login UI.
 - Because it is not a full OAuth login/session lifecycle, the integration contract still keeps `oauthLoginSession: false`.
 
+## Frontend API Credential Inclusion
+
+Status: implemented and verified as the frontend half of the OAuth/browser-cookie bridge.
+
+Scope delivered:
+
+- `requestApiJson` now sends `credentials: "include"` for Java backend JSON API calls.
+- `streamRunEvents` now sends `credentials: "include"` for backend SSE run event streams.
+- The app can continue passing `window.fetch.bind(window)` through existing adapters; cookie inclusion is enforced in the shared JSON API layer and the SSE stream adapter.
+- This preserves existing `Accept: application/json`, `Accept: text/event-stream`, and `Last-Event-ID` headers.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-run-event-stream.test.ts`
+  - Failed before implementation because both captured `RequestInit` objects lacked `credentials: "include"`.
+
+Focused GREEN:
+
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-run-event-stream.test.ts`
+  - 2 test files / 7 tests passed.
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-run-event-stream.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-approval-api.test.ts tests/unit/frontend-approval-flow.test.ts`
+  - 5 test files / 14 tests passed after updating existing adapter expectations for the shared credential policy.
+
+Full verification:
+
+- `npm test`
+  - 55 test files / 212 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - Frontend `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 163 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" frontend/src tests/unit docs/reports/runtime-work-item-execution-resume-delivery.md --glob '!frontend/dist/**'`
+  - No trailing whitespace or merge-conflict marker matches.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*`
+  - No token-shaped matches.
+
+Evidence boundaries:
+
+- This proves the frontend request adapters will include browser cookies on JSON API and SSE requests.
+- This does not prove a deployed cross-origin CORS/cookie policy, OAuth redirect/callback login, refresh-token rotation, or production IdP session behavior.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

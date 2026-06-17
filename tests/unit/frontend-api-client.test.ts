@@ -99,6 +99,7 @@ describe("frontend API envelope", () => {
       {
         url: "/v1/workspaces/ws_123",
         init: {
+          credentials: "include",
           headers: {
             Accept: "application/json",
           },

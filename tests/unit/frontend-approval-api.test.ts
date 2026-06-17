@@ -90,6 +90,7 @@ describe("frontend approval API adapter", () => {
         url: "/v1/agent-runs/run_123/approvals",
         init: {
           method: "POST",
+          credentials: "include",
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",

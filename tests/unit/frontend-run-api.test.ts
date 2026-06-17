@@ -57,6 +57,7 @@ describe("frontend run API adapter", () => {
       url: "/v1/workspaces/ws_123/agent-runs",
       init: {
         method: "POST",
+        credentials: "include",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -105,6 +106,7 @@ describe("frontend run API adapter", () => {
       {
         url: "/v1/agent-runs/run_123",
         init: {
+          credentials: "include",
           headers: {
             Accept: "application/json",
           },
@@ -114,6 +116,7 @@ describe("frontend run API adapter", () => {
         url: "/v1/agent-runs/run_123/cancel",
         init: {
           method: "POST",
+          credentials: "include",
           headers: {
             Accept: "application/json",
           },

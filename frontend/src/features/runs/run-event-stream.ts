@@ -22,6 +22,7 @@ export async function streamRunEvents(
   options: StreamRunEventsOptions = {},
 ): Promise<RunEventView[]> {
   const response = await fetcher(`/v1/agent-runs/${encodeURIComponent(runId)}/events/stream`, {
+    credentials: "include",
     headers: streamHeaders(options.lastEventId),
   });
 

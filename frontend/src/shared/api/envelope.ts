@@ -30,6 +30,7 @@ export type ApiFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export async function requestApiJson<T>(fetcher: ApiFetch, url: string, init: RequestInit = {}): Promise<T> {
   const response = await fetcher(url, {
     ...init,
+    credentials: "include",
     headers: {
       Accept: "application/json",
       ...init.headers,
