@@ -1,6 +1,7 @@
 node_modules/
 coverage/
 dist/
+frontend/dist/
 /.agent-runs/
 backend/target/
 .env

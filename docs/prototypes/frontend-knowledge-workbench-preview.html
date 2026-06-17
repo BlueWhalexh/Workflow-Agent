@@ -1,0 +1,1283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Workflow 知识工作台预览</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2523;
+      --ink-soft: #46524e;
+      --muted: #72807a;
+      --paper: #f3f1ea;
+      --surface: #fffdf7;
+      --surface-2: #f8faf7;
+      --line: #d9ddd3;
+      --line-strong: #b9c1b5;
+      --nav: #24292f;
+      --nav-2: #30363d;
+      --nav-3: #1f2328;
+      --nav-border: #444c56;
+      --nav-muted: #b7c0ca;
+      --green: #24735d;
+      --green-soft: #dfeee7;
+      --blue: #315f89;
+      --blue-soft: #e1edf5;
+      --clay: #a35445;
+      --clay-soft: #f3dfda;
+      --gold: #b4832d;
+      --gold-soft: #f2e4c5;
+      --violet: #66548f;
+      --violet-soft: #e8e2f4;
+      --shadow: 0 18px 42px rgba(31, 37, 35, 0.11);
+      --shadow-soft: 0 10px 24px rgba(31, 37, 35, 0.08);
+      --sans: "Avenir Next", "Gill Sans", "Helvetica Neue", system-ui, sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+      --mono: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--sans);
+      letter-spacing: 0;
+      background:
+        linear-gradient(90deg, rgba(31, 37, 35, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(31, 37, 35, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 36px 36px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(248px, 276px) minmax(620px, 1fr) minmax(344px, 380px);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      color: #eef2f6;
+      background:
+        linear-gradient(180deg, rgba(84, 174, 255, 0.09), transparent 280px),
+        var(--nav);
+      border-right: 1px solid #1b1f24;
+      padding: 16px 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 2px 4px 14px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(244, 191, 66, 0.7);
+      border-radius: 7px;
+      background: var(--gold);
+      color: #1f2328;
+      font-weight: 900;
+    }
+
+    .brand strong,
+    .brand span {
+      display: block;
+    }
+
+    .brand strong {
+      font-size: 14px;
+      line-height: 1.1;
+    }
+
+    .brand span {
+      margin-top: 2px;
+      color: var(--nav-muted);
+      font-size: 11px;
+    }
+
+    .workspace-select {
+      margin: 0 2px 12px;
+      padding: 10px;
+      border: 1px solid var(--nav-border);
+      border-radius: 8px;
+      background: #2d333b;
+    }
+
+    .workspace-select span {
+      display: block;
+      color: var(--nav-muted);
+      font-size: 11px;
+    }
+
+    .workspace-select strong {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      min-height: 38px;
+      margin: 0 2px 16px;
+      padding: 0 10px;
+      border: 1px solid var(--nav-border);
+      border-radius: 7px;
+      background: var(--nav-3);
+      color: var(--nav-muted);
+    }
+
+    .search input {
+      min-width: 0;
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #f2f7f3;
+      padding-left: 9px;
+      font-size: 13px;
+    }
+
+    .search input::placeholder {
+      color: #8b949e;
+    }
+
+    .side-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .side-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 18px 4px 8px;
+      color: var(--nav-muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .icon-button,
+    .mini-icon {
+      display: grid;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: inherit;
+    }
+
+    .icon-button {
+      width: 30px;
+      height: 30px;
+      color: #d8dee4;
+    }
+
+    .icon-button:hover,
+    .mini-icon:hover {
+      border-color: #57606a;
+      background: #373e47;
+    }
+
+    .tree {
+      display: grid;
+      gap: 3px;
+    }
+
+    .tree-item {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: #dce6e0;
+      font-size: 13px;
+    }
+
+    .tree-item span:nth-child(2) {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-item.depth {
+      padding-left: 20px;
+      color: #c9d1d9;
+    }
+
+    .tree-item.active {
+      border-color: rgba(244, 191, 66, 0.48);
+      background: #f6f1df;
+      color: #24292f;
+      font-weight: 800;
+    }
+
+    .tree-item:hover:not(.active) {
+      background: var(--nav-2);
+    }
+
+    .tree-count {
+      color: #8b949e;
+      font-size: 11px;
+    }
+
+    .tree-item.active .tree-count {
+      color: #657066;
+    }
+
+    .graph-card,
+    .admin-strip {
+      margin: 16px 2px 0;
+      padding: 12px;
+      border: 1px solid var(--nav-border);
+      border-radius: 8px;
+      background: #2d333b;
+    }
+
+    .graph-card strong,
+    .admin-strip strong {
+      display: block;
+      font-size: 12px;
+    }
+
+    .graph-card p,
+    .admin-strip p {
+      margin: 6px 0 0;
+      color: #c9d1d9;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .mini-graph {
+      position: relative;
+      height: 108px;
+      margin-top: 11px;
+      border: 1px solid #444c56;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, transparent 49%, rgba(237, 244, 238, 0.16) 50%, transparent 51%),
+        linear-gradient(25deg, transparent 55%, rgba(180, 131, 45, 0.18) 56%, transparent 57%),
+        #1f2328;
+      overflow: hidden;
+    }
+
+    .node {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(180, 131, 45, 0.15);
+    }
+
+    .node.a { left: 28px; top: 30px; }
+    .node.b { left: 92px; top: 24px; background: #82aa97; box-shadow: 0 0 0 4px rgba(130, 170, 151, 0.15); }
+    .node.c { left: 166px; top: 38px; background: #8aa9c4; box-shadow: 0 0 0 4px rgba(138, 169, 196, 0.15); }
+    .node.d { left: 58px; top: 76px; background: #c98273; box-shadow: 0 0 0 4px rgba(201, 130, 115, 0.15); }
+    .node.e { left: 142px; top: 80px; background: #bca36a; box-shadow: 0 0 0 4px rgba(188, 163, 106, 0.15); }
+
+    .admin-strip {
+      margin-top: 14px;
+    }
+
+    .admin-links {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .admin-links button {
+      min-width: 0;
+      min-height: 30px;
+      border: 1px solid var(--nav-border);
+      border-radius: 7px;
+      background: #22272e;
+      color: #d8dee4;
+      font-size: 12px;
+    }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      background: rgba(255, 253, 247, 0.72);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-width: 0;
+      min-height: 64px;
+      padding: 0 clamp(18px, 3vw, 34px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.9);
+      backdrop-filter: blur(14px);
+    }
+
+    .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .crumbs b {
+      min-width: 0;
+      max-width: 34vw;
+      overflow: hidden;
+      color: var(--ink);
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .status-pill,
+    .article-chip,
+    .toc-chip,
+    .context-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      min-height: 29px;
+      padding: 0 10px;
+      background: var(--surface);
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .action-button {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 11px;
+      font-size: 13px;
+    }
+
+    .action-button.primary {
+      border-color: #1f5144;
+      background: #1f5144;
+      color: #fff;
+    }
+
+    .action-button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .article-shell {
+      min-width: 0;
+      overflow: auto;
+      padding: 28px clamp(20px, 4vw, 62px) 48px;
+    }
+
+    .article {
+      width: min(100%, 990px);
+      margin: 0 auto;
+      padding: 34px clamp(24px, 4vw, 58px) 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .article-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .article-chip {
+      min-height: 26px;
+      padding: 0 9px;
+      background: #fff;
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    .article-chip.green {
+      border-color: #bdd9ce;
+      background: var(--green-soft);
+      color: #1e5f50;
+    }
+
+    .article-chip.gold {
+      border-color: #dbc484;
+      background: var(--gold-soft);
+      color: #6e4f18;
+    }
+
+    .article-chip.clay {
+      border-color: #e3b9ae;
+      background: var(--clay-soft);
+      color: #7b382f;
+    }
+
+    .article h1 {
+      margin: 0 0 10px;
+      color: #171d1b;
+      font-family: var(--serif);
+      font-size: clamp(34px, 4vw, 54px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      margin: 0 0 22px;
+      color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .toc-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 28px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+    }
+
+    .toc-chip {
+      min-height: 28px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--ink-soft);
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .toc-chip:hover {
+      border-color: #bdd9ce;
+      color: #1e5f50;
+    }
+
+    .article-content {
+      min-width: 0;
+      max-width: 830px;
+    }
+
+    .article-content h2 {
+      margin: 30px 0 10px;
+      padding-top: 4px;
+      color: #202a27;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .article-content p,
+    .article-content li {
+      color: #303a36;
+      font-size: 15px;
+      line-height: 1.78;
+    }
+
+    .article-content p {
+      margin: 0 0 14px;
+    }
+
+    .article-content ul {
+      margin: 0 0 14px 18px;
+      padding: 0;
+    }
+
+    .boundary-note {
+      margin: 22px 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      background: #edf7f2;
+      color: #24493f;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0 8px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .metric span,
+    .metric strong {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .metric strong {
+      margin-top: 5px;
+      font-size: 14px;
+    }
+
+    .source-grid,
+    .page-links {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .source-card,
+    .page-link,
+    .patch-preview {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .source-card strong,
+    .source-card span,
+    .page-link strong,
+    .page-link span {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-card strong,
+    .page-link strong {
+      margin-bottom: 6px;
+      color: #26302d;
+      font-size: 13px;
+    }
+
+    .source-card span,
+    .page-link span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .patch-preview {
+      margin-top: 12px;
+      background: #fffaf0;
+      border-color: #dfc884;
+    }
+
+    .patch-preview header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .patch-preview strong {
+      font-size: 14px;
+    }
+
+    .patch-preview code {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: bottom;
+      color: #664a17;
+      font-family: var(--mono);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .copilot {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      min-width: 0;
+      max-height: 100vh;
+      padding: 16px;
+      border-left: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(49, 95, 137, 0.08), transparent 300px),
+        #f7f9fb;
+    }
+
+    .copilot-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .copilot-head strong,
+    .copilot-head span {
+      display: block;
+    }
+
+    .copilot-head strong {
+      font-size: 15px;
+    }
+
+    .copilot-head span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .context {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+
+    .context-chip {
+      min-height: 25px;
+      padding: 0 8px;
+      background: #fff;
+      color: var(--ink-soft);
+      font-size: 12px;
+    }
+
+    .run-card {
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid #c8d7e5;
+      border-radius: 8px;
+      background: var(--blue-soft);
+    }
+
+    .run-card header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+
+    .run-card strong {
+      font-size: 13px;
+    }
+
+    .run-card code {
+      color: #2a526f;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .progress {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(49, 95, 137, 0.16);
+    }
+
+    .progress span {
+      display: block;
+      width: 72%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue);
+    }
+
+    .event-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 8px;
+      color: #36566f;
+      font-size: 11px;
+    }
+
+    .event span:last-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chat {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .message,
+    .approval-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      box-shadow: 0 10px 22px rgba(31, 37, 35, 0.06);
+    }
+
+    .message.user {
+      border-color: #d9c384;
+      background: #fff8e8;
+    }
+
+    .message.ai {
+      border-color: #c7d8e6;
+      background: #f7fbfe;
+    }
+
+    .message strong,
+    .approval-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .message p,
+    .approval-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .approval-card {
+      border-color: #dfc884;
+      background: #fffaf0;
+    }
+
+    .approval-meta {
+      display: grid;
+      gap: 5px;
+      margin: 10px 0;
+      padding: 9px;
+      border: 1px solid #ead8a1;
+      border-radius: 7px;
+      background: #fffdf7;
+      color: #6a541c;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .approval-actions,
+    .suggestion-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .mini-button {
+      min-height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .mini-button.primary {
+      border-color: #1f5144;
+      background: #1f5144;
+      color: #fff;
+    }
+
+    .mini-button.danger {
+      border-color: #b55a4a;
+      color: #853c31;
+    }
+
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .composer textarea {
+      min-width: 0;
+      height: 74px;
+      resize: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: 0;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .composer button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 8px;
+      background: #1f5144;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    @media (max-width: 1220px) {
+      .app {
+        grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
+      }
+
+      .copilot {
+        grid-column: 1 / -1;
+        max-height: none;
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app {
+        display: block;
+      }
+
+      .sidebar {
+        display: block;
+        border-right: 0;
+      }
+
+      .side-scroll {
+        max-height: none;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px 16px;
+      }
+
+      .crumbs {
+        width: 100%;
+        white-space: normal;
+      }
+
+      .crumbs b {
+        max-width: 100%;
+      }
+
+      .top-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .article-shell {
+        padding: 16px;
+      }
+
+      .article {
+        padding: 24px 18px 30px;
+      }
+
+      .status-row,
+      .source-grid,
+      .page-links {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-mark">MW</div>
+          <div>
+            <strong>My Workflow</strong>
+            <span>知识工作台预览</span>
+          </div>
+        </div>
+
+        <section class="workspace-select" aria-label="当前工作区">
+          <span>当前工作区</span>
+          <strong>Agent Loop Core <span>⌄</span></strong>
+        </section>
+
+        <label class="search">
+          <span>/</span>
+          <input type="search" placeholder="搜索笔记、来源、任务">
+        </label>
+      </div>
+
+      <div class="side-scroll">
+        <div class="side-title">
+          <span>知识目录</span>
+          <button class="icon-button" type="button" aria-label="新建知识页">+</button>
+        </div>
+        <nav class="tree" aria-label="知识目录">
+          <div class="tree-item">
+            <span>▾</span>
+            <span>Agent Loop</span>
+            <span class="tree-count">24</span>
+          </div>
+          <div class="tree-item depth active">
+            <span>•</span>
+            <span>工作台前端控制面</span>
+            <span class="tree-count">打开</span>
+          </div>
+          <div class="tree-item depth">
+            <span>•</span>
+            <span>候选补丁与审批边界</span>
+            <span class="tree-count">6</span>
+          </div>
+          <div class="tree-item depth">
+            <span>•</span>
+            <span>运行事件与恢复</span>
+            <span class="tree-count">9</span>
+          </div>
+          <div class="tree-item">
+            <span>▸</span>
+            <span>Workspace Inventory</span>
+            <span class="tree-count">11</span>
+          </div>
+          <div class="tree-item">
+            <span>▸</span>
+            <span>Java Backend</span>
+            <span class="tree-count">37</span>
+          </div>
+          <div class="tree-item">
+            <span>▸</span>
+            <span>Provider Runtime</span>
+            <span class="tree-count">15</span>
+          </div>
+        </nav>
+
+        <div class="side-title">
+          <span>最近变更</span>
+          <button class="mini-icon" type="button" aria-label="刷新最近变更">↻</button>
+        </div>
+        <div class="tree">
+          <div class="tree-item">
+            <span>•</span>
+            <span>frontend-knowledge-workbench-design</span>
+            <span class="tree-count">刚刚</span>
+          </div>
+          <div class="tree-item">
+            <span>•</span>
+            <span>provider secret injection baseline</span>
+            <span class="tree-count">今天</span>
+          </div>
+          <div class="tree-item">
+            <span>•</span>
+            <span>audit retention policy</span>
+            <span class="tree-count">今天</span>
+          </div>
+        </div>
+
+        <section class="graph-card">
+          <strong>主题图谱</strong>
+          <p>当前页连接 workspace、run、artifact、approval 和安全过滤规则。</p>
+          <div class="mini-graph" aria-hidden="true">
+            <span class="node a"></span>
+            <span class="node b"></span>
+            <span class="node c"></span>
+            <span class="node d"></span>
+            <span class="node e"></span>
+          </div>
+        </section>
+      </div>
+
+      <section class="admin-strip">
+        <strong>管理入口</strong>
+        <p>凭证、成员和审计作为次级入口，不占据第一屏主流程。</p>
+        <div class="admin-links">
+          <button type="button">成员</button>
+          <button type="button">审计</button>
+          <button type="button">凭证</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="crumbs">
+          <span>Agent Loop Core</span>
+          <span>/</span>
+          <span>Agent Loop</span>
+          <span>/</span>
+          <b>工作台前端控制面</b>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill"><span class="status-dot"></span> 本地预览</span>
+          <button class="action-button" type="button">目录</button>
+          <button class="action-button" type="button">来源</button>
+          <button class="action-button primary" type="button">询问 AI</button>
+        </div>
+      </header>
+
+      <section class="article-shell">
+        <article class="article">
+          <div class="article-meta">
+            <span class="article-chip green">知识页</span>
+            <span class="article-chip">workspace: agent-loop-core</span>
+            <span class="article-chip gold">approval: pending</span>
+            <span class="article-chip clay">尚未写入</span>
+          </div>
+
+          <h1>工作台前端控制面</h1>
+          <p class="subtitle">
+            这是目标态预览：前端第一屏围绕知识页阅读、AI 协作和审批保护的候选变更展开。后端接口被组合成工作台语义，而不是直接暴露成管理菜单。
+          </p>
+
+          <nav class="toc-strip" aria-label="本页目录">
+            <a class="toc-chip" href="#summary">摘要</a>
+            <a class="toc-chip" href="#status">状态</a>
+            <a class="toc-chip" href="#boundary">边界</a>
+            <a class="toc-chip" href="#sources">来源</a>
+            <a class="toc-chip" href="#patch">候选变更</a>
+          </nav>
+
+          <div class="article-content">
+            <h2 id="summary">摘要</h2>
+            <p>
+              工作台默认展示知识页，而不是后端控制台。左侧负责 workspace 和知识目录，中间负责正文阅读、来源和反链，右侧负责 AI 对话、运行状态、产物引用和审批草稿。
+            </p>
+            <p>
+              前端需要通过 view model 隔离后端 API 形状。组件只消费过滤后的公开字段，不能直接渲染原始供应商负载、密钥引用、服务端路径或 runtime 私有字段。
+            </p>
+
+            <div class="boundary-note">
+              `targetWorkspacePaths` 只表示 AI 建议写入目标，不表示已经写入。只有后端稳定信封或 artifact 明确返回写入成功时，UI 才能展示“已写入”。
+            </div>
+
+            <h2 id="status">当前状态</h2>
+            <div class="status-row">
+              <div class="metric">
+                <span>前端阶段</span>
+                <strong>Phase 1 预览</strong>
+              </div>
+              <div class="metric">
+                <span>数据来源</span>
+                <strong>fixture / artifact adapter</strong>
+              </div>
+              <div class="metric">
+                <span>写入状态</span>
+                <strong>等待审批</strong>
+              </div>
+            </div>
+
+            <h2 id="boundary">关键边界</h2>
+            <ul>
+              <li>第一屏只做知识工作台，不做完整平台后台。</li>
+              <li>供应商凭证、审计和成员管理进入次级页面。</li>
+              <li>AI 输出先成为候选草稿，再进入 approval 链路。</li>
+              <li>run、artifact、approval 状态必须分开展示，不能互相替代。</li>
+              <li>组件只能消费 view model，不能依赖 Java controller 或 runtime 内部结构。</li>
+            </ul>
+
+            <h2 id="sources">来源与关联</h2>
+            <div class="source-grid">
+              <div class="source-card">
+                <strong>前端设计规格</strong>
+                <span>docs/superpowers/specs/2026-06-17-frontend-knowledge-workbench-design.md</span>
+              </div>
+              <div class="source-card">
+                <strong>现有静态原型</strong>
+                <span>docs/prototypes/backend-console.html</span>
+              </div>
+              <div class="source-card">
+                <strong>后端 API 控制面</strong>
+                <span>/v1/workspaces, /v1/agent-runs, /v1/artifacts, /v1/approvals</span>
+              </div>
+            </div>
+
+            <h2 id="patch">候选变更</h2>
+            <p>
+              右侧 AI 面板可以把建议转换成候选补丁。候选补丁需要展示 artifact、目标路径、审批状态和真实写入状态。
+            </p>
+            <section class="patch-preview" aria-label="候选变更预览">
+              <header>
+                <strong>候选补丁摘要</strong>
+                <span class="article-chip gold">pending approval</span>
+              </header>
+              <p>建议把“安全字段过滤”和“targetWorkspacePaths 不是写入证据”加入页面摘要。</p>
+              <p><code>knowledge-base/topics/frontend/工作台前端控制面.md</code></p>
+            </section>
+
+            <h2>关联页面</h2>
+            <div class="page-links">
+              <div class="page-link">
+                <strong>候选补丁与审批边界</strong>
+                <span>approval guard</span>
+              </div>
+              <div class="page-link">
+                <strong>Open Agent Runtime</strong>
+                <span>run event and artifact</span>
+              </div>
+              <div class="page-link">
+                <strong>Provider Secret Policy</strong>
+                <span>safety allowlist</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <aside class="copilot">
+      <div class="copilot-head">
+        <div>
+          <strong>AI 助手</strong>
+          <span>上下文：当前页、来源、审批草稿</span>
+        </div>
+        <button class="icon-button" type="button" aria-label="折叠 AI 面板">−</button>
+      </div>
+
+      <div class="context" aria-label="当前上下文">
+        <span class="context-chip">当前页</span>
+        <span class="context-chip">3 个来源</span>
+        <span class="context-chip">1 个候选补丁</span>
+        <span class="context-chip">禁止直接写入</span>
+      </div>
+
+      <section class="run-card" aria-label="运行状态">
+        <header>
+          <strong>Run 正在等待审批</strong>
+          <code>run_2f91c0</code>
+        </header>
+        <div class="progress" aria-hidden="true"><span></span></div>
+        <div class="event-list">
+          <div class="event">
+            <span>10:18:21</span>
+            <span>context gathered from current page</span>
+          </div>
+          <div class="event">
+            <span>10:18:24</span>
+            <span>candidate patch artifact created</span>
+          </div>
+          <div class="event">
+            <span>10:18:27</span>
+            <span>approval request opened</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="chat">
+        <div class="message user">
+          <strong>你</strong>
+          <p>按当前设计，前端第一屏应该长什么样？</p>
+        </div>
+        <div class="message ai">
+          <strong>助手</strong>
+          <p>第一屏应该以知识页为中心：左侧目录，中间正文，右侧 AI。管理接口只作为次级入口，不抢占主流程。</p>
+        </div>
+        <div class="message ai">
+          <strong>助手</strong>
+          <p>我建议把候选补丁直接显示在右侧，并用明确状态标注“待审批，尚未写入”。这样不会把建议路径误认为真实写入。</p>
+        </div>
+
+        <section class="approval-card" aria-label="审批草稿">
+          <strong>审批草稿</strong>
+          <p>将安全过滤规则和写入边界补充到当前知识页摘要。</p>
+          <div class="approval-meta">
+            <span>artifact: patch_frontend_workbench_001</span>
+            <span>target: knowledge-base/topics/frontend/工作台前端控制面.md</span>
+            <span>wroteWorkspace: false</span>
+          </div>
+          <div class="approval-actions">
+            <button class="mini-button primary" type="button">批准</button>
+            <button class="mini-button danger" type="button">拒绝</button>
+            <button class="mini-button" type="button">对比</button>
+          </div>
+        </section>
+
+        <div class="message ai">
+          <strong>安全检查</strong>
+          <p>当前预览不展示 token、secret ref、环境变量名、服务端绝对路径或原始供应商负载。</p>
+        </div>
+      </div>
+
+      <form class="composer">
+        <textarea aria-label="向 AI 提问">把当前页整理成实现计划的 Phase 1</textarea>
+        <button type="button" aria-label="发送">›</button>
+      </form>
+    </aside>
+  </div>
+</body>
+</html>

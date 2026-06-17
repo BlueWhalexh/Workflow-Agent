@@ -4085,6 +4085,67 @@ Evidence boundaries:
 - This is not production frontend implementation and not an E2E browser/API test.
 - No dev server is required; the HTML file can be opened directly for visual review.
 
+## Frontend Knowledge Workbench React And Backend Bootstrap
+
+Status: implemented as the first frontend-to-Java-backend bootstrap slice.
+
+Plans and specs:
+
+- `docs/superpowers/specs/2026-06-17-frontend-knowledge-workbench-design.md`
+- `docs/superpowers/plans/2026-06-17-frontend-knowledge-workbench-phase1.md`
+- `docs/superpowers/plans/2026-06-17-frontend-backend-bootstrap-phase2.md`
+
+Scope delivered:
+
+- Added a React/Vite `frontend/` knowledge workbench app with Chinese-first UI copy.
+- Added root scripts: `frontend:dev`, `frontend:build`, `frontend:preview`, and `frontend:typecheck`.
+- Added `java-backend-api.v1` frontend envelope unwrap and normalized `ApiClientError`.
+- Added workspace bootstrap mapping for `GET /v1/me` and `GET /v1/workspaces`.
+- Added recursive public UI safety filtering for sensitive keys and server absolute paths.
+- Added `loadWorkbenchBootstrapView(fetcher)` so the app attempts backend bootstrap and falls back to fixture preview when the Java backend is unavailable.
+- Updated the workbench status pill to show `后端已连接` or `离线预览`.
+- Added `.gitignore` coverage for generated `frontend/dist/`.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Initial RED failed because `frontend/src/app/bootstrap.js` did not exist.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 2 tests passed.
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-workspace-api.test.ts tests/unit/frontend-public-safety.test.ts tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 4 test files / 13 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 48 test files / 191 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `git diff --cached --check`
+  - Passed with no whitespace errors for the staged frontend bootstrap file set.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs frontend src tests --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+- Browser smoke against `http://127.0.0.1:5173/`
+  - Page title was `My Workflow 知识工作台`.
+  - Page rendered `知识工作台`, `工作台前端控制面`, `AI 助手`, and `离线预览`.
+  - Page text did not contain `apiKeySecretRef` or the test secret-ref fixture.
+  - Browser console error log was empty.
+
+Evidence boundaries:
+
+- The frontend unit tests use fake `fetch` responses and do not call a real Java backend.
+- The browser smoke loaded the Vite app without a running Java backend, so it verifies frontend rendering and fallback behavior, not real backend E2E.
+- This slice does not implement OAuth/session UI, run creation, event polling/SSE, artifact reads, approval mutation, provider credential UI, real runtime execution, or workspace writes.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
