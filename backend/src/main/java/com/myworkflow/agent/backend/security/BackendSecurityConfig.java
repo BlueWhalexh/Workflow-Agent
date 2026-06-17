@@ -16,6 +16,7 @@ public class BackendSecurityConfig {
   @Bean
   SecurityFilterChain backendSecurityFilterChain(
       HttpSecurity http,
+      BearerTokenAuthenticationFilter bearerTokenAuthenticationFilter,
       DevHeaderAuthenticationFilter devHeaderAuthenticationFilter
   ) throws Exception {
     return http
@@ -25,6 +26,7 @@ public class BackendSecurityConfig {
         .logout(AbstractHttpConfigurer::disable)
         .sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests((requests) -> requests.anyRequest().permitAll())
+        .addFilterBefore(bearerTokenAuthenticationFilter, AnonymousAuthenticationFilter.class)
         .addFilterBefore(devHeaderAuthenticationFilter, AnonymousAuthenticationFilter.class)
         .build();
   }

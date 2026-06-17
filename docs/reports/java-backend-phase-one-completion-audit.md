@@ -35,12 +35,13 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
 | Remote runner registry / lease | J30A workspace-scoped runner metadata API, heartbeat, exclusive lease, workspace audit | Implemented baseline |
 | Identity hardening | J31A disables dev header and dev principal fallback for `prod` / `production` profiles | Implemented baseline |
+| Bearer identity adapter | J32A `BearerTokenVerifier` SPI maps verified bearer token to `BackendPrincipal`; no real OIDC/JWKS | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | No production KMS, Keychain/file adapter, rotation, public secret registration, or remote runner distribution | Not implemented |
-| Full OIDC/OAuth | J31A fail-closed guard exists for production-like profiles; no real OIDC/OAuth provider, token validation, SSO, sessions, or claim mapping | Partially implemented baseline |
+| Full OIDC/OAuth | J31A fail-closed guard and J32A bearer verifier SPI exist; no real OIDC discovery, JWKS validation, token introspection, SSO, sessions, or directory claim sync | Partially implemented baseline |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
@@ -48,28 +49,27 @@ Complete backend phase one under the project SOP: central Java backend control p
 
 ## Latest Gate Resolution
 
-J31A: `Java Identity Hardening Baseline` is now implemented as a production-like profile fail-closed identity boundary.
+J32A: `Java Bearer Identity Adapter Baseline` is now implemented as an OIDC-ready bearer verifier adapter slice.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-identity-hardening-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-bearer-identity-adapter-baseline.md`
 
 Scope that required approval:
 
-- Adds a profile-aware `BackendAuthMode`.
-- Changes auth behavior for production-like profiles.
-- Adds an `AUTHENTICATION_REQUIRED` public error envelope.
-- Requires security, identity provider, API error handler, tests, docs, and report updates.
+- Adds a backend `BearerTokenVerifier` SPI.
+- Adds `BearerTokenAuthenticationFilter`.
+- Wires bearer authentication into the Spring Security filter chain.
+- Requires security, tests, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
-- User approved continuing with the recommended J31A identity hardening slice.
-- Default/local profile behavior remains unchanged for current local development and tests.
-- `prod` / `production` profiles do not trust `X-Dev-*` headers.
-- `prod` / `production` profiles do not silently fall back to the configured dev principal.
-- Unauthenticated identity access returns `java-backend-api.v1` with `AUTHENTICATION_REQUIRED`.
-- J31A is not full OIDC/OAuth. It does not implement real identity provider integration, token validation, SSO/session lifecycle, invite flow, global directory lifecycle, or claim-to-role sync.
+- User asked to continue backend development after J31A.
+- `prod` / `production` profiles can authenticate through a verified bearer principal when a `BearerTokenVerifier` bean is configured.
+- Verified bearer identity is preferred over spoofed `X-Dev-*` headers in production-like profiles.
+- Invalid bearer tokens fail closed through the existing `AUTHENTICATION_REQUIRED` error envelope and do not echo the raw token.
+- J32A is not full OIDC/OAuth. It does not implement real identity provider integration, OIDC discovery, JWKS signature validation, token introspection, SSO/session lifecycle, invite flow, global directory lifecycle, or claim-to-role sync.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -105,7 +105,11 @@ SOP result:
    - `prod` / `production` profiles fail closed instead of trusting dev identity.
    - Still no real OIDC/OAuth provider, token validation, session lifecycle, or user/team directory CRUD.
 
-8. J32A+: OIDC/OAuth integration and directory lifecycle.
+8. J32A: bearer identity adapter baseline. Completed baseline.
+   - Injected verifier maps bearer token to backend principal.
+   - Still no real OIDC discovery, JWKS validation, token introspection, session lifecycle, or directory sync.
+
+9. J33A+: real OIDC/OAuth integration and directory lifecycle.
    - OIDC/OAuth adapter and claim mapping.
    - User/team CRUD and role sync.
 
@@ -125,4 +129,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J31A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, real OIDC/OAuth integration, real production runner identity/dispatch/artifact upload, directory lifecycle, and multi-node stream fanout.
+No J32A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, real OIDC/JWKS integration, real production runner identity/dispatch/artifact upload, directory lifecycle, and multi-node stream fanout.

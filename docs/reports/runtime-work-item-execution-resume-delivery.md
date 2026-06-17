@@ -3471,6 +3471,57 @@ Evidence boundaries:
 - J31A is an identity hardening baseline only. It does not implement OIDC/OAuth, SSO, session management, invite flow, global user/team directory CRUD, external IAM integration, or production claim-to-role sync.
 - Tests use MockMvc/JUnit only. No external identity provider was called.
 
+## Phase J32A - Java Bearer Identity Adapter Baseline
+
+Status: implemented for J32A. The Java backend now has an OIDC-ready bearer identity adapter SPI that can map a verified bearer token to the existing `BackendPrincipal` contract.
+
+Scope delivered:
+
+- Added `BearerTokenVerifier` SPI.
+- Added `BearerTokenAuthenticationFilter`.
+- Wired bearer authentication into `BackendSecurityConfig` before anonymous authentication.
+- Added `BearerIdentityAdapterTest`.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J32A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=BearerIdentityAdapterTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `BearerTokenVerifier` did not exist yet.
+
+Debug evidence:
+
+- First focused GREEN attempt failed during Spring context startup with `The Filter class com.myworkflow.agent.backend.security.DevHeaderAuthenticationFilter does not have a registered order`.
+- Root cause: Spring Security filter ordering cannot use a custom filter class with no registered order as the anchor for `addFilterBefore`.
+- Fix: register both custom filters relative to the known `AnonymousAuthenticationFilter` anchor.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=BearerIdentityAdapterTest,ProductionIdentityHardeningTest,SecurityPrincipalControllerTest,IdentityControllerTest`
+  - 9 Java tests passed.
+  - Covers verified bearer principal mapping, bearer preferred over spoofed dev headers in production-like profiles, invalid bearer fail-closed behavior without token echo, J31A production fail-closed behavior, and unchanged default/local dev principal behavior.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 114 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-bearer-identity-adapter-baseline.md`
+  - No unchecked J32A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J32A tests use injected verifier fixtures only. No real OIDC provider, JWKS endpoint, token introspection endpoint, or external IAM was called.
+- J32A does not implement token signature validation, discovery, sessions, SSO, invite flow, global user/team directory CRUD, or claim-to-role sync.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.
