@@ -4260,6 +4260,51 @@ Evidence boundaries:
 - This slice uses fake `fetch` unit tests and does not call a real Java backend.
 - This slice does not wire the React UI to run creation, event polling/SSE, artifact reads, approval decisions, or real runtime execution.
 
+## Frontend Artifact API Adapter
+
+Status: implemented as the first frontend artifact registry/read API adapter slice.
+
+Scope delivered:
+
+- Added `frontend/src/features/artifacts/artifact-api.ts`.
+- Added `listRunArtifacts(fetcher, runId)` for `GET /v1/agent-runs/{runId}/artifacts`.
+- Added `readArtifact(fetcher, artifactId)` for `GET /v1/artifacts/{artifactId}`.
+- Mapped Java backend artifact list/read responses into frontend view types.
+- Reused `java-backend-api.v1` envelope unwrap and public UI safety filtering.
+- Tests assert mapped views do not expose absolute server paths, `apiKeySecretRef`, runtime `source`, or raw provider payload.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-artifact-api.test.ts`
+  - Initial RED failed because `frontend/src/features/artifacts/artifact-api.js` did not exist.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-artifact-api.test.ts`
+  - 1 test file / 2 tests passed.
+- `npm test -- tests/unit/frontend-artifact-api.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-api-client.test.ts tests/unit/frontend-public-safety.test.ts`
+  - 4 test files / 14 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 52 test files / 202 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}|ANTHROPIC_AUTH_TOKEN=tp-[A-Za-z0-9]{20,}" src tests docs backend frontend --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+
+Evidence boundaries:
+
+- This slice uses fake `fetch` unit tests and does not call a real Java backend.
+- It does not wire artifact content into the React UI, implement approval diff UI, stream artifacts, or execute a browser artifact-read smoke.
+
 ## Frontend Assistant Run Session
 
 Status: implemented as the first assistant-panel-ready runtime session workflow slice.
