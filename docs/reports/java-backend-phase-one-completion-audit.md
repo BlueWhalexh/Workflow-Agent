@@ -19,7 +19,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Area | Current evidence | Status |
 | --- | --- | --- |
 | Java platform skeleton | J1 report and backend Maven/Spring Boot skeleton | Implemented baseline |
-| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and explicit false flags for remaining production gaps | Implemented baseline |
+| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and capability flags; J39A marks token introspection baseline true while keeping remaining production gaps false | Implemented baseline |
 | Workspace / identity baseline | J2 workspace API, path guard, JDBC repository, Flyway/Testcontainers | Implemented baseline |
 | Async run/job bridge | J3A async `agent-runs`, job/attempt schema, local TS worker bridge | Implemented baseline |
 | Artifact registry | J4A artifact ref registry/list/safe read | Implemented baseline |
@@ -36,19 +36,41 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
 | Remote runner registry / lease | J30A workspace-scoped runner metadata API, heartbeat, exclusive lease, workspace audit | Implemented baseline |
 | Identity hardening | J31A disables dev header and dev principal fallback for `prod` / `production` profiles | Implemented baseline |
-| Bearer identity adapter | J32A `BearerTokenVerifier` SPI maps verified bearer token to `BackendPrincipal`; J36A adds config-backed OIDC/JWKS JWT verification; J37A adds issuer discovery and redacted auth diagnostics | Implemented baseline |
+| Bearer identity adapter | J32A `BearerTokenVerifier` SPI maps verified bearer token to `BackendPrincipal`; J36A adds config-backed OIDC/JWKS JWT verification; J37A adds issuer discovery and redacted auth diagnostics; J39A adds configurable OAuth token introspection baseline | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
-| Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, J36A JWKS verifier baseline, and J37A issuer discovery/auth diagnostics exist; no token introspection, SSO, sessions, OAuth login flow, or directory claim sync | Partially implemented baseline |
+| Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, J36A JWKS verifier baseline, J37A issuer discovery/auth diagnostics, and J39A OAuth token introspection baseline exist; no SSO, sessions, OAuth login flow, refresh tokens, directory claim sync, or real IdP smoke | Partially implemented baseline |
 | User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; no external directory sync or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J39A: `Java OAuth Token Introspection Baseline` is now implemented as a configurable bearer verifier slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-oauth-token-introspection-baseline.md`
+
+Scope that required approval:
+
+- Adds `my-workflow.backend.oauth.introspection-uri` plus optional `client-id` / `client-secret-env-name`.
+- Adds `ConfigurableOAuthIntrospectionBearerTokenVerifier` behind the existing `BearerTokenVerifier` SPI.
+- Requires introspection response `active=true` and maps configured response fields to `BackendPrincipal`.
+- Keeps OAuth introspection mutually exclusive with OIDC issuer/JWKS verification configuration.
+- Updates `GET /v1/ops/auth-config` and `GET /v1/ops/integration-contract` to expose only redacted OAuth introspection metadata/capability state.
+
+SOP result:
+
+- Backend HTTP bearer auth can now verify opaque OAuth tokens through a configured introspection endpoint.
+- Optional client authentication reads the client secret through an environment variable name; no real secret or runtime/config secret value is stored in backend config, API responses, docs, or artifacts.
+- Auth diagnostics expose mode, configured booleans, and claim/field names only; they do not expose raw introspection URI, token, secret, Authorization material, or provider payload.
+- J39A is not OAuth authorization-code login, session/cookie management, refresh tokens, external user/team directory sync, production RBAC sync, or a real IdP smoke.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J38A: `Java Backend Integration Readiness Contract` is now implemented as a backend-owned contract discovery slice for frontend/runtime integration planning.
 
@@ -67,7 +89,7 @@ SOP result:
 
 - Frontend and runtime integrators can discover the backend contract without parsing OpenAPI or dated docs first.
 - Implemented baseline capabilities such as async runs, SSE events, approvals, artifacts, provider credential metadata, and OIDC JWT bearer are marked true.
-- Incomplete capabilities such as OAuth login/session, token introspection, external directory sync, production secret manager, remote runner dispatch, and multi-node stream fanout remain false.
+- Incomplete capabilities such as OAuth login/session, external directory sync, production secret manager, remote runner dispatch, and multi-node stream fanout remain false.
 - The contract response does not expose access token, refresh token, API key, `apiKeySecretRef`, Authorization material, issuer/JWKS URI values, workspace root, provider runtime, or raw provider payload.
 - J38A is not frontend API integration, runtime E2E, production OAuth/session, production secret management, external directory sync, remote runner dispatch/artifact upload/cancellation, or multi-node fanout.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.

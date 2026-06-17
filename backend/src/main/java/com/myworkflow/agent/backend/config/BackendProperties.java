@@ -14,6 +14,7 @@ public class BackendProperties {
   private final DevPrincipal devPrincipal;
   private final AuditRetention auditRetention;
   private final Oidc oidc;
+  private final OAuthIntrospection oauthIntrospection;
 
   @Autowired
   public BackendProperties(
@@ -29,7 +30,13 @@ public class BackendProperties {
       @Value("${my-workflow.backend.oidc.audience:}") String oidcAudience,
       @Value("${my-workflow.backend.oidc.user-id-claim:sub}") String oidcUserIdClaim,
       @Value("${my-workflow.backend.oidc.team-id-claim:team_id}") String oidcTeamIdClaim,
-      @Value("${my-workflow.backend.oidc.display-name-claim:name}") String oidcDisplayNameClaim
+      @Value("${my-workflow.backend.oidc.display-name-claim:name}") String oidcDisplayNameClaim,
+      @Value("${my-workflow.backend.oauth.introspection-uri:}") String oauthIntrospectionUri,
+      @Value("${my-workflow.backend.oauth.client-id:}") String oauthClientId,
+      @Value("${my-workflow.backend.oauth.client-secret-env-name:}") String oauthClientSecretEnvName,
+      @Value("${my-workflow.backend.oauth.user-id-claim:sub}") String oauthUserIdClaim,
+      @Value("${my-workflow.backend.oauth.team-id-claim:team_id}") String oauthTeamIdClaim,
+      @Value("${my-workflow.backend.oauth.display-name-claim:name}") String oauthDisplayNameClaim
   ) {
     this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
     this.providerSecretFileRoot = blankToNull(providerSecretFileRoot)
@@ -46,6 +53,17 @@ public class BackendProperties {
         oidcTeamIdClaim,
         oidcDisplayNameClaim
     );
+    this.oauthIntrospection = new OAuthIntrospection(
+        oauthIntrospectionUri,
+        oauthClientId,
+        oauthClientSecretEnvName,
+        oauthUserIdClaim,
+        oauthTeamIdClaim,
+        oauthDisplayNameClaim
+    );
+    if (this.oauthIntrospection.enabled() && !"disabled".equals(this.oidc.mode())) {
+      throw new IllegalArgumentException("OAuth introspection and OIDC JWT verification are mutually exclusive");
+    }
   }
 
   public BackendProperties(
@@ -54,7 +72,27 @@ public class BackendProperties {
       String devTeamId,
       String devDisplayName
   ) {
-    this(dataRoot, devUserId, devTeamId, devDisplayName, "", 365, "", "", "", "", "sub", "team_id", "name");
+    this(
+        dataRoot,
+        devUserId,
+        devTeamId,
+        devDisplayName,
+        "",
+        365,
+        "",
+        "",
+        "",
+        "",
+        "sub",
+        "team_id",
+        "name",
+        "",
+        "",
+        "",
+        "sub",
+        "team_id",
+        "name"
+    );
   }
 
   public Path dataRoot() {
@@ -75,6 +113,17 @@ public class BackendProperties {
 
   public Oidc oidc() {
     return oidc;
+  }
+
+  public OAuthIntrospection oauthIntrospection() {
+    return oauthIntrospection;
+  }
+
+  public String authMode() {
+    if (oauthIntrospection.enabled()) {
+      return "oauth-introspection";
+    }
+    return oidc.mode();
   }
 
   public record DevPrincipal(
@@ -149,6 +198,40 @@ public class BackendProperties {
 
     public String validationIssuer() {
       return issuer == null ? issuerUri : issuer;
+    }
+  }
+
+  public record OAuthIntrospection(
+      String introspectionUri,
+      String clientId,
+      String clientSecretEnvName,
+      String userIdClaim,
+      String teamIdClaim,
+      String displayNameClaim
+  ) {
+    public OAuthIntrospection {
+      introspectionUri = blankToNull(introspectionUri).orElse(null);
+      clientId = blankToNull(clientId).orElse(null);
+      clientSecretEnvName = blankToNull(clientSecretEnvName).orElse(null);
+      userIdClaim = requiredClaimName(userIdClaim, "sub");
+      teamIdClaim = requiredClaimName(teamIdClaim, "team_id");
+      displayNameClaim = requiredClaimName(displayNameClaim, "name");
+      if ((clientId == null) != (clientSecretEnvName == null)) {
+        throw new IllegalArgumentException(
+            "OAuth introspection client-id and client-secret-env-name must be configured together"
+        );
+      }
+      if (clientSecretEnvName != null && !clientSecretEnvName.matches("[A-Z_][A-Z0-9_]*")) {
+        throw new IllegalArgumentException("OAuth introspection client-secret-env-name must be an env var name");
+      }
+    }
+
+    public boolean enabled() {
+      return introspectionUri != null;
+    }
+
+    public boolean clientAuthConfigured() {
+      return clientId != null;
     }
   }
 

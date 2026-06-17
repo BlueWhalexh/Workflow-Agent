@@ -30,7 +30,7 @@ public class OpsController {
 
   @GetMapping(value = "/v1/ops/auth-config", produces = MediaType.APPLICATION_JSON_VALUE)
   public ApiEnvelope<AuthConfigResponse> authConfig() {
-    return ApiEnvelope.ok(AuthConfigResponse.from(properties.oidc()));
+    return ApiEnvelope.ok(AuthConfigResponse.from(properties));
   }
 
   @GetMapping(value = "/v1/ops/integration-contract", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -50,17 +50,37 @@ public class OpsController {
       boolean issuerConfigured,
       boolean jwksUriConfigured,
       boolean audienceConfigured,
+      boolean oauthIntrospectionConfigured,
+      boolean oauthClientAuthConfigured,
       String userIdClaim,
       String teamIdClaim,
       String displayNameClaim
   ) {
-    static AuthConfigResponse from(BackendProperties.Oidc oidc) {
+    static AuthConfigResponse from(BackendProperties properties) {
+      if (properties.oauthIntrospection().enabled()) {
+        BackendProperties.OAuthIntrospection oauth = properties.oauthIntrospection();
+        return new AuthConfigResponse(
+            properties.authMode(),
+            false,
+            false,
+            false,
+            false,
+            true,
+            oauth.clientAuthConfigured(),
+            oauth.userIdClaim(),
+            oauth.teamIdClaim(),
+            oauth.displayNameClaim()
+        );
+      }
+      BackendProperties.Oidc oidc = properties.oidc();
       return new AuthConfigResponse(
-          oidc.mode(),
+          properties.authMode(),
           oidc.discoveryEnabled(),
           oidc.issuerConfigured(),
           oidc.jwksUriConfigured(),
           oidc.audienceConfigured(),
+          false,
+          false,
           oidc.userIdClaim(),
           oidc.teamIdClaim(),
           oidc.displayNameClaim()
@@ -157,7 +177,7 @@ public class OpsController {
           true,
           true,
           false,
-          false,
+          true,
           false,
           false,
           false,

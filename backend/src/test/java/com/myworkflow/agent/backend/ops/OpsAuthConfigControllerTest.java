@@ -59,6 +59,8 @@ class OpsAuthConfigControllerTest {
         .andExpect(jsonPath("$.data.issuerConfigured").value(true))
         .andExpect(jsonPath("$.data.jwksUriConfigured").value(false))
         .andExpect(jsonPath("$.data.audienceConfigured").value(true))
+        .andExpect(jsonPath("$.data.oauthIntrospectionConfigured").value(false))
+        .andExpect(jsonPath("$.data.oauthClientAuthConfigured").value(false))
         .andExpect(jsonPath("$.data.userIdClaim").value("email"))
         .andExpect(jsonPath("$.data.teamIdClaim").value("team_id"))
         .andExpect(jsonPath("$.data.displayNameClaim").value("name"))

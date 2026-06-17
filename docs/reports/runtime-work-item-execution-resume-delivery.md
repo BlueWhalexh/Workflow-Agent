@@ -3843,6 +3843,64 @@ Evidence boundaries:
 
 - J38A is a backend contract discovery baseline only. It does not implement frontend API integration, runtime real E2E, OAuth login/session flow, refresh tokens, token introspection, external directory sync, production secret manager, remote runner dispatch/artifact upload/cancellation, multi-node fanout, real provider smoke, or real IdP smoke.
 
+## Java OAuth Token Introspection Baseline
+
+Status: implemented as J39A backend security baseline.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-oauth-token-introspection-baseline.md`
+
+Scope delivered:
+
+- Added `BackendProperties.OAuthIntrospection` config for `my-workflow.backend.oauth.introspection-uri`, optional `client-id` / `client-secret-env-name`, and response field mapping.
+- Added `ConfigurableOAuthIntrospectionBearerTokenVerifier` behind the existing `BearerTokenVerifier` SPI.
+- OAuth introspection and OIDC issuer/JWKS verification config are mutually exclusive.
+- The verifier POSTs the bearer token to the configured introspection endpoint, requires `active=true`, maps configured fields to `BackendPrincipal`, rejects inactive/non-2xx/malformed responses, and supports Basic client auth through injected env lookup.
+- Updated `/v1/ops/auth-config` to report redacted OAuth introspection mode/configured booleans/field names without raw URI, token, secret, or Authorization material.
+- Updated `/v1/ops/integration-contract` to mark `tokenIntrospection=true` while keeping OAuth login/session, external directory sync, production secret manager, remote runner dispatch, and multi-node fanout false.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J39A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionBearerVerifierTest`
+  - Initial RED: test compilation failed because `BackendProperties.OAuthIntrospection` and `ConfigurableOAuthIntrospectionBearerTokenVerifier` did not exist.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsOAuthAuthConfigControllerTest,OpsIntegrationContractControllerTest`
+  - Ops RED: `tokenIntrospection` was still false and `/v1/ops/auth-config` still reported OIDC-only `disabled` mode under OAuth introspection config.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionEmptyConfigTest,OAuthIntrospectionHttpIntegrationTest`
+  - Review follow-up RED: `my-workflow.backend.oauth.introspection-uri=` still created the OAuth verifier bean and failed Spring context startup with `OAuth introspection URI must be configured`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionBearerVerifierTest,OpsAuthConfigControllerTest,OpsOAuthAuthConfigControllerTest,OpsIntegrationContractControllerTest`
+  - 11 Java tests passed.
+  - Covers active/inactive OAuth introspection mapping, custom field mapping, non-2xx rejection, display-name fallback, Basic auth from env lookup, missing env secret fail-fast, OIDC/introspection config conflict, redacted OIDC/OAuth auth diagnostics, and integration contract capability state.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionEmptyConfigTest,OAuthIntrospectionHttpIntegrationTest`
+  - 3 Java tests passed.
+  - Covers blank introspection URI as disabled, absence of the OAuth verifier bean for blank config, HTTP bearer filter integration through `/v1/me`, and inactive introspection token fail-closed behavior.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 150 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-oauth-token-introspection-baseline.md`
+  - No unchecked J39A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J39A uses local JDK `HttpServer` fixtures for OAuth introspection behavior. No real OAuth server, SSO provider, IAM directory, external IdP, or real provider was called.
+- The literal `client-secret` in unit tests is a fake fixture value used only to assert Basic auth encoding; no real secret or runtime/config secret value is committed.
+- J39A is not OAuth authorization-code login, browser session/cookie management, refresh token lifecycle, external user/team directory sync, production RBAC sync, remote runner authorization, or real IdP smoke.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

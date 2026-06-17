@@ -52,7 +52,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.capabilities.providerCredentialMetadata").value(true))
         .andExpect(jsonPath("$.data.capabilities.oidcJwtBearer").value(true))
         .andExpect(jsonPath("$.data.capabilities.oauthLoginSession").value(false))
-        .andExpect(jsonPath("$.data.capabilities.tokenIntrospection").value(false))
+        .andExpect(jsonPath("$.data.capabilities.tokenIntrospection").value(true))
         .andExpect(jsonPath("$.data.capabilities.externalDirectorySync").value(false))
         .andExpect(jsonPath("$.data.capabilities.productionSecretManager").value(false))
         .andExpect(jsonPath("$.data.capabilities.remoteRunnerDispatch").value(false))
