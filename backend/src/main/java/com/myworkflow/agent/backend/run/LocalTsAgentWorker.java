@@ -51,8 +51,18 @@ public class LocalTsAgentWorker implements AgentWorker {
   }
 
   @Override
+  public boolean supportsSecretInjection() {
+    return true;
+  }
+
+  @Override
   public AgentWorkerResponse run(AgentWorkerRequest request) {
-    Process process = startProcess();
+    return run(request, AgentWorkerSecretInjection.empty());
+  }
+
+  @Override
+  public AgentWorkerResponse run(AgentWorkerRequest request, AgentWorkerSecretInjection secretInjection) {
+    Process process = startProcess(secretInjection == null ? AgentWorkerSecretInjection.empty() : secretInjection);
     CompletableFuture<String> stdout = readAsync(process.getInputStream());
     CompletableFuture<String> stderr = readAsync(process.getErrorStream());
     try (OutputStream stdin = process.getOutputStream()) {
@@ -85,7 +95,7 @@ public class LocalTsAgentWorker implements AgentWorker {
     }
   }
 
-  private Process startProcess() {
+  private Process startProcess(AgentWorkerSecretInjection secretInjection) {
     List<String> command = List.of(
         nodeCommand,
         "--import",
@@ -93,9 +103,10 @@ public class LocalTsAgentWorker implements AgentWorker {
         "src/cli/backend-agent-worker.ts"
     );
     try {
-      return new ProcessBuilder(command)
-          .directory(repoRoot.toFile())
-          .start();
+      ProcessBuilder processBuilder = new ProcessBuilder(command)
+          .directory(repoRoot.toFile());
+      processBuilder.environment().putAll(secretInjection.environmentVariables());
+      return processBuilder.start();
     } catch (IOException exception) {
       throw new AgentWorkerException("Unable to start agent worker process", exception);
     }

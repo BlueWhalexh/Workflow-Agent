@@ -36,7 +36,8 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
-| Secret manager / non-env injection | J24D validates refs; J24E executes only `env://`; no lookup/injection path | Not implemented |
+| Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; no raw secret in worker request | Implemented baseline |
+| External secret manager / KMS | No production KMS, Keychain/file adapter, rotation, public secret registration, or remote runner distribution | Not implemented |
 | Full OIDC/OAuth | Dev header/local principal only | Not implemented |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
@@ -45,25 +46,28 @@ Complete backend phase one under the project SOP: central Java backend control p
 
 ## Latest Gate Resolution
 
-J28A: `Java Audit Signed Record Baseline` is now implemented as an approved scope expansion.
+J29A: `Java Provider Secret Injection Baseline` is now implemented as an approved scope expansion.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-audit-signed-record-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-provider-secret-injection-baseline.md`
 
 Scope that required approval:
 
-- Extends existing audit list/export public response with persisted integrity metadata.
-- Adds JDBC audit-event integrity columns through Flyway.
-- Requires repository/controller/tests/docs/report updates.
+- Adds a backend internal `ProviderSecretResolver` SPI for `secret://...` credential refs.
+- Adds out-of-band `AgentWorkerSecretInjection` so raw secret values do not enter `AgentWorkerRequest`.
+- Extends `AgentRunService` and `LocalTsAgentWorker` secret handling.
+- Requires worker contract, service, tests, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
 - User approved the scope expansion.
-- Workspace owners can read persisted audit integrity metadata through the existing audit list/export APIs.
-- Newly appended audit events persist `recordDigest`, `previousRecordDigest`, `chainDigest`, `signatureKind`, and `signatureValue`.
-- J28A is a local SHA-256 hash-chain baseline. It does not implement external KMS, private-key signatures, non-repudiation, key rotation, history backfill, retention execution, or public audit write API.
+- DB-backed credential refs can resolve `secret://...` through a backend resolver SPI when such a resolver is configured.
+- The run path passes only `apiKeyEnvName = "PROVIDER_CREDENTIAL_API_KEY"` in the worker request.
+- Raw secret values move only through `AgentWorkerSecretInjection` and local worker process environment.
+- Default workers reject non-empty secret injection unless they explicitly opt in.
+- J29A is not a production secret manager. It does not implement KMS, Keychain/file adapters, secret rotation, public secret registration, remote runner secret distribution, or real provider execution.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -86,11 +90,16 @@ SOP result:
    - Persist signature/digest metadata at repository append time.
    - Keep existing J19A digest semantics stable while adding hash-chain metadata.
 
-5. J29A: remote runner registration/lease design and baseline.
+5. J29A: provider secret injection baseline. Completed baseline.
+   - Resolve `secret://...` via backend SPI when configured.
+   - Inject raw secret only through per-run worker environment for supporting local workers.
+   - Still no external KMS, public secret registration, rotation, or remote runner distribution.
+
+6. J30A: remote runner registration/lease design and baseline.
    - Registry, heartbeat, lease lifecycle, runner authz boundaries.
    - No runner-scoped secret distribution until a dedicated secret phase.
 
-6. J30A+: identity hardening and directory lifecycle.
+7. J31A+: identity hardening and directory lifecycle.
    - OIDC/OAuth integration plan.
    - User/team CRUD and role sync.
 
@@ -110,4 +119,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J28A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, production runner platform, identity hardening, and multi-node stream fanout.
+No J29A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, production runner platform, identity hardening, and multi-node stream fanout.

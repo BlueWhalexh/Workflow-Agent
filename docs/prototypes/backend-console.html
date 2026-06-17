@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow Agent Control Plane</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2528;
+      --muted: #697176;
+      --line: #d9dedc;
+      --paper: #f5f3ed;
+      --panel: #fffdfa;
+      --panel-strong: #ece8de;
+      --green: #26745f;
+      --green-soft: #dcebe5;
+      --blue: #315f89;
+      --blue-soft: #dce8f2;
+      --amber: #9a6921;
+      --amber-soft: #f3e4c8;
+      --red: #a9443d;
+      --red-soft: #f1d8d5;
+      --graphite: #2e3335;
+      --shadow: 0 18px 40px rgba(31, 37, 40, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 1080px;
+      background:
+        linear-gradient(90deg, rgba(31, 37, 40, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(31, 37, 40, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 28px 28px;
+      color: var(--ink);
+      font-family: "Avenir Next", "Gill Sans", "Helvetica Neue", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 236px minmax(844px, 1fr);
+      min-height: 100vh;
+    }
+
+    .side {
+      background: #252b2d;
+      color: #f4f1ea;
+      padding: 20px 14px;
+      border-right: 1px solid #141819;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 26px;
+      padding: 0 6px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      background: #d8b25d;
+      color: #1f2528;
+      border: 1px solid #f2dfaa;
+      border-radius: 6px;
+      font-weight: 800;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      line-height: 1.1;
+      font-weight: 800;
+    }
+
+    .brand-subtitle {
+      color: #b8c1bd;
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav button {
+      width: 100%;
+      height: 38px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #dfe4df;
+      text-align: left;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .nav button.active {
+      background: #f4f1ea;
+      color: #1f2528;
+      font-weight: 700;
+    }
+
+    .nav button:hover:not(.active) {
+      background: #343b3e;
+    }
+
+    .side-section {
+      margin-top: 28px;
+      padding: 12px 10px;
+      border: 1px solid #454d50;
+      border-radius: 8px;
+      background: #2c3335;
+    }
+
+    .side-section h2 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      color: #b8c1bd;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .side-section p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #f4f1ea;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 18px 22px 28px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .workspace-picker {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .workspace-picker select {
+      height: 38px;
+      min-width: 320px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 0 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .button {
+      height: 38px;
+      border: 1px solid #202628;
+      border-radius: 6px;
+      background: var(--graphite);
+      color: #fffdfa;
+      padding: 0 14px;
+      cursor: pointer;
+    }
+
+    .button.secondary {
+      background: var(--panel);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(360px, 1.2fr) repeat(4, minmax(138px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .summary-lead,
+    .metric,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-lead {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.05;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+    }
+
+    .lead-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .metric {
+      padding: 14px;
+      min-height: 118px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .metric-value {
+      margin-top: 12px;
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .metric-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(580px, 1.4fr) minmax(330px, 0.8fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      height: 46px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-strong);
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .table th,
+    .table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 800;
+      background: rgba(236, 232, 222, 0.45);
+    }
+
+    .table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mono {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status.green {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .status.blue {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .status.amber {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .status.red {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .lane {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffefa;
+      padding: 11px;
+    }
+
+    .item-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
+    .path-list {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 5px;
+    }
+
+    .path-list li {
+      padding: 6px 8px;
+      border: 1px solid #e3e0d8;
+      border-radius: 6px;
+      background: #f8f6f0;
+    }
+
+    .split-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .audit-row {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+
+    .audit-row:last-child {
+      border-bottom: 0;
+    }
+
+    .audit-row strong {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <div class="brand-mark">WA</div>
+        <div>
+          <div class="brand-title">Workflow Agent</div>
+          <div class="brand-subtitle">Control Plane</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <button class="active">Workspaces</button>
+        <button>Runs</button>
+        <button>Approvals</button>
+        <button>Artifacts</button>
+        <button>Audit</button>
+        <button>Credentials</button>
+        <button>Team</button>
+      </nav>
+
+      <section class="side-section">
+        <h2>Principal</h2>
+        <p>owner@local<br>team-platform<br>WORKSPACE_OWNER</p>
+      </section>
+
+      <section class="side-section">
+        <h2>Boundary</h2>
+        <p>Public envelopes only. No provider token, no runtime-private result shape.</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="workspace-picker">
+          <select aria-label="Workspace">
+            <option>Knowledge Ops Workspace</option>
+            <option>Agent SDK Review Workspace</option>
+            <option>Runtime Evidence Lab</option>
+          </select>
+          <span class="pill"><span class="dot"></span> Local backend</span>
+        </div>
+        <span class="pill">java-backend-api.v1</span>
+        <button class="button">New run</button>
+      </header>
+
+      <section class="summary" aria-label="Workspace summary">
+        <div class="summary-lead">
+          <p class="eyebrow">Workspace</p>
+          <h1>Knowledge Ops Workspace</h1>
+          <div class="lead-meta">
+            <span class="status green">ACTIVE</span>
+            <span class="pill">branch main</span>
+            <span class="pill">retention 365d report-only</span>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Runs</div>
+          <div class="metric-value">18</div>
+          <div class="metric-note">2 active, 1 waiting approval</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Artifacts</div>
+          <div class="metric-value">42</div>
+          <div class="metric-note">public refs only</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Audit</div>
+          <div class="metric-value">v10</div>
+          <div class="metric-note">sha256-chain-v1</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Credentials</div>
+          <div class="metric-value">3</div>
+          <div class="metric-note">1 disabled</div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Run Queue</h2>
+              <button class="button secondary">Refresh</button>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 22%">Run</th>
+                  <th style="width: 14%">Status</th>
+                  <th style="width: 18%">Mode</th>
+                  <th style="width: 18%">Worker</th>
+                  <th>Last event</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="mono">run_78c7</span></td>
+                  <td><span class="status amber">Approval</span></td>
+                  <td>open-agent</td>
+                  <td>LOCAL_TS</td>
+                  <td>candidate patch requires owner decision</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">run_9f21</span></td>
+                  <td><span class="status blue">Running</span></td>
+                  <td>fixed workflow</td>
+                  <td>REMOTE</td>
+                  <td>SSE cursor 0000000042 delivered</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">run_5412</span></td>
+                  <td><span class="status green">Succeeded</span></td>
+                  <td>answer</td>
+                  <td>LOCAL_TS</td>
+                  <td>artifact registry updated</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">run_3a91</span></td>
+                  <td><span class="status red">Failed</span></td>
+                  <td>route preview</td>
+                  <td>LOCAL_TS</td>
+                  <td>credential ref disabled before execution</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Artifacts</h2>
+              <button class="button secondary">Open selected</button>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 26%">Artifact ref</th>
+                  <th style="width: 18%">Kind</th>
+                  <th>Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="mono">artifact_24f0</span></td>
+                  <td>report</td>
+                  <td>agent-backend-response.v1 mapping evidence</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">artifact_6ac3</span></td>
+                  <td>candidate patch</td>
+                  <td>target paths are proposals, not confirmed writes</td>
+                </tr>
+                <tr>
+                  <td><span class="mono">trace_1288</span></td>
+                  <td>trace</td>
+                  <td>provider call metadata redacted</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <aside class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Approval Lane</h2>
+              <span class="status amber">1 pending</span>
+            </div>
+            <div class="lane">
+              <article class="item">
+                <div class="item-title">
+                  <span>Candidate patch</span>
+                  <span class="mono">appr_931</span>
+                </div>
+                <p>Review proposed workspace targets before write execution.</p>
+                <ul class="path-list">
+                  <li><span class="mono">knowledge-base/drafts/runtime.md</span></li>
+                  <li><span class="mono">docs/reports/delivery.md</span></li>
+                </ul>
+                <div class="split-actions">
+                  <button class="button">Approve</button>
+                  <button class="button secondary">Reject</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Audit Evidence</h2>
+              <button class="button secondary">Export</button>
+            </div>
+            <div class="lane">
+              <div class="audit-row">
+                <strong>record</strong>
+                <span class="mono">sha256:f1c0...91aa</span>
+              </div>
+              <div class="audit-row">
+                <strong>previous</strong>
+                <span class="mono">sha256:a77b...0c4e</span>
+              </div>
+              <div class="audit-row">
+                <strong>chain</strong>
+                <span class="mono">sha256:9bd2...fb87</span>
+              </div>
+              <div class="audit-row">
+                <strong>signature</strong>
+                <span>sha256-chain-v1</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Credentials</h2>
+              <button class="button secondary">Add</button>
+            </div>
+            <div class="lane">
+              <article class="item">
+                <div class="item-title">
+                  <span>workspace-mimo</span>
+                  <span class="status green">Active</span>
+                </div>
+                <p>mimo-real / mimo-v2.5<br>https://token-plan-cn.xiaomimimo.com/v1</p>
+              </article>
+              <article class="item">
+                <div class="item-title">
+                  <span>legacy-smoke</span>
+                  <span class="status red">Disabled</span>
+                </div>
+                <p>Public metadata only. Secret reference withheld by backend.</p>
+              </article>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <p class="footer-note">
+        Prototype only: static data, no network calls, no provider token, no server path, no runtime-private source.
+      </p>
+    </main>
+  </div>
+</body>
+</html>

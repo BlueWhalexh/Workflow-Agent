@@ -8,6 +8,7 @@ import com.myworkflow.agent.backend.identity.PrincipalProvider;
 import com.myworkflow.agent.backend.providersecret.ProviderCredentialService;
 import com.myworkflow.agent.backend.providersecret.ProviderCredentialService.ProviderCredentialRuntimeDescriptor;
 import com.myworkflow.agent.backend.providersecret.ProviderRuntimePolicy;
+import com.myworkflow.agent.backend.providersecret.ProviderSecretResolver;
 import com.myworkflow.agent.backend.workspace.WorkspaceRecord;
 import com.myworkflow.agent.backend.workspace.WorkspaceRole;
 import com.myworkflow.agent.backend.workspace.WorkspaceService;
@@ -25,6 +26,8 @@ public class AgentRunService {
 
   private static final String CREDENTIAL_RUNTIME_REF_PREFIX = "credential.";
   private static final String ENV_SECRET_REF_PREFIX = "env://";
+  private static final String SECRET_REF_PREFIX = "secret://";
+  private static final String PROVIDER_CREDENTIAL_API_KEY_ENV_NAME = "PROVIDER_CREDENTIAL_API_KEY";
 
   private final WorkspaceService workspaceService;
   private final PrincipalProvider principalProvider;
@@ -35,6 +38,7 @@ public class AgentRunService {
   private final AuditService auditService;
   private final ProviderRuntimePolicy providerRuntimePolicy;
   private final ObjectProvider<ProviderCredentialService> providerCredentialServiceProvider;
+  private final ObjectProvider<ProviderSecretResolver> providerSecretResolverProvider;
   private final AgentWorker worker;
   private final ExecutorService executorService;
 
@@ -48,6 +52,7 @@ public class AgentRunService {
       AuditService auditService,
       ProviderRuntimePolicy providerRuntimePolicy,
       ObjectProvider<ProviderCredentialService> providerCredentialServiceProvider,
+      ObjectProvider<ProviderSecretResolver> providerSecretResolverProvider,
       AgentWorker worker,
       ExecutorService executorService
   ) {
@@ -60,6 +65,7 @@ public class AgentRunService {
     this.auditService = auditService;
     this.providerRuntimePolicy = providerRuntimePolicy;
     this.providerCredentialServiceProvider = providerCredentialServiceProvider;
+    this.providerSecretResolverProvider = providerSecretResolverProvider;
     this.worker = worker;
     this.executorService = executorService;
   }
@@ -90,12 +96,15 @@ public class AgentRunService {
         now
     );
     AgentJobRecord job = AgentJobRecord.queued(jobId, runId, now, 3);
-    Map<String, Object> providerRuntime = resolveProviderRuntime(
+    ResolvedProviderRuntime providerRuntime = resolveProviderRuntime(
         workspace.workspaceId(),
         normalizedMode,
         execute,
         providerRuntimeRef
     );
+    if (!providerRuntime.secretInjection().isEmpty() && !worker.supportsSecretInjection()) {
+      throw new IllegalArgumentException("Provider credential secret refs require a worker that supports secret injection");
+    }
     repository.create(run, job);
     auditService.record(run.workspaceId(), run.runId(), "AGENT_RUN_REQUESTED", "Agent run requested");
     appendEvent(run.runId(), "RUN_QUEUED", AgentRunStatus.QUEUED, "Run queued", now);
@@ -126,7 +135,7 @@ public class AgentRunService {
       AgentRunRecord run,
       AgentJobRecord job,
       Path workspaceRoot,
-      Map<String, Object> providerRuntime
+      ResolvedProviderRuntime providerRuntime
   ) {
     String workerKind = worker.workerKind();
     for (int attempt = 1; attempt <= job.maxAttempts(); attempt++) {
@@ -152,8 +161,8 @@ public class AgentRunService {
             run.mode(),
             run.execute(),
             run.autoApprove(),
-            providerRuntime
-        ));
+            providerRuntime.providerRuntime()
+        ), providerRuntime.secretInjection());
         validateResponse(run, response);
         if (isCanceled(run.runId())) {
           return;
@@ -230,7 +239,7 @@ public class AgentRunService {
     }
   }
 
-  private Map<String, Object> resolveProviderRuntime(
+  private ResolvedProviderRuntime resolveProviderRuntime(
       String workspaceId,
       String mode,
       boolean execute,
@@ -240,10 +249,13 @@ public class AgentRunService {
     if (normalizedRef != null && normalizedRef.startsWith(CREDENTIAL_RUNTIME_REF_PREFIX)) {
       return resolveCredentialProviderRuntime(workspaceId, normalizedRef);
     }
-    return providerRuntimePolicy.resolve(mode, execute, providerRuntimeRef);
+    return new ResolvedProviderRuntime(
+        providerRuntimePolicy.resolve(mode, execute, providerRuntimeRef),
+        AgentWorkerSecretInjection.empty()
+    );
   }
 
-  private Map<String, Object> resolveCredentialProviderRuntime(String workspaceId, String providerRuntimeRef) {
+  private ResolvedProviderRuntime resolveCredentialProviderRuntime(String workspaceId, String providerRuntimeRef) {
     String credentialRef = providerRuntimeRef.substring(CREDENTIAL_RUNTIME_REF_PREFIX.length());
     if (credentialRef.isBlank()) {
       throw new IllegalArgumentException("Provider credential reference is required");
@@ -258,29 +270,45 @@ public class AgentRunService {
     return runtimeFromCredentialDescriptor(descriptor);
   }
 
-  private static Map<String, Object> runtimeFromCredentialDescriptor(
+  private ResolvedProviderRuntime runtimeFromCredentialDescriptor(
       ProviderCredentialRuntimeDescriptor descriptor
   ) {
     Map<String, Object> runtime = new LinkedHashMap<>();
     runtime.put("provider", descriptor.provider());
     putString(runtime, "model", descriptor.model());
     putString(runtime, "baseUrl", descriptor.baseUrl());
-    runtime.put("apiKeyEnvName", apiKeyEnvNameFromSecretRef(descriptor.apiKeySecretRef()));
+    ResolvedApiKeySecret apiKeySecret = resolveApiKeySecretRef(descriptor.apiKeySecretRef());
+    runtime.put("apiKeyEnvName", apiKeySecret.envName());
     runtime.put("timeoutMs", 30_000);
-    return Map.copyOf(runtime);
+    return new ResolvedProviderRuntime(Map.copyOf(runtime), apiKeySecret.secretInjection());
   }
 
-  private static String apiKeyEnvNameFromSecretRef(String secretRef) {
-    if (secretRef == null || !secretRef.startsWith(ENV_SECRET_REF_PREFIX)) {
+  private ResolvedApiKeySecret resolveApiKeySecretRef(String secretRef) {
+    if (secretRef == null) {
       throw new IllegalArgumentException(
-          "Provider credential references require env:// secret refs until secret manager wiring exists"
+          "Provider credential secret ref is required"
       );
     }
-    String envName = secretRef.substring(ENV_SECRET_REF_PREFIX.length());
-    if (envName.isBlank()) {
-      throw new IllegalArgumentException("Provider credential env secret ref is required");
+    if (secretRef.startsWith(ENV_SECRET_REF_PREFIX)) {
+      String envName = secretRef.substring(ENV_SECRET_REF_PREFIX.length());
+      if (envName.isBlank()) {
+        throw new IllegalArgumentException("Provider credential env secret ref is required");
+      }
+      return new ResolvedApiKeySecret(envName, AgentWorkerSecretInjection.empty());
     }
-    return envName;
+    if (secretRef.startsWith(SECRET_REF_PREFIX)) {
+      ProviderSecretResolver providerSecretResolver = providerSecretResolverProvider.getIfAvailable();
+      if (providerSecretResolver == null) {
+        throw new IllegalArgumentException("Provider credential secret refs require a backend secret resolver");
+      }
+      String secretValue = providerSecretResolver.resolveSecretValue(secretRef)
+          .orElseThrow(() -> new IllegalArgumentException("Provider credential secret ref could not be resolved"));
+      return new ResolvedApiKeySecret(
+          PROVIDER_CREDENTIAL_API_KEY_ENV_NAME,
+          new AgentWorkerSecretInjection(Map.of(PROVIDER_CREDENTIAL_API_KEY_ENV_NAME, secretValue))
+      );
+    }
+    throw new IllegalArgumentException("Unsupported provider credential secret ref scheme");
   }
 
   private static void putString(Map<String, Object> runtime, String key, String value) {
@@ -372,5 +400,17 @@ public class AgentRunService {
       return null;
     }
     return providerRuntimeRef.trim();
+  }
+
+  private record ResolvedProviderRuntime(
+      Map<String, Object> providerRuntime,
+      AgentWorkerSecretInjection secretInjection
+  ) {
+  }
+
+  private record ResolvedApiKeySecret(
+      String envName,
+      AgentWorkerSecretInjection secretInjection
+  ) {
   }
 }

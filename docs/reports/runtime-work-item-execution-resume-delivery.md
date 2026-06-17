@@ -3317,6 +3317,84 @@ Evidence boundaries:
 - J28A tests use JUnit/MockMvc, in-memory repositories, and MySQL Testcontainers. No real external provider call was executed.
 - `signatureKind="sha256-chain-v1"` and `signatureValue=chainDigest` are local integrity metadata. J28A does not implement external KMS, private-key signatures, non-repudiation, key rotation, historical row backfill, multi-node chain locking, retention execution, destructive purge, or public audit write API.
 
+## Phase J29A - Java Provider Secret Injection Baseline
+
+Status: implemented for J29A. The Java backend now supports a narrow backend-internal resolver SPI for DB-backed `secret://...` provider credential refs and passes resolved secret values only through out-of-band per-run worker environment injection.
+
+Scope delivered:
+
+- Added `ProviderSecretResolver` SPI for backend-owned `secret://...` lookup.
+- Added `AgentWorkerSecretInjection` as a separate Java-side carrier for per-run environment variables.
+- Extended `AgentWorker` with explicit `supportsSecretInjection()` and a secret-injection overload that fails closed by default.
+- Updated `AgentRunService` to turn resolved `secret://...` refs into `apiKeyEnvName = "PROVIDER_CREDENTIAL_API_KEY"` plus out-of-band secret injection.
+- Updated `LocalTsAgentWorker` to inject secrets into the child process environment while continuing to serialize only `AgentWorkerRequest` JSON to stdin.
+- Updated provider credential run tests to prove the worker request/provider runtime map does not contain raw secret values or `apiKeySecretRef`.
+- Updated Java backend platform spec, phase-one audit, delivery report, and J29A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=ProviderCredentialRunControllerTest,LocalTsAgentWorkerTest test`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `ProviderSecretResolver`, `AgentWorkerSecretInjection`, and worker secret injection overload did not exist yet.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=ProviderCredentialRunControllerTest test`
+  - Secondary RED: 1 test failed as expected after adding a `toString()` redaction assertion.
+  - Expected failure: Java record default `toString()` printed the fake secret value.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=ProviderCredentialRunControllerTest,LocalTsAgentWorkerTest test`
+  - 5 Java tests passed.
+  - Covers `secret://` resolver success, worker request redaction, `AgentWorkerSecretInjection.toString()` redaction, provider runtime metadata shape, local worker env injection, and request JSON no-secret boundary.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 104 Java tests passed.
+- `npm test`
+  - 44 TypeScript test files passed, 178 tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" ...`
+  - No trailing whitespace or conflict marker matches in touched backend/docs/prototype files.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-provider-secret-injection-baseline.md`
+  - No unchecked J29A plan tasks remain.
+
+Evidence boundaries:
+
+- J29A tests use MockMvc, a test resolver, a capturing fake worker, a fake local worker script, and MySQL Testcontainers. No real external provider call was executed.
+- `RESOLVED_SECRET_VALUE` and `test-local-worker-secret` in tests are fake strings, not real provider tokens.
+- J29A is a local backend/worker secret injection baseline. It does not implement production KMS, Keychain/file adapter, secret rotation, public secret registration API, remote runner secret distribution, or real provider execution.
+
+## Frontend Control Plane Static Prototype
+
+Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.
+
+Scope delivered:
+
+- Added `docs/architecture/frontend-control-plane-design.md`.
+- Added `docs/prototypes/backend-console.html`.
+- Prototype covers workspace overview, run queue, approvals, artifacts, audit evidence, and provider credential metadata.
+- Prototype uses static sample data only and does not call backend APIs, store provider secrets, or parse runtime-private worker fields.
+
+Verification:
+
+- `git diff --check`
+  - Passed.
+- Static conflict/trailing-whitespace scan over docs/prototype files
+  - No matches.
+
+Evidence boundaries:
+
+- This is not production frontend implementation and not an E2E browser/API test.
+- No dev server is required; the HTML file can be opened directly for visual review.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

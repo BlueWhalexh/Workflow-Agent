@@ -10,9 +10,11 @@ import com.jayway.jsonpath.JsonPath;
 import com.myworkflow.agent.backend.BackendApplication;
 import com.myworkflow.agent.backend.providersecret.ProviderCredentialRepository;
 import com.myworkflow.agent.backend.providersecret.ProviderCredentialRepository.ProviderCredentialMetadata;
+import com.myworkflow.agent.backend.providersecret.ProviderSecretResolver;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class ProviderCredentialRunControllerTest {
 
   private static final CapturingAgentWorker WORKER = new CapturingAgentWorker();
+  private static final String SECRET_REF = "secret://team-provider-credential-run/provider/mimo";
+  private static final String RESOLVED_SECRET_VALUE = "test-provider-secret-not-real";
 
   @Container
   private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.0")
@@ -118,8 +122,8 @@ class ProviderCredentialRunControllerTest {
   }
 
   @Test
-  void runRequestRejectsCredentialRefsThatRequireSecretManagerResolution() throws Exception {
-    String workspaceId = createWorkspace("Credential Ref Rejected Workspace");
+  void runRequestInjectsResolvedSecretRefsWithoutPuttingSecretInWorkerRequest() throws Exception {
+    String workspaceId = createWorkspace("Credential Ref Injected Workspace");
     credentialRepository.save(new ProviderCredentialMetadata(
         "credential-secret-mimo",
         "secret-mimo",
@@ -128,26 +132,40 @@ class ProviderCredentialRunControllerTest {
         "mimo-real",
         "mimo-v2.5",
         "https://token-plan-cn.xiaomimimo.com/v1",
-        "secret://team-provider-credential-run/provider/mimo",
+        SECRET_REF,
         "ACTIVE"
     ));
 
-    MvcResult result = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
+    MvcResult createRunResult = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "userMessage": "不要在没有 secret manager 时执行",
+                  "userMessage": "用后端 secret ref 总结当前知识库",
                   "mode": "llm-open-agent",
                   "providerRuntimeRef": "credential.secret-mimo"
                 }
                 """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(status().isOk())
         .andReturn();
 
-    assertThat(result.getResponse().getContentAsString())
-        .doesNotContain("secret://team-provider-credential-run/provider/mimo");
-    assertThat(WORKER.lastRequest()).isNull();
+    String runId = JsonPath.read(createRunResult.getResponse().getContentAsString(), "$.data.runId");
+    pollRun(runId, "SUCCEEDED");
+    Map<String, Object> providerRuntime = WORKER.lastProviderRuntime();
+    assertThat(providerRuntime)
+        .containsEntry("provider", "mimo-real")
+        .containsEntry("apiKeyEnvName", "PROVIDER_CREDENTIAL_API_KEY")
+        .containsEntry("model", "mimo-v2.5")
+        .containsEntry("baseUrl", "https://token-plan-cn.xiaomimimo.com/v1")
+        .containsEntry("timeoutMs", 30_000);
+    assertThat(providerRuntime)
+        .doesNotContainKeys("apiKey", "token", "authorization", "Authorization", "apiKeySecretRef");
+    assertThat(providerRuntime.toString()).doesNotContain(SECRET_REF, RESOLVED_SECRET_VALUE);
+    assertThat(WORKER.lastRequest().toString()).doesNotContain(SECRET_REF, RESOLVED_SECRET_VALUE);
+    assertThat(WORKER.lastSecretInjection().environmentVariables())
+        .containsEntry("PROVIDER_CREDENTIAL_API_KEY", RESOLVED_SECRET_VALUE);
+    assertThat(WORKER.lastSecretInjection().toString())
+        .contains("PROVIDER_CREDENTIAL_API_KEY")
+        .doesNotContain(RESOLVED_SECRET_VALUE);
   }
 
   @Test
@@ -222,14 +240,24 @@ class ProviderCredentialRunControllerTest {
     AgentWorker agentWorker() {
       return WORKER;
     }
+
+    @Bean
+    ProviderSecretResolver providerSecretResolver() {
+      return (secretRef) -> SECRET_REF.equals(secretRef)
+          ? Optional.of(RESOLVED_SECRET_VALUE)
+          : Optional.empty();
+    }
   }
 
   private static final class CapturingAgentWorker implements AgentWorker {
 
     private final AtomicReference<AgentWorkerRequest> lastRequest = new AtomicReference<>();
+    private final AtomicReference<AgentWorkerSecretInjection> lastSecretInjection =
+        new AtomicReference<>(AgentWorkerSecretInjection.empty());
 
     void reset() {
       lastRequest.set(null);
+      lastSecretInjection.set(AgentWorkerSecretInjection.empty());
     }
 
     AgentWorkerRequest lastRequest() {
@@ -240,9 +268,24 @@ class ProviderCredentialRunControllerTest {
       return lastRequest.get().providerRuntime();
     }
 
+    AgentWorkerSecretInjection lastSecretInjection() {
+      return lastSecretInjection.get();
+    }
+
+    @Override
+    public boolean supportsSecretInjection() {
+      return true;
+    }
+
     @Override
     public AgentWorkerResponse run(AgentWorkerRequest request) {
+      return run(request, AgentWorkerSecretInjection.empty());
+    }
+
+    @Override
+    public AgentWorkerResponse run(AgentWorkerRequest request, AgentWorkerSecretInjection secretInjection) {
       lastRequest.set(request);
+      lastSecretInjection.set(secretInjection);
       return new AgentWorkerResponse(
           "agent-backend-response.v1",
           request.runId(),
