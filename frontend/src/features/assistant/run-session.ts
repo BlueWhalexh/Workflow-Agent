@@ -35,6 +35,11 @@ export type AssistantRunSessionView = {
 
 const DEFAULT_MAX_POLLS = 20;
 const DEFAULT_POLL_DELAY_MS = 250;
+const WRITE_INTENT_PATTERN = /落库|写入|保存|发布|导入|publish|persist|write|import/i;
+
+export function modeForAssistantMessage(userMessage: string): string {
+  return WRITE_INTENT_PATTERN.test(userMessage) ? "llm-open-agent" : "deterministic-open-agent";
+}
 
 export async function runAssistantTask(
   fetcher: ApiFetch,

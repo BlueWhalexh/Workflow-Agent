@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import type { ApprovalDecisionView } from "../features/approvals/approval-api";
+import { decideLatestRunApproval, NoPendingApprovalError } from "../features/approvals/approval-flow";
 import { listRunArtifacts, readArtifact } from "../features/artifacts/artifact-api";
-import { runAssistantTask } from "../features/assistant/run-session";
+import { modeForAssistantMessage, runAssistantTask } from "../features/assistant/run-session";
 import { KnowledgeWorkbench } from "../features/workbench/KnowledgeWorkbench";
 import {
   activeWorkspaceIdFromWorkbench,
+  applyApprovalDecisionToWorkbench,
   applyArtifactContentToWorkbench,
   applyAssistantRunSessionToWorkbench,
   loadWorkbenchBootstrapView,
@@ -19,6 +22,7 @@ export function App() {
     data: workbenchFixture,
   });
   const [assistantSubmitting, setAssistantSubmitting] = useState(false);
+  const [assistantApprovalDeciding, setAssistantApprovalDeciding] = useState(false);
   const [assistantArtifactReading, setAssistantArtifactReading] = useState(false);
 
   useEffect(() => {
@@ -53,7 +57,7 @@ export function App() {
       const session = await runAssistantTask(window.fetch.bind(window), {
         workspaceId,
         userMessage,
-        mode: "deterministic-open-agent",
+        mode: modeForAssistantMessage(userMessage),
       });
       setBootstrap((current) => ({
         ...current,
@@ -123,12 +127,52 @@ export function App() {
     }
   }
 
+  async function handleApprovalDecision(decision: ApprovalDecisionView) {
+    const runId = bootstrap.data.assistant.run.id;
+    if (bootstrap.status !== "connected" || !runId) {
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text: "后端未连接或当前没有可审批的运行。",
+        }),
+      }));
+      return;
+    }
+
+    setAssistantApprovalDeciding(true);
+    try {
+      const approval = await decideLatestRunApproval(window.fetch.bind(window), runId, decision);
+      setBootstrap((current) => ({
+        ...current,
+        data: applyApprovalDecisionToWorkbench(current.data, approval),
+      }));
+    } catch (error) {
+      const text = error instanceof NoPendingApprovalError
+        ? "当前运行没有待处理审批，未提交审批决策。"
+        : "提交审批决策失败，请稍后重试或检查后端连接。";
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text,
+        }),
+      }));
+    } finally {
+      setAssistantApprovalDeciding(false);
+    }
+  }
+
   return (
     <KnowledgeWorkbench
       backendStatusLabel={bootstrap.statusLabel}
       data={bootstrap.data}
+      assistantApprovalDeciding={assistantApprovalDeciding}
       assistantArtifactReading={assistantArtifactReading}
       assistantSubmitting={assistantSubmitting}
+      onAssistantDecideApproval={handleApprovalDecision}
       onAssistantReadArtifact={handleReadArtifact}
       onAssistantSubmit={handleAssistantSubmit}
     />

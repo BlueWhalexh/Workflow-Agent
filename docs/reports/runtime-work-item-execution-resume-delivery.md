@@ -4598,6 +4598,89 @@ Evidence boundaries:
 - It is not production remote runner dispatch/fanout E2E.
 - It does not implement approval mutation, artifact diff visualization, SSE/EventSource UI consumption, OAuth login/session lifecycle, or production secret manager behavior.
 
+## Frontend Approval Decision Browser Runtime Smoke
+
+Status: implemented and verified as a real local browser/backend/runtime approval-decision smoke.
+
+Scope delivered:
+
+- Added a thin frontend approval API adapter for `GET/POST /v1/agent-runs/{runId}/approvals`.
+- Added a small approval decision flow that lists current run approvals, selects the pending approval, and posts `APPROVED` or `REJECTED`.
+- Wired the assistant panel `批准` / `拒绝` buttons to the approval decision flow.
+- Added workbench mapping for approval decisions that displays `审批已批准` / `审批已拒绝`, `approvalStatus`, and `decision`.
+- Preserved the existing boundary that approval decisions update approval metadata only; they do not mark candidate patches as written or publish fixed workflow output.
+- Added `modeForAssistantMessage` so ordinary prompts keep `deterministic-open-agent`, while write-intent prompts such as `落库` / `写入` / `发布` route to `llm-open-agent` and can produce candidate-patch approvals through the backend's local fake provider runtime.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-approval-api.test.ts`
+  - Failed because `frontend/src/features/approvals/approval-api.ts` did not exist.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Failed because `applyApprovalDecisionToWorkbench` was not exported/implemented.
+- `npm test -- tests/unit/frontend-approval-flow.test.ts`
+  - Failed because `frontend/src/features/approvals/approval-flow.ts` did not exist.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - Failed because `modeForAssistantMessage` was not exported/implemented.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-approval-api.test.ts`
+  - 2 tests passed.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 6 tests passed.
+- `npm test -- tests/unit/frontend-approval-flow.test.ts`
+  - 2 tests passed.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - 4 tests passed.
+- `npm test -- tests/unit/frontend-approval-api.test.ts tests/unit/frontend-approval-flow.test.ts tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - 4 test files / 14 tests passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+
+Real local browser/backend/runtime smoke:
+
+- Java backend ran on `http://127.0.0.1:18080`.
+- Vite frontend ran on `http://127.0.0.1:5173` with backend proxy.
+- Created workspace `ws_352c2ef3dd0345798e762ebb54c70c18` through the real Java HTTP API.
+- Browser loaded the React workbench and rendered `Approval Decision Browser Smoke` with `后端已连接`.
+- Browser submitted `准备候选落库，补充当前知识页的审批边界` through the assistant composer.
+- UI reached `Run 正在等待审批` for `run_32792d384178435a8eff101130d77e3f`, displayed `Worker response recorded`, artifact ref `.agent-runs/open-agent/run_32792d384178435a8eff101130d77e3f.json`, target `knowledge-base/drafts/run_32792d384178435a8eff101130d77e3f.md`, and `wroteWorkspace: false`.
+- Browser clicked `批准`.
+- UI displayed `审批已批准`, `approvalStatus: DECIDED`, `decision: APPROVED`, and retained `wroteWorkspace: false`.
+- Browser-visible text did not contain `apiKeySecretRef`, `secret://`, `rawProviderPayload`, `ANTHROPIC_AUTH_TOKEN`, `MIMO_API_KEY`, or `tp-*` token-shaped values.
+- Browser console error log was empty.
+
+Direct backend evidence:
+
+- Vite-proxied `GET /health`
+  - Returned `java-backend-api.v1` with `status: ok`.
+- `GET /v1/agent-runs/run_32792d384178435a8eff101130d77e3f`
+  - Returned `WAITING_APPROVAL`, `outputKind: candidate-patch`, `requiresApproval: true`, and `wroteWorkspace: false`.
+- `GET /v1/agent-runs/run_32792d384178435a8eff101130d77e3f/approvals`
+  - Returned one approval `apr_b426989322664e5da511772b476c4f27` with `status: DECIDED`, `decision: APPROVED`, `requestedByUserId: dev-user`, and `decidedByUserId: dev-user`.
+- `GET /v1/agent-runs/run_32792d384178435a8eff101130d77e3f/events`
+  - Returned `RUN_QUEUED -> RUNNING -> COMPLETED` with final event status `WAITING_APPROVAL`.
+
+Full verification:
+
+- `npm test`
+  - 54 test files / 209 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 162 Java backend tests passed; Maven reported `BUILD SUCCESS`.
+
+Evidence boundaries:
+
+- This is a real local browser + Java backend + local TypeScript worker smoke.
+- The candidate approval run used the backend's local fake provider runtime, not a real external provider call.
+- Approval mutation is metadata-only in the current backend: it records `DECIDED/APPROVED` but does not execute or publish the candidate patch.
+- This does not prove production remote runner dispatch/fanout, production secret manager lookup, OAuth session lifecycle, artifact upload from a remote runner, or real external provider E2E.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

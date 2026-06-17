@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { runAssistantTask } from "../../frontend/src/features/assistant/run-session.js";
+import { modeForAssistantMessage, runAssistantTask } from "../../frontend/src/features/assistant/run-session.js";
 
 describe("frontend assistant run session", () => {
+  test("modeForAssistantMessage routes write-intent prompts to llm open-agent candidate approval", () => {
+    expect(modeForAssistantMessage("准备候选落库")).toBe("llm-open-agent");
+    expect(modeForAssistantMessage("请写入知识库草稿")).toBe("llm-open-agent");
+    expect(modeForAssistantMessage("总结当前知识库")).toBe("deterministic-open-agent");
+  });
+
   test("runAssistantTask creates a run, polls until approval pause, and maps a safe session view", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     let pollCount = 0;

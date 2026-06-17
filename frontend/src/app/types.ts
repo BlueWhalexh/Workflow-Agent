@@ -72,6 +72,9 @@ export type AssistantViewModel = {
     artifact: string;
     target: string;
     wroteWorkspace: boolean;
+    approvalId?: string;
+    status?: string;
+    decision?: "APPROVED" | "REJECTED" | null;
     artifactPreview?: {
       title: string;
       contentType: string;

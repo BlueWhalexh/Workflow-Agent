@@ -1,18 +1,23 @@
 import type { FormEvent } from "react";
 import type { AssistantViewModel } from "../../app/types";
+import type { ApprovalDecisionView } from "../approvals/approval-api";
 
 type AssistantPanelProps = {
   assistant: AssistantViewModel;
+  isDecidingApproval?: boolean;
   isReadingArtifact?: boolean;
   isSubmitting?: boolean;
+  onDecideApproval?: (decision: ApprovalDecisionView) => void | Promise<void>;
   onReadArtifact?: () => void | Promise<void>;
   onSubmit?: (userMessage: string) => void | Promise<void>;
 };
 
 export function AssistantPanel({
   assistant,
+  isDecidingApproval = false,
   isReadingArtifact = false,
   isSubmitting = false,
+  onDecideApproval,
   onReadArtifact,
   onSubmit,
 }: AssistantPanelProps) {
@@ -80,6 +85,8 @@ export function AssistantPanel({
             <span>artifact: {assistant.approval.artifact}</span>
             <span>target: {assistant.approval.target}</span>
             <span>wroteWorkspace: {String(assistant.approval.wroteWorkspace)}</span>
+            {assistant.approval.status ? <span>approvalStatus: {assistant.approval.status}</span> : null}
+            {assistant.approval.decision ? <span>decision: {assistant.approval.decision}</span> : null}
           </div>
           {assistant.approval.artifactPreview ? (
             <div className="artifact-preview">
@@ -90,10 +97,20 @@ export function AssistantPanel({
             </div>
           ) : null}
           <div className="approval-actions">
-            <button className="mini-button primary" type="button">
-              批准
+            <button
+              className="mini-button primary"
+              type="button"
+              disabled={isDecidingApproval}
+              onClick={() => void onDecideApproval?.("APPROVED")}
+            >
+              {isDecidingApproval ? "提交中" : "批准"}
             </button>
-            <button className="mini-button danger" type="button">
+            <button
+              className="mini-button danger"
+              type="button"
+              disabled={isDecidingApproval}
+              onClick={() => void onDecideApproval?.("REJECTED")}
+            >
               拒绝
             </button>
             <button className="mini-button" type="button" disabled={isReadingArtifact} onClick={() => void onReadArtifact?.()}>

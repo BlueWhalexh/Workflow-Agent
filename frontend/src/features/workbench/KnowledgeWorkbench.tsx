@@ -1,4 +1,5 @@
 import type { WorkbenchViewModel } from "../../app/types";
+import type { ApprovalDecisionView } from "../approvals/approval-api";
 import { ArticleView } from "./ArticleView";
 import { AssistantPanel } from "./AssistantPanel";
 import { Sidebar } from "./Sidebar";
@@ -6,8 +7,10 @@ import { Sidebar } from "./Sidebar";
 type KnowledgeWorkbenchProps = {
   backendStatusLabel: string;
   data: WorkbenchViewModel;
+  assistantApprovalDeciding?: boolean;
   assistantArtifactReading?: boolean;
   assistantSubmitting?: boolean;
+  onAssistantDecideApproval?: (decision: ApprovalDecisionView) => void | Promise<void>;
   onAssistantReadArtifact?: () => void | Promise<void>;
   onAssistantSubmit?: (userMessage: string) => void | Promise<void>;
 };
@@ -15,8 +18,10 @@ type KnowledgeWorkbenchProps = {
 export function KnowledgeWorkbench({
   backendStatusLabel,
   data,
+  assistantApprovalDeciding,
   assistantArtifactReading,
   assistantSubmitting,
+  onAssistantDecideApproval,
   onAssistantReadArtifact,
   onAssistantSubmit,
 }: KnowledgeWorkbenchProps) {
@@ -53,8 +58,10 @@ export function KnowledgeWorkbench({
       </main>
       <AssistantPanel
         assistant={data.assistant}
+        isDecidingApproval={assistantApprovalDeciding}
         isReadingArtifact={assistantArtifactReading}
         isSubmitting={assistantSubmitting}
+        onDecideApproval={onAssistantDecideApproval}
         onReadArtifact={onAssistantReadArtifact}
         onSubmit={onAssistantSubmit}
       />

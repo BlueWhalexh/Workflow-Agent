@@ -1,4 +1,5 @@
 import type { ArtifactContentView } from "../features/artifacts/artifact-api.js";
+import type { RunApprovalView } from "../features/approvals/approval-api.js";
 import type { AssistantRunSessionView } from "../features/assistant/run-session.js";
 import { loadWorkspaceBootstrap, type WorkspaceSummaryView } from "../features/workspace/workspace-api.js";
 import type { ApiFetch } from "../shared/api/envelope.js";
@@ -126,4 +127,55 @@ export function applyArtifactContentToWorkbench(
       },
     },
   });
+}
+
+export function applyApprovalDecisionToWorkbench(
+  data: WorkbenchViewModel,
+  approval: RunApprovalView,
+): WorkbenchViewModel {
+  const publicApproval = sanitizeForPublicUi(approval) as RunApprovalView;
+  const decisionSummary = summaryForApprovalDecision(publicApproval.decision);
+
+  return publicWorkbench({
+    ...data,
+    assistant: {
+      ...data.assistant,
+      messages: [
+        ...data.assistant.messages,
+        { author: "安全检查", kind: "ai", text: decisionSummary },
+      ],
+      approval: {
+        ...data.assistant.approval,
+        title: titleForApprovalDecision(publicApproval.decision),
+        summary: decisionSummary,
+        artifact: publicApproval.artifactRef ?? data.assistant.approval.artifact,
+        target: publicApproval.targetWorkspacePaths[0] ?? data.assistant.approval.target,
+        approvalId: publicApproval.approvalId,
+        status: publicApproval.status,
+        decision: publicApproval.decision,
+      },
+    },
+  });
+}
+
+function titleForApprovalDecision(decision: RunApprovalView["decision"]): string {
+  switch (decision) {
+    case "APPROVED":
+      return "审批已批准";
+    case "REJECTED":
+      return "审批已拒绝";
+    default:
+      return "审批状态已更新";
+  }
+}
+
+function summaryForApprovalDecision(decision: RunApprovalView["decision"]): string {
+  switch (decision) {
+    case "APPROVED":
+      return "审批已批准；这是审批元数据更新，尚未执行候选补丁写入。";
+    case "REJECTED":
+      return "审批已拒绝；这是审批元数据更新，未执行候选补丁写入。";
+    default:
+      return "审批状态已更新；这是审批元数据更新，未执行候选补丁写入。";
+  }
 }

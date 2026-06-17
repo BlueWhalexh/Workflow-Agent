@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vitest";
 import {
+  applyApprovalDecisionToWorkbench,
   activeWorkspaceIdFromWorkbench,
   applyArtifactContentToWorkbench,
   applyAssistantRunSessionToWorkbench,
   loadWorkbenchBootstrapView,
 } from "../../frontend/src/app/bootstrap.js";
 import { workbenchFixture } from "../../frontend/src/app/fixtures.js";
+import type { RunApprovalView } from "../../frontend/src/features/approvals/approval-api.js";
 import type { ArtifactContentView } from "../../frontend/src/features/artifacts/artifact-api.js";
 import type { AssistantRunSessionView } from "../../frontend/src/features/assistant/run-session.js";
 
@@ -199,6 +201,60 @@ describe("frontend workbench bootstrap", () => {
     });
     expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(nextWorkbench)).not.toContain("rawProviderPayload");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("/Users/didi/private/workspace");
+  });
+
+  test("applyApprovalDecisionToWorkbench maps approval decision as metadata without implying workspace writes", () => {
+    const approval: RunApprovalView & {
+      rawProviderPayload: string;
+      serverStorageRef: string;
+    } = {
+      approvalId: "appr_1",
+      runId: "run_live",
+      status: "DECIDED",
+      decision: "APPROVED",
+      artifactRef: ".agent-runs/run_live/candidate.patch",
+      targetWorkspacePaths: ["knowledge-base/topics/live.md"],
+      requestedByUserId: "user_dev",
+      decidedByUserId: "user_dev",
+      createdAt: "2026-06-17T10:12:13Z",
+      decidedAt: "2026-06-17T10:13:00Z",
+      rawProviderPayload: "must-not-render",
+      serverStorageRef: "/Users/didi/private/workspace",
+    };
+
+    const nextWorkbench = applyApprovalDecisionToWorkbench(
+      {
+        ...workbenchFixture,
+        assistant: {
+          ...workbenchFixture.assistant,
+          approval: {
+            ...workbenchFixture.assistant.approval,
+            wroteWorkspace: false,
+          },
+        },
+      },
+      approval,
+    );
+
+    expect(nextWorkbench.assistant.approval).toMatchObject({
+      title: "审批已批准",
+      summary: "审批已批准；这是审批元数据更新，尚未执行候选补丁写入。",
+      artifact: ".agent-runs/run_live/candidate.patch",
+      target: "knowledge-base/topics/live.md",
+      wroteWorkspace: false,
+      approvalId: "appr_1",
+      status: "DECIDED",
+      decision: "APPROVED",
+    });
+    expect(nextWorkbench.assistant.messages.slice(-1)).toEqual([
+      {
+        author: "安全检查",
+        kind: "ai",
+        text: "审批已批准；这是审批元数据更新，尚未执行候选补丁写入。",
+      },
+    ]);
     expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
     expect(JSON.stringify(nextWorkbench)).not.toContain("/Users/didi/private/workspace");
   });
