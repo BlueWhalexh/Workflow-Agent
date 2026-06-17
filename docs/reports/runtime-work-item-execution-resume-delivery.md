@@ -4866,6 +4866,58 @@ Evidence boundaries:
 - This proves the frontend request adapters will include browser cookies on JSON API and SSE requests.
 - This does not prove a deployed cross-origin CORS/cookie policy, OAuth redirect/callback login, refresh-token rotation, or production IdP session behavior.
 
+## Backend Credentialed CORS Policy
+
+Status: implemented and verified as the backend half of the cross-origin browser-cookie bridge.
+
+Scope delivered:
+
+- Added `my-workflow.backend.cors.allowed-origins` as an optional exact-origin allow-list.
+- The backend rejects wildcard, non-HTTP(S), userinfo-bearing, path-bearing, query-bearing, fragment-bearing, and trailing-slash CORS origins during configuration construction.
+- Spring Security now uses the backend CORS source explicitly instead of relying on bean-name auto-discovery.
+- When origins are configured, the backend allows credentialed CORS preflight for exact configured frontend origins.
+- The CORS policy allows the current browser-facing methods `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`.
+- The CORS policy allows JSON API and SSE request headers used by the frontend: `Authorization`, `Content-Type`, `Accept`, `Last-Event-ID`, and the local-dev identity headers.
+- Empty CORS config remains the default, so this slice does not open cross-origin access unless an origin allow-list is configured.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest`
+  - Failed before implementation with `Status expected:<200> but was:<403>` for an allowed-origin preflight.
+  - The response body was `Invalid CORS request`, proving the missing behavior was backend CORS policy rather than test fixture wiring.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest,DefaultCorsCredentialPolicyTest`
+  - Follow-up RED failed before adding `DELETE` to allowed methods with `Status expected:<200> but was:<403>` for `DELETE /v1/workspaces/{workspaceId}/members/{userId}` preflight.
+  - The default no-origin-allow-list test passed, proving the default closed behavior did not need a production-code change.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest,DefaultCorsCredentialPolicyTest`
+  - 4 tests passed; Maven reported `BUILD SUCCESS`.
+
+Full verification:
+
+- `npm test`
+  - 55 test files / 212 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - Frontend `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 167 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" backend/src docs/reports/runtime-work-item-execution-resume-delivery.md --glob '!backend/target/**'`
+  - No trailing whitespace or merge-conflict marker matches.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on this slice's touched files
+  - No token-shaped matches in `BackendProperties.java`, `BackendSecurityConfig.java`, `CorsCredentialPolicyTest.java`, or this delivery report.
+
+Evidence boundaries:
+
+- This proves configurable backend credentialed CORS behavior through MockMvc preflight requests.
+- This does not prove a deployed browser cross-origin flow, real OAuth login/callback, cookie attributes such as `SameSite=None; Secure`, CSRF strategy for mutating browser requests, production IdP session behavior, or real frontend-host/backend-host E2E.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

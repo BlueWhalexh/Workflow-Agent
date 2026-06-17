@@ -2,6 +2,8 @@ package com.myworkflow.agent.backend.config;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,7 @@ public class BackendProperties {
   private final AuditRetention auditRetention;
   private final Oidc oidc;
   private final OAuthIntrospection oauthIntrospection;
+  private final Cors cors;
 
   @Autowired
   public BackendProperties(
@@ -42,7 +45,8 @@ public class BackendProperties {
       @Value("${my-workflow.backend.oauth.session-cookie-name:}") String oauthSessionCookieName,
       @Value("${my-workflow.backend.oauth.user-id-claim:sub}") String oauthUserIdClaim,
       @Value("${my-workflow.backend.oauth.team-id-claim:team_id}") String oauthTeamIdClaim,
-      @Value("${my-workflow.backend.oauth.display-name-claim:name}") String oauthDisplayNameClaim
+      @Value("${my-workflow.backend.oauth.display-name-claim:name}") String oauthDisplayNameClaim,
+      @Value("${my-workflow.backend.cors.allowed-origins:}") String corsAllowedOrigins
   ) {
     this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
     this.providerSecretFileRoot = blankToNull(providerSecretFileRoot)
@@ -73,6 +77,7 @@ public class BackendProperties {
         oauthTeamIdClaim,
         oauthDisplayNameClaim
     );
+    this.cors = new Cors(corsAllowedOrigins);
     if (this.oauthIntrospection.enabled() && !"disabled".equals(this.oidc.mode())) {
       throw new IllegalArgumentException("OAuth introspection and OIDC JWT verification are mutually exclusive");
     }
@@ -123,7 +128,8 @@ public class BackendProperties {
         oauthSessionCookieName,
         oauthUserIdClaim,
         oauthTeamIdClaim,
-        oauthDisplayNameClaim
+        oauthDisplayNameClaim,
+        ""
     );
   }
 
@@ -201,7 +207,8 @@ public class BackendProperties {
         "",
         "sub",
         "team_id",
-        "name"
+        "name",
+        ""
     );
   }
 
@@ -231,6 +238,10 @@ public class BackendProperties {
 
   public OAuthIntrospection oauthIntrospection() {
     return oauthIntrospection;
+  }
+
+  public Cors cors() {
+    return cors;
   }
 
   public String authMode() {
@@ -412,6 +423,21 @@ public class BackendProperties {
     }
   }
 
+  public record Cors(List<String> allowedOrigins) {
+    public Cors {
+      allowedOrigins = List.copyOf(allowedOrigins);
+      allowedOrigins.forEach(BackendProperties::validateCorsOrigin);
+    }
+
+    public Cors(String allowedOrigins) {
+      this(parseAllowedOrigins(allowedOrigins));
+    }
+
+    public boolean enabled() {
+      return !allowedOrigins.isEmpty();
+    }
+  }
+
   private static Optional<String> blankToNull(String value) {
     if (value == null || value.isBlank()) {
       return Optional.empty();
@@ -421,5 +447,45 @@ public class BackendProperties {
 
   private static String requiredClaimName(String value, String defaultValue) {
     return blankToNull(value).orElse(defaultValue);
+  }
+
+  private static List<String> parseAllowedOrigins(String value) {
+    Optional<String> configured = blankToNull(value);
+    if (configured.isEmpty()) {
+      return List.of();
+    }
+    String[] parts = configured.get().split(",");
+    List<String> origins = new ArrayList<>();
+    for (String part : parts) {
+      blankToNull(part).ifPresent(origins::add);
+    }
+    return origins;
+  }
+
+  private static void validateCorsOrigin(String origin) {
+    if ("*".equals(origin)) {
+      throw new IllegalArgumentException("CORS allowed origins must be exact origins when credentials are enabled");
+    }
+    URI uri = URI.create(origin);
+    String scheme = uri.getScheme();
+    if (scheme == null || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+      throw new IllegalArgumentException("CORS allowed origins must use http or https");
+    }
+    if (uri.getHost() == null) {
+      throw new IllegalArgumentException("CORS allowed origins must include a host");
+    }
+    if (uri.getUserInfo() != null) {
+      throw new IllegalArgumentException("CORS allowed origins must not contain userinfo");
+    }
+    if (uri.getRawQuery() != null || uri.getRawFragment() != null) {
+      throw new IllegalArgumentException("CORS allowed origins must not include query or fragment");
+    }
+    String path = uri.getRawPath();
+    if (path != null && !path.isBlank() && !"/".equals(path)) {
+      throw new IllegalArgumentException("CORS allowed origins must not include a path");
+    }
+    if (origin.endsWith("/")) {
+      throw new IllegalArgumentException("CORS allowed origins must not include a trailing slash");
+    }
   }
 }
