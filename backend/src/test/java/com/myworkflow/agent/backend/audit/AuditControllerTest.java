@@ -26,7 +26,8 @@ import org.springframework.test.web.servlet.MvcResult;
         "my-workflow.backend.dev-principal.user-id=owner-audit",
         "my-workflow.backend.dev-principal.team-id=team-audit-listing",
         "my-workflow.backend.dev-principal.display-name=Owner Audit",
-        "my-workflow.backend.data-root=${java.io.tmpdir}/my-workflow-agent-backend-audit-controller-test"
+        "my-workflow.backend.data-root=${java.io.tmpdir}/my-workflow-agent-backend-audit-controller-test",
+        "my-workflow.backend.audit.retention-days=180"
     }
 )
 @AutoConfigureMockMvc
@@ -77,6 +78,45 @@ class AuditControllerTest {
             .headers(devHeaders("owner-audit", "Owner Audit")))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error.code").value("WORKSPACE_NOT_FOUND"));
+  }
+
+  @Test
+  void ownerReadsReportOnlyAuditRetentionPolicyWhileViewerIsDenied() throws Exception {
+    String workspaceId = createWorkspaceAs("owner-audit", "Owner Audit");
+    grantViewer(workspaceId);
+
+    MvcResult policyResult = mockMvc.perform(get(
+            "/v1/workspaces/{workspaceId}/audit-events/retention-policy",
+            workspaceId
+        )
+            .headers(devHeaders("owner-audit", "Owner Audit")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(true))
+        .andExpect(jsonPath("$.data.workspaceId").value(workspaceId))
+        .andExpect(jsonPath("$.data.retentionDays").value(180))
+        .andExpect(jsonPath("$.data.mode").value("REPORT_ONLY"))
+        .andExpect(jsonPath("$.data.destructivePurgeEnabled").value(false))
+        .andExpect(jsonPath("$.data.policySource").value("backend-config"))
+        .andExpect(jsonPath("$.data.workspaceRoot").doesNotExist())
+        .andExpect(jsonPath("$.data.serverStorageRef").doesNotExist())
+        .andReturn();
+
+    assertThat(policyResult.getResponse().getContentAsString())
+        .doesNotContain("Authorization", "rawProvider", "token", "apiKey", "access_token");
+
+    mockMvc.perform(get("/v1/workspaces/{workspaceId}/audit-events", workspaceId)
+            .headers(devHeaders("owner-audit", "Owner Audit")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].eventType").value("WORKSPACE_CREATED"));
+
+    mockMvc.perform(get(
+            "/v1/workspaces/{workspaceId}/audit-events/retention-policy",
+            workspaceId
+        )
+            .headers(devHeaders("viewer-audit", "Viewer Audit")))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("WORKSPACE_FORBIDDEN"));
   }
 
   @Test

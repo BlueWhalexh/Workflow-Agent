@@ -1,6 +1,6 @@
 # Java Backend Phase One Completion Audit
 
-> Current date: 2026-06-15. This audit is a goal-tracking artifact for `按照sop完成后端一期的开发`; it is not a completion claim.
+> Current date: 2026-06-17. This audit is a goal-tracking artifact for `按照sop完成后端一期的开发`; it is not a completion claim.
 
 ## Current Goal
 
@@ -12,7 +12,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 - `docs/architecture/backend-platform-roadmap-spec.md`
 - `docs/reports/runtime-work-item-execution-resume-delivery.md`
 - Java backend source and tests under `backend/src/main/java` and `backend/src/test/java`
-- Archived phase plans under `docs/superpowers/plans/2026-06-14-java-*.md` and `docs/superpowers/plans/2026-06-15-java-*.md`
+- Archived phase plans under `docs/superpowers/plans/2026-06-14-java-*.md`, `docs/superpowers/plans/2026-06-15-java-*.md`, and `docs/superpowers/plans/2026-06-17-java-*.md`
 
 ## Evidence Summary
 
@@ -30,6 +30,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Workspace member management | J10A member grant/list, J12A removal, J15A owner transfer | Implemented baseline |
 | Team discovery/listing | J13A current team, J14A backend-known team members | Implemented baseline |
 | Audit visibility | J11A owner list, J16A pagination/filtering, J18A NDJSON export, J19A digest | Implemented baseline |
+| Audit retention policy | J27A owner-visible report-only retention metadata, no destructive purge | Implemented baseline |
 | Run event streaming | J17A SSE, J22A reconnect cursor and JDBC event sequence | Implemented baseline |
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
@@ -38,31 +39,31 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Secret manager / non-env injection | J24D validates refs; J24E executes only `env://`; no lookup/injection path | Not implemented |
 | Full OIDC/OAuth | Dev header/local principal only | Not implemented |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
-| Audit retention / persisted signed records | Digest exists; no persisted signatures/hash chain/retention enforcement | Not implemented |
+| Persisted signed audit records | Digest exists; no persisted signatures/hash chain | Not implemented |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards exist; no runner registry, heartbeat, leases, authz, artifact upload, remote cancellation, or secret distribution | Not implemented |
 
 ## Latest Gate Resolution
 
-J26A: `Java Provider Credential Lifecycle Guard` is now implemented as an approved scope expansion.
+J27A: `Java Audit Retention Policy Baseline` is now implemented as an approved scope expansion.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-15-java-provider-credential-lifecycle-guard.md`
+- `docs/superpowers/plans/2026-06-17-java-audit-retention-policy-baseline.md`
 
 Scope that required approval:
 
 - Adds public API.
-- Changes provider credential security boundary.
-- Requires controller/service/repository/tests/docs/report updates.
+- Changes audit policy visibility boundary.
+- Requires controller/service/config/tests/docs/report updates.
 - Touched more than five files.
 
 SOP result:
 
 - User approved the scope expansion.
-- The disable endpoint is JDBC-profile-only in J26A, matching the provider credential repository/service profile and avoiding default in-memory context breakage.
-- Workspace owners can disable workspace-scoped credential metadata without deleting audit history.
-- Disabled credential refs are not resolved by the run creation path, so worker requests never receive provider runtime metadata for disabled refs.
+- Workspace owners can read report-only audit retention metadata through the audit API.
+- The policy is configuration-backed through `my-workflow.backend.audit.retention-days`.
+- J27A does not delete, purge, mutate, or compact audit records.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -77,7 +78,7 @@ SOP result:
    - Preserve run behavior: disabled refs are not resolved.
    - Still no raw secret or secret manager lookup.
 
-3. J27A: audit retention policy baseline.
+3. J27A: audit retention policy baseline. Completed baseline.
    - Configurable retention metadata and owner-visible policy.
    - No destructive purge until a separate explicit phase defines retention execution and audit export safeguards.
 
@@ -109,4 +110,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J26A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, audit retention, signed audit records, production runner platform, and identity hardening.
+No J27A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, signed audit records, production runner platform, and identity hardening.

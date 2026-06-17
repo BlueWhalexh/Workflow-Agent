@@ -29,10 +29,16 @@ public class AuditController {
   private static final MediaType NDJSON_MEDIA_TYPE = MediaType.valueOf("application/x-ndjson");
 
   private final AuditQueryService auditQueryService;
+  private final AuditRetentionPolicyService auditRetentionPolicyService;
   private final ObjectMapper objectMapper;
 
-  public AuditController(AuditQueryService auditQueryService, ObjectMapper objectMapper) {
+  public AuditController(
+      AuditQueryService auditQueryService,
+      AuditRetentionPolicyService auditRetentionPolicyService,
+      ObjectMapper objectMapper
+  ) {
     this.auditQueryService = auditQueryService;
+    this.auditRetentionPolicyService = auditRetentionPolicyService;
     this.objectMapper = objectMapper;
   }
 
@@ -48,6 +54,13 @@ public class AuditController {
     return ApiEnvelope.ok(auditQueryService.listWorkspaceAuditEvents(workspaceId, query).stream()
         .map(AuditController::toResponse)
         .toList());
+  }
+
+  @GetMapping("/v1/workspaces/{workspaceId}/audit-events/retention-policy")
+  public ApiEnvelope<AuditRetentionPolicyService.AuditRetentionPolicy> getWorkspaceAuditRetentionPolicy(
+      @PathVariable String workspaceId
+  ) {
+    return ApiEnvelope.ok(auditRetentionPolicyService.retentionPolicyForWorkspace(workspaceId));
   }
 
   @GetMapping(

@@ -3212,6 +3212,57 @@ Evidence boundaries:
 - `apiKeyEnvName` and `env://MIMO_API_KEY` remain metadata references for worker-side environment lookup, not provider token values.
 - J26A proves workspace owner disable of workspace-scoped env-backed metadata and disabled-ref run blocking. It does not implement physical delete, team-scoped credential API, secret manager/KMS/keychain/file lookup, key rotation, encrypted secret storage, non-env secret injection, real provider validation, real provider execution, or remote runner credential distribution.
 
+## Phase J27A - Java Audit Retention Policy Baseline
+
+Status: implemented for J27A. The Java backend now exposes owner-visible, report-only audit retention policy metadata. The policy is configuration-backed and explicitly states that destructive purge is disabled; existing audit events remain append-only and are not deleted, compacted, or mutated by this phase.
+
+Scope delivered:
+
+- Added `my-workflow.backend.audit.retention-days` metadata config with default `365`.
+- Added `BackendProperties.AuditRetention` with `mode = "REPORT_ONLY"` and `destructivePurgeEnabled = false`.
+- Added `AuditRetentionPolicyService` with `WORKSPACE_OWNER` guard.
+- Added `GET /v1/workspaces/{workspaceId}/audit-events/retention-policy`.
+- Public response includes only `workspaceId`, `retentionDays`, `mode`, `destructivePurgeEnabled`, and `policySource`.
+- Existing audit list/export behavior remains unchanged.
+- Updated Java backend platform spec, phase-one audit, delivery report, and J27A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=AuditControllerTest test`
+  - Initial RED: 1 test failed as expected.
+  - Expected failure: `GET /v1/workspaces/{workspaceId}/audit-events/retention-policy` returned HTTP 404 because the endpoint did not exist yet.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=AuditControllerTest test`
+  - 4 Java tests passed.
+  - Covers owner retention policy read, viewer denial, public response redaction, configured retention days, report-only mode, destructive purge disabled, and existing audit list/export behavior.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 103 Java tests passed.
+- `npm test`
+  - 44 TypeScript test files passed, 178 tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" ...`
+  - No trailing whitespace or conflict marker matches in touched backend/docs files.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-audit-retention-policy-baseline.md`
+  - No unchecked J27A plan tasks remain.
+
+Evidence boundaries:
+
+- J27A tests use MockMvc and in-memory repositories. No real external provider call was executed.
+- J27A is policy metadata only. It does not implement destructive purge, retention execution, async export-before-purge, object storage, persisted signed audit records, hash chain, external KMS, or public audit write API.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
