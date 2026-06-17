@@ -78,6 +78,32 @@ describe("frontend workbench bootstrap", () => {
     expect(bootstrap.statusLabel).toBe("离线预览");
     expect(bootstrap.data.workspaceName).toBe("Agent Loop Core");
   });
+
+  test("loadWorkbenchBootstrapView stays connected when the backend has no visible workspaces", async () => {
+    const fetcher = async (url: string) => {
+      if (url === "/v1/me") {
+        return jsonEnvelope({
+          userId: "user_dev",
+          teamId: "team_dev",
+          displayName: "Dev User",
+        });
+      }
+
+      if (url === "/v1/workspaces") {
+        return jsonEnvelope([]);
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const bootstrap = await loadWorkbenchBootstrapView(fetcher);
+
+    expect(bootstrap.status).toBe("connected");
+    expect(bootstrap.statusLabel).toBe("后端已连接");
+    expect(bootstrap.data.workspaceName).toBe("暂无工作区");
+    expect(bootstrap.data.treeItems).toEqual([]);
+    expect(bootstrap.data.breadcrumb[0]).toBe("暂无工作区");
+  });
 });
 
 function jsonEnvelope(data: unknown) {

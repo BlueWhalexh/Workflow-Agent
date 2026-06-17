@@ -18,7 +18,16 @@ export async function loadWorkbenchBootstrapView(fetcher: ApiFetch): Promise<Wor
     const selectedWorkspace = bootstrap.workspaces.find((workspace) => workspace.id === bootstrap.selectedWorkspaceId);
 
     if (!selectedWorkspace) {
-      return fixtureFallback();
+      return {
+        status: "connected",
+        statusLabel: "后端已连接",
+        data: publicWorkbench({
+          ...workbenchFixture,
+          workspaceName: "暂无工作区",
+          breadcrumb: ["暂无工作区", ...workbenchFixture.breadcrumb.slice(1)],
+          treeItems: [],
+        }),
+      };
     }
 
     return {
