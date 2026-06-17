@@ -3638,6 +3638,58 @@ Evidence boundaries:
 - J34A tests use MockMvc/JUnit and MySQL Testcontainers only. No real OIDC provider, JWKS endpoint, IAM directory, invite system, or external identity provider was called.
 - J34A is a local backend-known directory lifecycle baseline only. It does not implement production OIDC/OAuth/JWKS, external directory sync, global team CRUD, invite flow, sessions, production RBAC sync, or multi-team administration.
 
+## Phase J35A - Java Team Invite Onboarding Baseline
+
+Status: implemented for J35A. The Java backend now has a local team invite/onboarding baseline for current-team users.
+
+Scope delivered:
+
+- Added `TeamInviteStatus`, `TeamInviteRecord`, `TeamInviteRepository`, in-memory repository, JDBC repository, and `TeamInviteService`.
+- Added Flyway `V13__team_invites.sql` with metadata-only invite storage and current-team FK.
+- Added `POST /v1/teams/{teamId}/invites` for active team admins to create pending invites.
+- Added `GET /v1/teams/{teamId}/invites` for active team admins to list current-team invites.
+- Added `POST /v1/teams/{teamId}/invites/{inviteId}/accept` for the invited current principal to accept a pending invite.
+- Added `POST /v1/teams/{teamId}/invites/{inviteId}/revoke` for active team admins to revoke pending invites.
+- Accepting an invite upserts the invited user as an active team member through the existing team directory boundary.
+- Public invite responses include metadata only and omit token, secret, workspace root, and server storage ref fields.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J35A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamInviteControllerTest`
+  - Initial RED: 3 tests failed as expected.
+  - Expected failure: new invite endpoints returned `NOT_FOUND` / HTTP 404 because `/v1/teams/{teamId}/invites` routes did not exist yet.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamInviteControllerTest,TeamDirectoryLifecycleControllerTest,TeamMemberControllerTest`
+  - 7 Java tests passed.
+  - Covers invite create/list/accept, non-admin create rejection, revoked invite rejection, no-secret/no-path public response checks, and J34A directory compatibility in default profile.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=WorkspaceJdbcControllerTest,WorkspaceSchemaArtifactTest`
+  - 4 Java tests passed.
+  - Covers Flyway v13 migration, schema artifact expectations, and invite create/list/accept through JDBC profile with MySQL Testcontainers.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 127 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-team-invite-onboarding-baseline.md`
+  - No unchecked J35A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J35A tests use MockMvc/JUnit and MySQL Testcontainers only. No real OIDC provider, JWKS endpoint, IAM directory, email delivery service, invite link/token service, or external identity provider was called.
+- J35A is a local invite/onboarding metadata baseline only. It does not implement production OIDC/OAuth/JWKS, external directory sync, real email invites, invite link/token handling, global team CRUD, sessions, production RBAC sync, or multi-team administration.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

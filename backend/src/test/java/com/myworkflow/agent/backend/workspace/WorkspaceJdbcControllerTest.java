@@ -1,5 +1,6 @@
 package com.myworkflow.agent.backend.workspace;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.myworkflow.agent.backend.BackendApplication;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -75,9 +77,11 @@ class WorkspaceJdbcControllerTest {
         "$.data.workspaceId"
     );
 
-    mockMvc.perform(get("/v1/workspaces"))
+    MvcResult listResult = mockMvc.perform(get("/v1/workspaces"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data[0].workspaceId").value(workspaceId));
+        .andReturn();
+    List<String> workspaceIds = JsonPath.read(listResult.getResponse().getContentAsString(), "$.data[*].workspaceId");
+    assertThat(workspaceIds).contains(workspaceId);
 
     mockMvc.perform(post("/v1/workspaces")
             .contentType(MediaType.APPLICATION_JSON)
@@ -119,5 +123,52 @@ class WorkspaceJdbcControllerTest {
     mockMvc.perform(post("/v1/teams/{teamId}/members/{userId}/disable", "team_jdbc", "editor_jdbc"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.status").value("DISABLED"));
+  }
+
+  @Test
+  void teamInviteApiPersistsThroughJdbcRepository() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "JDBC Team Invite",
+                  "defaultBranch": "main"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    MvcResult createInviteResult = mockMvc.perform(post("/v1/teams/{teamId}/invites", "team_jdbc")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "inviteeUserId": "invitee_jdbc",
+                  "displayName": "JDBC Invitee",
+                  "role": "TEAM_MEMBER"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.teamId").value("team_jdbc"))
+        .andExpect(jsonPath("$.data.inviteeUserId").value("invitee_jdbc"))
+        .andExpect(jsonPath("$.data.status").value("PENDING"))
+        .andExpect(jsonPath("$.data.token").doesNotExist())
+        .andExpect(jsonPath("$.data.secret").doesNotExist())
+        .andReturn();
+
+    String inviteId = JsonPath.read(createInviteResult.getResponse().getContentAsString(), "$.data.id");
+
+    mockMvc.perform(get("/v1/teams/{teamId}/invites", "team_jdbc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(inviteId));
+
+    mockMvc.perform(post("/v1/teams/{teamId}/invites/{inviteId}/accept", "team_jdbc", inviteId)
+            .header("X-Dev-User-Id", "invitee_jdbc")
+            .header("X-Dev-Team-Id", "team_jdbc")
+            .header("X-Dev-Display-Name", "JDBC Invitee"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("ACCEPTED"));
+
+    mockMvc.perform(get("/v1/teams/{teamId}/members", "team_jdbc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[?(@.userId == 'invitee_jdbc')].status").value("ACTIVE"));
   }
 }

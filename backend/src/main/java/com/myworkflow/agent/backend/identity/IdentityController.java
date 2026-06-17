@@ -3,6 +3,7 @@ package com.myworkflow.agent.backend.identity;
 import com.myworkflow.agent.backend.api.ApiEnvelope;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,13 +20,16 @@ public class IdentityController {
 
   private final PrincipalProvider principalProvider;
   private final TeamDirectoryService teamDirectoryService;
+  private final TeamInviteService teamInviteService;
 
   public IdentityController(
       PrincipalProvider principalProvider,
-      TeamDirectoryService teamDirectoryService
+      TeamDirectoryService teamDirectoryService,
+      TeamInviteService teamInviteService
   ) {
     this.principalProvider = principalProvider;
     this.teamDirectoryService = teamDirectoryService;
+    this.teamInviteService = teamInviteService;
   }
 
   @GetMapping("/me")
@@ -77,6 +81,42 @@ public class IdentityController {
     return ApiEnvelope.ok(toTeamMemberResponse(teamDirectoryService.disableCurrentTeamMember(teamId, userId)));
   }
 
+  @PostMapping(path = "/teams/{teamId}/invites", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ApiEnvelope<TeamInviteResponse> createTeamInvite(
+      @PathVariable String teamId,
+      @Valid @RequestBody CreateTeamInviteRequest request
+  ) {
+    return ApiEnvelope.ok(toTeamInviteResponse(teamInviteService.createCurrentTeamInvite(
+        teamId,
+        request.inviteeUserId(),
+        request.displayName(),
+        request.role()
+    )));
+  }
+
+  @GetMapping("/teams/{teamId}/invites")
+  public ApiEnvelope<List<TeamInviteResponse>> teamInvites(@PathVariable String teamId) {
+    return ApiEnvelope.ok(teamInviteService.listCurrentTeamInvites(teamId).stream()
+        .map(IdentityController::toTeamInviteResponse)
+        .toList());
+  }
+
+  @PostMapping("/teams/{teamId}/invites/{inviteId}/accept")
+  public ApiEnvelope<TeamInviteResponse> acceptTeamInvite(
+      @PathVariable String teamId,
+      @PathVariable String inviteId
+  ) {
+    return ApiEnvelope.ok(toTeamInviteResponse(teamInviteService.acceptCurrentTeamInvite(teamId, inviteId)));
+  }
+
+  @PostMapping("/teams/{teamId}/invites/{inviteId}/revoke")
+  public ApiEnvelope<TeamInviteResponse> revokeTeamInvite(
+      @PathVariable String teamId,
+      @PathVariable String inviteId
+  ) {
+    return ApiEnvelope.ok(toTeamInviteResponse(teamInviteService.revokeCurrentTeamInvite(teamId, inviteId)));
+  }
+
   private static TeamMemberResponse toTeamMemberResponse(TeamMemberRecord member) {
     return new TeamMemberResponse(
         member.teamId(),
@@ -84,6 +124,20 @@ public class IdentityController {
         member.displayName(),
         member.role(),
         member.status()
+    );
+  }
+
+  private static TeamInviteResponse toTeamInviteResponse(TeamInviteRecord invite) {
+    return new TeamInviteResponse(
+        invite.id(),
+        invite.teamId(),
+        invite.inviteeUserId(),
+        invite.displayName(),
+        invite.role(),
+        invite.status(),
+        invite.createdByUserId(),
+        invite.createdAt(),
+        invite.updatedAt()
     );
   }
 
@@ -113,6 +167,26 @@ public class IdentityController {
   public record UpsertTeamMemberRequest(
       String displayName,
       @NotNull TeamRole role
+  ) {
+  }
+
+  public record CreateTeamInviteRequest(
+      String inviteeUserId,
+      String displayName,
+      @NotNull TeamRole role
+  ) {
+  }
+
+  public record TeamInviteResponse(
+      String id,
+      String teamId,
+      String inviteeUserId,
+      String displayName,
+      TeamRole role,
+      TeamInviteStatus status,
+      String createdByUserId,
+      Instant createdAt,
+      Instant updatedAt
   ) {
   }
 }

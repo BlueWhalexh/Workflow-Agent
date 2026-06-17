@@ -16,6 +16,9 @@ class WorkspaceSchemaArtifactTest {
     String teamMemberLifecycleMigration = Files.readString(Path.of(
         "src/main/resources/db/migration/V12__team_member_lifecycle_baseline.sql"
     )).toLowerCase();
+    String teamInviteMigration = Files.readString(Path.of(
+        "src/main/resources/db/migration/V13__team_invites.sql"
+    )).toLowerCase();
 
     assertThat(migration).contains("create table users");
     assertThat(migration).contains("create table teams");
@@ -32,5 +35,9 @@ class WorkspaceSchemaArtifactTest {
     assertThat(teamMemberLifecycleMigration).contains("alter table team_memberships");
     assertThat(teamMemberLifecycleMigration).contains("add column status");
     assertThat(teamMemberLifecycleMigration).contains("idx_team_memberships_status");
+    assertThat(teamInviteMigration).contains("create table team_invites");
+    assertThat(teamInviteMigration).contains("constraint fk_team_invites_team");
+    assertThat(teamInviteMigration).contains("idx_team_invites_team_status");
+    assertThat(teamInviteMigration).contains("idx_team_invites_invitee_status");
   }
 }

@@ -42,36 +42,36 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
 | Full OIDC/OAuth | J31A fail-closed guard and J32A bearer verifier SPI exist; no real OIDC discovery, JWKS validation, token introspection, SSO, sessions, or directory claim sync | Partially implemented baseline |
-| User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; no external directory sync or full team CRUD | Partially implemented baseline |
+| User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; no external directory sync or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
 
-J34A: `Java Team Directory Lifecycle Baseline` is now implemented as a local team directory lifecycle slice.
+J35A: `Java Team Invite Onboarding Baseline` is now implemented as a local team invite/onboarding slice.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-team-directory-lifecycle-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-team-invite-onboarding-baseline.md`
 
 Scope that required approval:
 
-- Adds explicit local team member lifecycle fields and API.
-- Extends `team_memberships` with status metadata.
-- Prevents disabled team members from retaining or being granted workspace access.
-- Requires permission-boundary tests, JDBC migration/controller smoke, docs, and report updates.
+- Adds local team invite metadata and API.
+- Adds `team_invites` Flyway schema and JDBC/default repository implementations.
+- Accepting an invite creates active backend-known team membership only after the invited user accepts.
+- Requires permission-boundary tests, no-secret response checks, JDBC migration/controller smoke, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
 - User asked to continue backend development after J33A.
-- Active `TEAM_ADMIN` can upsert current-team backend-known member metadata.
-- Active `TEAM_ADMIN` can disable current-team backend-known members; self-disable is rejected.
-- Non-admin team members cannot manage the directory and receive `TEAM_FORBIDDEN`.
-- Disabled members cannot retain or be granted workspace access through the workspace member API.
-- Public team member responses contain directory fields only: `teamId`, `userId`, `displayName`, `role`, `status`.
-- J34A is not production OIDC/OAuth/JWKS, external IAM/directory sync, invite flow, global team CRUD, session management, or production RBAC sync.
+- Active `TEAM_ADMIN` can create, list, and revoke current-team invites.
+- Non-admin team members cannot create invites and receive `TEAM_FORBIDDEN`.
+- The invited user can accept their own pending invite; revoked invites cannot be accepted.
+- Public invite responses contain metadata only: `id`, `teamId`, `inviteeUserId`, `displayName`, `role`, `status`, `createdByUserId`, `createdAt`, `updatedAt`.
+- Public invite responses do not include token, secret, workspace root, or server storage ref fields.
+- J35A is not production OIDC/OAuth/JWKS, external IAM/directory sync, real email invite delivery, invite link/token system, global team CRUD, session management, or production RBAC sync.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -118,11 +118,16 @@ SOP result:
 10. J34A: local team directory lifecycle baseline. Completed baseline.
    - Active team admin can upsert/disable current-team backend-known member metadata.
    - Disabled team members cannot retain or be granted workspace access.
-   - Still no external OIDC/IAM directory sync, invite flow, global team CRUD, or production role sync.
+   - Still no external OIDC/IAM directory sync, global team CRUD, or production role sync.
 
-11. J35A+: real OIDC/OAuth integration and external directory sync.
+11. J35A: local team invite onboarding baseline. Completed baseline.
+   - Active team admin can create/list/revoke current-team invites.
+   - Invited user can accept their own pending invite and becomes an active team member.
+   - Still no real email invite delivery, invite link/token system, external OIDC/IAM directory sync, global team CRUD, or production role sync.
+
+12. J36A+: real OIDC/OAuth integration and external directory sync.
    - OIDC/OAuth adapter and claim mapping.
-   - User/team CRUD, invite flow, and role sync.
+   - User/team CRUD, external invite delivery, and role sync.
 
 ## Completion Criteria For Backend Phase One
 
@@ -140,4 +145,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J34A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, real OIDC/JWKS integration, external directory sync/invites, real production runner identity/dispatch/artifact upload, and multi-node stream fanout.
+No J35A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, real OIDC/JWKS integration, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
