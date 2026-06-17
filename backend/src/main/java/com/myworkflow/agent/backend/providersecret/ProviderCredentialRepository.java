@@ -118,6 +118,54 @@ public class ProviderCredentialRepository {
     );
   }
 
+  public Optional<ProviderCredentialMetadata> disableWorkspaceCredential(
+      String teamId,
+      String workspaceId,
+      String credentialRef
+  ) {
+    int updated = jdbcTemplate.update(
+        """
+            UPDATE provider_credentials
+            SET status = 'DISABLED'
+            WHERE team_id = ?
+              AND workspace_id = ?
+              AND credential_ref = ?
+            """,
+        teamId,
+        workspaceId,
+        credentialRef
+    );
+    if (updated == 0) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.ofNullable(jdbcTemplate.queryForObject(
+          """
+              SELECT id,
+                     credential_ref,
+                     team_id,
+                     workspace_id,
+                     provider,
+                     model,
+                     base_url,
+                     api_key_secret_ref,
+                     status
+              FROM provider_credentials
+              WHERE team_id = ?
+                AND workspace_id = ?
+                AND credential_ref = ?
+              LIMIT 1
+              """,
+          CREDENTIAL_ROW_MAPPER,
+          teamId,
+          workspaceId,
+          credentialRef
+      ));
+    } catch (EmptyResultDataAccessException exception) {
+      return Optional.empty();
+    }
+  }
+
   private static ProviderCredentialMetadata mapCredential(ResultSet resultSet, int rowNum) throws SQLException {
     return new ProviderCredentialMetadata(
         resultSet.getString("id"),

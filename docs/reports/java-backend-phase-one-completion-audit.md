@@ -1,6 +1,6 @@
 # Java Backend Phase One Completion Audit
 
-> Current date: 2026-06-14. This audit is a goal-tracking artifact for `按照sop完成后端一期的开发`; it is not a completion claim.
+> Current date: 2026-06-15. This audit is a goal-tracking artifact for `按照sop完成后端一期的开发`; it is not a completion claim.
 
 ## Current Goal
 
@@ -12,7 +12,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 - `docs/architecture/backend-platform-roadmap-spec.md`
 - `docs/reports/runtime-work-item-execution-resume-delivery.md`
 - Java backend source and tests under `backend/src/main/java` and `backend/src/test/java`
-- Archived phase plans under `docs/superpowers/plans/2026-06-14-java-*.md`
+- Archived phase plans under `docs/superpowers/plans/2026-06-14-java-*.md` and `docs/superpowers/plans/2026-06-15-java-*.md`
 
 ## Evidence Summary
 
@@ -34,6 +34,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
+| Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
 | Secret manager / non-env injection | J24D validates refs; J24E executes only `env://`; no lookup/injection path | Not implemented |
 | Full OIDC/OAuth | Dev header/local principal only | Not implemented |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
@@ -43,11 +44,11 @@ Complete backend phase one under the project SOP: central Java backend control p
 
 ## Latest Gate Resolution
 
-J25A: `Java Provider Credential Public Metadata API` is now implemented as an approved scope expansion.
+J26A: `Java Provider Credential Lifecycle Guard` is now implemented as an approved scope expansion.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-14-java-provider-credential-public-metadata-api.md`
+- `docs/superpowers/plans/2026-06-15-java-provider-credential-lifecycle-guard.md`
 
 Scope that required approval:
 
@@ -59,7 +60,9 @@ Scope that required approval:
 SOP result:
 
 - User approved the scope expansion.
-- The endpoint is JDBC-profile-only in J25A, matching the provider credential repository/service profile and avoiding default in-memory context breakage.
+- The disable endpoint is JDBC-profile-only in J26A, matching the provider credential repository/service profile and avoiding default in-memory context breakage.
+- Workspace owners can disable workspace-scoped credential metadata without deleting audit history.
+- Disabled credential refs are not resolved by the run creation path, so worker requests never receive provider runtime metadata for disabled refs.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -69,7 +72,7 @@ SOP result:
    - Public response never returns env names, `apiKeySecretRef`, token, Authorization, raw provider payload, internal path, or server storage ref.
    - Existing J24E `providerRuntimeRef = "credential.<ref>"` remains the run consumption path.
 
-2. J26A: credential lifecycle guard.
+2. J26A: credential lifecycle guard. Completed baseline.
    - Disable credential metadata without deleting audit history.
    - Preserve run behavior: disabled refs are not resolved.
    - Still no raw secret or secret manager lookup.
@@ -106,4 +109,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J25A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as credential lifecycle, secret manager/non-env injection, audit retention, signed audit records, production runner platform, and identity hardening.
+No J26A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as secret manager/non-env injection, audit retention, signed audit records, production runner platform, and identity hardening.

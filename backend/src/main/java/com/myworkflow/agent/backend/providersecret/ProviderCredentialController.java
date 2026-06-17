@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +49,14 @@ public class ProviderCredentialController {
         request.baseUrl(),
         request.apiKeyEnvName()
     ));
+  }
+
+  @PostMapping(path = "/{credentialRef}/disable")
+  public ApiEnvelope<ProviderCredentialService.ProviderCredentialPublicMetadata> disableCredential(
+      @PathVariable String workspaceId,
+      @PathVariable String credentialRef
+  ) {
+    return ApiEnvelope.ok(providerCredentialService.disableWorkspaceCredential(workspaceId, credentialRef));
   }
 
   private static void rejectRawSecretAliases(UpsertProviderCredentialRequest request) {

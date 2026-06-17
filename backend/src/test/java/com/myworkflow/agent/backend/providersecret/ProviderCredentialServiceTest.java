@@ -281,6 +281,26 @@ class ProviderCredentialServiceTest {
     assertThat(service.listWorkspaceCredentials(workspace.workspaceId()))
         .extracting(ProviderCredentialService.ProviderCredentialPublicMetadata::credentialRef)
         .containsExactly("workspace-mimo");
+
+    ProviderCredentialService.ProviderCredentialPublicMetadata disabled = service.disableWorkspaceCredential(
+        workspace.workspaceId(),
+        " workspace-mimo "
+    );
+
+    assertThat(disabled.credentialRef()).isEqualTo("workspace-mimo");
+    assertThat(disabled.workspaceId()).isEqualTo(workspace.workspaceId());
+    assertThat(disabled.scope()).isEqualTo("WORKSPACE");
+    assertThat(disabled.provider()).isEqualTo("mimo-real");
+    assertThat(disabled.status()).isEqualTo("DISABLED");
+    assertThat(credentialRepository.findActiveByScope(workspace.teamId(), workspace.workspaceId(), "workspace-mimo"))
+        .isEmpty();
+    assertThat(service.listWorkspaceCredentials(workspace.workspaceId()))
+        .extracting(
+            ProviderCredentialService.ProviderCredentialPublicMetadata::credentialRef,
+            ProviderCredentialService.ProviderCredentialPublicMetadata::status
+        )
+        .containsExactly(org.assertj.core.api.Assertions.tuple("workspace-mimo", "DISABLED"));
+
     assertThat(auditRepository.findByWorkspaceId(workspace.workspaceId()))
         .filteredOn(event -> event.eventType().equals("PROVIDER_CREDENTIAL_UPSERTED"))
         .singleElement()
@@ -288,6 +308,15 @@ class ProviderCredentialServiceTest {
           assertThat(event.actorUserId()).isEqualTo("owner-a");
           assertThat(event.teamId()).isEqualTo(workspace.teamId());
           assertThat(event.message()).contains("workspace-mimo", "mimo-real");
+          assertThat(event.message()).doesNotContain("MIMO_API_KEY", "env://", "apiKey", "token", "Authorization");
+        });
+    assertThat(auditRepository.findByWorkspaceId(workspace.workspaceId()))
+        .filteredOn(event -> event.eventType().equals("PROVIDER_CREDENTIAL_DISABLED"))
+        .singleElement()
+        .satisfies(event -> {
+          assertThat(event.actorUserId()).isEqualTo("owner-a");
+          assertThat(event.teamId()).isEqualTo(workspace.teamId());
+          assertThat(event.message()).contains("workspace-mimo");
           assertThat(event.message()).doesNotContain("MIMO_API_KEY", "env://", "apiKey", "token", "Authorization");
         });
   }
@@ -329,6 +358,10 @@ class ProviderCredentialServiceTest {
         null,
         null,
         "MIMO_API_KEY"
+    )).isInstanceOf(WorkspaceForbiddenException.class);
+    assertThatThrownBy(() -> service.disableWorkspaceCredential(
+        workspace.workspaceId(),
+        "workspace-mimo"
     )).isInstanceOf(WorkspaceForbiddenException.class);
     assertThat(credentialRepository.savedCredentials()).isEmpty();
   }
@@ -471,6 +504,34 @@ class ProviderCredentialServiceTest {
           .filter(credential -> workspaceId.equals(credential.workspaceId()))
           .sorted(Comparator.comparing(ProviderCredentialMetadata::credentialRef))
           .toList();
+    }
+
+    @Override
+    public Optional<ProviderCredentialMetadata> disableWorkspaceCredential(
+        String teamId,
+        String workspaceId,
+        String credentialRef
+    ) {
+      return credentials.values().stream()
+          .filter(credential -> credential.teamId().equals(teamId))
+          .filter(credential -> workspaceId.equals(credential.workspaceId()))
+          .filter(credential -> credential.credentialRef().equals(credentialRef))
+          .findFirst()
+          .map(credential -> {
+            ProviderCredentialMetadata disabled = new ProviderCredentialMetadata(
+                credential.id(),
+                credential.credentialRef(),
+                credential.teamId(),
+                credential.workspaceId(),
+                credential.provider(),
+                credential.model(),
+                credential.baseUrl(),
+                credential.apiKeySecretRef(),
+                "DISABLED"
+            );
+            credentials.put(disabled.id(), disabled);
+            return disabled;
+          });
     }
 
     private List<ProviderCredentialMetadata> savedCredentials() {

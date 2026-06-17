@@ -150,6 +150,39 @@ class ProviderCredentialRunControllerTest {
     assertThat(WORKER.lastRequest()).isNull();
   }
 
+  @Test
+  void runRequestRejectsDisabledCredentialRefsBeforeWorkerInvocation() throws Exception {
+    String workspaceId = createWorkspace("Disabled Credential Ref Workspace");
+    credentialRepository.save(new ProviderCredentialMetadata(
+        "credential-disabled-mimo",
+        "disabled-mimo",
+        "team_provider_credential_run",
+        workspaceId,
+        "mimo-real",
+        "mimo-v2.5",
+        "https://token-plan-cn.xiaomimimo.com/v1",
+        "env://MIMO_API_KEY",
+        "DISABLED"
+    ));
+
+    MvcResult result = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "userMessage": "禁用 credential 不应执行",
+                  "mode": "llm-open-agent",
+                  "providerRuntimeRef": "credential.disabled-mimo"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andReturn();
+
+    assertThat(result.getResponse().getContentAsString())
+        .doesNotContain("MIMO_API_KEY", "env://MIMO_API_KEY", "apiKeySecretRef");
+    assertThat(WORKER.lastRequest()).isNull();
+  }
+
   private String createWorkspace(String name) throws Exception {
     MvcResult result = mockMvc.perform(post("/v1/workspaces")
             .contentType(MediaType.APPLICATION_JSON)

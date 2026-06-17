@@ -83,6 +83,21 @@ class ProviderCredentialRepositoryTest {
       assertThat(repository.listByWorkspaceScope("team-a", "workspace-a"))
           .extracting(ProviderCredentialMetadata::credentialRef)
           .containsExactly("workspace-mimo");
+
+      assertThat(repository.disableWorkspaceCredential("team-a", "workspace-a", "workspace-mimo"))
+          .hasValueSatisfying(credential -> {
+            assertThat(credential.credentialRef()).isEqualTo("workspace-mimo");
+            assertThat(credential.workspaceId()).isEqualTo("workspace-a");
+            assertThat(credential.status()).isEqualTo("DISABLED");
+            assertThat(credential.apiKeySecretRef()).isEqualTo("secret://team-a/workspace-a/provider/mimo");
+          });
+      assertThat(repository.findActiveByScope("team-a", "workspace-a", "workspace-mimo")).isEmpty();
+      assertThat(repository.listByWorkspaceScope("team-a", "workspace-a"))
+          .extracting(ProviderCredentialMetadata::credentialRef, ProviderCredentialMetadata::status)
+          .containsExactly(org.assertj.core.api.Assertions.tuple("workspace-mimo", "DISABLED"));
+      assertThat(repository.disableWorkspaceCredential("team-a", "workspace-b", "workspace-mimo")).isEmpty();
+      assertThat(repository.disableWorkspaceCredential("team-b", "workspace-c", "workspace-mimo")).isEmpty();
+
       assertThat(repository.listByWorkspaceScope("team-a", "workspace-b")).isEmpty();
       assertThat(repository.listByWorkspaceScope("team-b", "workspace-c")).isEmpty();
 

@@ -141,6 +141,81 @@ class ProviderCredentialControllerTest {
   }
 
   @Test
+  void ownerDisablesWorkspaceCredentialMetadataWithoutDeletingAuditHistoryOrLeakingSecretMaterial() throws Exception {
+    String workspaceId = createWorkspaceAs("owner-user", "Owner User");
+
+    mockMvc.perform(put(
+            "/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}",
+            workspaceId,
+            "workspace-mimo"
+        )
+            .headers(devHeaders("owner-user", "Owner User"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "provider": "mimo-real",
+                  "model": "mimo-v2.5",
+                  "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+                  "apiKeyEnvName": "MIMO_API_KEY"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    MvcResult disableResult = mockMvc.perform(post(
+            "/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable",
+            workspaceId,
+            "workspace-mimo"
+        )
+            .headers(devHeaders("owner-user", "Owner User")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(true))
+        .andExpect(jsonPath("$.data.credentialRef").value("workspace-mimo"))
+        .andExpect(jsonPath("$.data.workspaceId").value(workspaceId))
+        .andExpect(jsonPath("$.data.scope").value("WORKSPACE"))
+        .andExpect(jsonPath("$.data.provider").value("mimo-real"))
+        .andExpect(jsonPath("$.data.status").value("DISABLED"))
+        .andExpect(jsonPath("$.data.apiKeyEnvName").doesNotExist())
+        .andExpect(jsonPath("$.data.apiKeySecretRef").doesNotExist())
+        .andReturn();
+
+    assertThat(disableResult.getResponse().getContentAsString())
+        .doesNotContain("MIMO_API_KEY", "env://MIMO_API_KEY", "apiKeySecretRef", "apiKey", "Authorization");
+    assertThat(repository.findActiveByScope(
+        "team-provider-credential-api",
+        workspaceId,
+        "workspace-mimo"
+    )).isEmpty();
+
+    MvcResult listResult = mockMvc.perform(get(
+            "/v1/workspaces/{workspaceId}/provider-credentials",
+            workspaceId
+        )
+            .headers(devHeaders("owner-user", "Owner User")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].credentialRef").value("workspace-mimo"))
+        .andExpect(jsonPath("$.data[0].status").value("DISABLED"))
+        .andExpect(jsonPath("$.data[0].apiKeySecretRef").doesNotExist())
+        .andReturn();
+
+    assertThat(listResult.getResponse().getContentAsString())
+        .doesNotContain("MIMO_API_KEY", "env://MIMO_API_KEY", "apiKeySecretRef", "apiKey", "Authorization");
+
+    List<AuditEventRecord> auditEvents = auditRepository.findByWorkspaceId(workspaceId);
+    assertThat(auditEvents)
+        .filteredOn(event -> event.eventType().equals("PROVIDER_CREDENTIAL_DISABLED"))
+        .singleElement()
+        .satisfies(event -> {
+          assertThat(event.actorUserId()).isEqualTo("owner-user");
+          assertThat(event.teamId()).isEqualTo("team-provider-credential-api");
+          assertThat(event.workspaceId()).isEqualTo(workspaceId);
+          assertThat(event.message()).contains("workspace-mimo");
+          assertThat(event.message()).doesNotContain("MIMO_API_KEY", "env://", "apiKey", "token", "Authorization");
+        });
+  }
+
+  @Test
   void openApiDocumentIncludesJdbcProviderCredentialEndpoints() throws Exception {
     mockMvc.perform(get("/v3/api-docs")
             .headers(devHeaders("owner-user", "Owner User")))
@@ -148,11 +223,17 @@ class ProviderCredentialControllerTest {
         .andExpect(jsonPath("$.paths['/v1/workspaces/{workspaceId}/provider-credentials']").exists())
         .andExpect(jsonPath("$.paths['/v1/workspaces/{workspaceId}/provider-credentials'].get").exists())
         .andExpect(jsonPath("$.paths['/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}']").exists())
-        .andExpect(jsonPath("$.paths['/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}'].put").exists());
+        .andExpect(jsonPath("$.paths['/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}'].put").exists())
+        .andExpect(jsonPath(
+            "$.paths['/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable']"
+        ).exists())
+        .andExpect(jsonPath(
+            "$.paths['/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable'].post"
+        ).exists());
   }
 
   @Test
-  void viewerCannotListOrUpsertProviderCredentials() throws Exception {
+  void viewerCannotListUpsertOrDisableProviderCredentials() throws Exception {
     String workspaceId = createWorkspaceAs("owner-user", "Owner User");
     grantViewer(workspaceId, "viewer-user");
 
@@ -174,6 +255,15 @@ class ProviderCredentialControllerTest {
                   "apiKeyEnvName": "MIMO_API_KEY"
                 }
                 """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("WORKSPACE_FORBIDDEN"));
+
+    mockMvc.perform(post(
+            "/v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable",
+            workspaceId,
+            "workspace-mimo"
+        )
+            .headers(devHeaders("viewer-user", "Viewer User")))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("WORKSPACE_FORBIDDEN"));
   }

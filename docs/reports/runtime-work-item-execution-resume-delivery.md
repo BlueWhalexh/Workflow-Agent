@@ -3159,6 +3159,59 @@ Evidence boundaries:
 - `apiKeyEnvName` and `env://MIMO_API_KEY` are metadata references for worker-side environment lookup, not provider token values.
 - J25A proves workspace owner upsert/list of workspace-scoped env-backed metadata and public redaction. It does not implement team-scoped credential API, secret manager/KMS/keychain/file lookup, delete/disable lifecycle, key rotation, encrypted secret storage, non-env secret injection, real provider validation, real provider execution, or remote runner credential distribution.
 
+## Phase J26A - Java Provider Credential Lifecycle Guard
+
+Status: implemented for J26A. The Java backend now exposes a narrow JDBC-profile owner-only disable lifecycle API for workspace-scoped provider credential metadata. Disable updates metadata status to `DISABLED`, preserves audit history, keeps owner list visibility, and prevents disabled credential refs from being resolved into worker provider runtime metadata.
+
+Scope delivered:
+
+- Added `POST /v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}/disable`.
+- Added `ProviderCredentialService.disableWorkspaceCredential(...)` with workspace owner guard and credential ref validation.
+- Added `ProviderCredentialRepository.disableWorkspaceCredential(teamId, workspaceId, credentialRef)` to update only matching workspace-scoped metadata rows.
+- Public disable response reuses `ProviderCredentialPublicMetadata`; it does not expose `apiKeyEnvName`, `apiKeySecretRef`, raw token, or Authorization material.
+- Owner list still returns disabled workspace metadata with `status = "DISABLED"`.
+- Existing run path continues to resolve only ACTIVE credential metadata, so `providerRuntimeRef = "credential.<disabled-ref>"` is rejected before worker invocation.
+- Audit event `PROVIDER_CREDENTIAL_DISABLED` records actor/team/workspace/ref metadata without env name, secret ref, token, or Authorization material.
+- Updated Java backend platform spec, phase-one audit, delivery report, and J26A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=ProviderCredentialControllerTest,ProviderCredentialServiceTest,ProviderCredentialRepositoryTest,ProviderCredentialRunControllerTest test`
+  - Initial RED: test compilation failed as expected.
+  - Expected failures: `ProviderCredentialRepository.disableWorkspaceCredential(String, String, String)` and `ProviderCredentialService.disableWorkspaceCredential(String, String)` did not exist yet; the test fake override also failed because the production repository method was absent.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml -Dtest=ProviderCredentialControllerTest,ProviderCredentialServiceTest,ProviderCredentialRepositoryTest,ProviderCredentialRunControllerTest test`
+  - 17 Java tests passed.
+  - Covers owner disable, OpenAPI path presence, viewer denial, public response/list redaction, audit redaction, repository status update, active-resolution blocking, and run rejection before worker invocation.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 102 Java tests passed.
+- `npm test`
+  - 44 test files / 178 tests passed.
+- `npm run typecheck`
+  - passed.
+
+Static verification:
+
+- `git diff --check`
+  - passed after J26A archive updates.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" backend/src/main/java/com/myworkflow/agent/backend/providersecret backend/src/test/java/com/myworkflow/agent/backend/providersecret backend/src/test/java/com/myworkflow/agent/backend/run/ProviderCredentialRunControllerTest.java docs/architecture/java-team-backend-platform-spec.md docs/reports/runtime-work-item-execution-resume-delivery.md docs/reports/java-backend-phase-one-completion-audit.md docs/superpowers/plans/2026-06-15-java-provider-credential-lifecycle-guard.md --glob '!backend/target/**'`
+  - no matches after J26A archive updates.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - no matches after J26A archive updates.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-15-java-provider-credential-lifecycle-guard.md`
+  - no unchecked plan tasks after final archive update.
+
+Evidence boundaries:
+
+- J26A tests use MockMvc, in-memory service fakes, JDBC repositories, a capturing fake worker, and MySQL Testcontainers. No real external provider call was executed.
+- `apiKeyEnvName` and `env://MIMO_API_KEY` remain metadata references for worker-side environment lookup, not provider token values.
+- J26A proves workspace owner disable of workspace-scoped env-backed metadata and disabled-ref run blocking. It does not implement physical delete, team-scoped credential API, secret manager/KMS/keychain/file lookup, key rotation, encrypted secret storage, non-env secret injection, real provider validation, real provider execution, or remote runner credential distribution.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

@@ -107,6 +107,25 @@ public class ProviderCredentialService {
         .toList();
   }
 
+  public ProviderCredentialPublicMetadata disableWorkspaceCredential(String workspaceId, String credentialRef) {
+    String normalizedRef = normalizeCredentialRef(credentialRef);
+    WorkspaceRecord workspace = workspaceService.requireWorkspaceRole(workspaceId, WorkspaceRole.WORKSPACE_OWNER);
+    ProviderCredentialMetadata disabled = repository.disableWorkspaceCredential(
+            workspace.teamId(),
+            workspace.workspaceId(),
+            normalizedRef
+        )
+        .orElseThrow(() -> new IllegalArgumentException("Provider credential reference not found"));
+    auditService.record(
+        workspace.workspaceId(),
+        null,
+        "PROVIDER_CREDENTIAL_DISABLED",
+        "Provider credential metadata disabled: credentialRef=%s scope=WORKSPACE"
+            .formatted(disabled.credentialRef())
+    );
+    return toPublicMetadata(disabled);
+  }
+
   private static ProviderCredentialRuntimeDescriptor toRuntimeDescriptor(
       ProviderCredentialMetadata credential
   ) {
