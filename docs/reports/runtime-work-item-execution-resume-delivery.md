@@ -3690,6 +3690,53 @@ Evidence boundaries:
 - J35A tests use MockMvc/JUnit and MySQL Testcontainers only. No real OIDC provider, JWKS endpoint, IAM directory, email delivery service, invite link/token service, or external identity provider was called.
 - J35A is a local invite/onboarding metadata baseline only. It does not implement production OIDC/OAuth/JWKS, external directory sync, real email invites, invite link/token handling, global team CRUD, sessions, production RBAC sync, or multi-team administration.
 
+## Phase J36A - Java OIDC JWKS Verifier Baseline
+
+Status: implemented for J36A. The Java backend now has a configurable OIDC/JWKS JWT verifier baseline behind the existing bearer verifier SPI.
+
+Scope delivered:
+
+- Added `spring-security-oauth2-jose` as the JWT/JWKS validation dependency managed by the Spring Boot dependency set.
+- Added `BackendProperties.Oidc` config for `issuer`, `jwks-uri`, `audience`, `user-id-claim`, `team-id-claim`, and `display-name-claim`.
+- Added `ConfigurableOidcBearerTokenVerifier` as a conditional bean activated by `my-workflow.backend.oidc.jwks-uri`.
+- The verifier uses `NimbusJwtDecoder` to validate signed JWTs from JWKS and enforces optional issuer/audience constraints.
+- The verifier maps configured claims to `BackendPrincipal` and returns no principal when decode, signature, issuer, audience, or required claim validation fails.
+- Existing `BearerTokenAuthenticationFilter` remains the only HTTP integration point and still consumes only `BearerTokenVerifier`.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J36A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OidcJwtBearerVerifierTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `ConfigurableOidcBearerTokenVerifier` and `BackendProperties.Oidc` did not exist yet.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OidcJwtBearerVerifierTest,BearerIdentityAdapterTest,ProductionIdentityHardeningTest`
+  - 11 Java tests passed.
+  - Covers local JWKS-backed RS256 JWT to principal mapping, wrong-audience rejection, wrong-issuer rejection, expired token rejection, unknown signing key rejection, missing configured team claim rejection, existing injected bearer verifier behavior, invalid bearer fail-closed behavior, and production profile dev identity rejection.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 133 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-oidc-jwks-verifier-baseline.md`
+  - No unchecked J36A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J36A tests use local JDK `HttpServer` as an ephemeral JWKS endpoint. No real OIDC provider, OAuth server, SSO session, token introspection endpoint, IAM directory, or external identity provider was called.
+- J36A is a configurable JWT/JWKS verifier baseline only. It does not implement OIDC discovery, OAuth login/session flow, refresh tokens, external directory sync, production role sync, real IdP smoke, or frontend login UX.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

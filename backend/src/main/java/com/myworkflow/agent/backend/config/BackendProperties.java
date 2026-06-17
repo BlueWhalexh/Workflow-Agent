@@ -13,6 +13,7 @@ public class BackendProperties {
   private final Path providerSecretFileRoot;
   private final DevPrincipal devPrincipal;
   private final AuditRetention auditRetention;
+  private final Oidc oidc;
 
   @Autowired
   public BackendProperties(
@@ -21,7 +22,13 @@ public class BackendProperties {
       @Value("${my-workflow.backend.dev-principal.team-id:dev-team}") String devTeamId,
       @Value("${my-workflow.backend.dev-principal.display-name:Dev User}") String devDisplayName,
       @Value("${my-workflow.backend.provider-secrets.file-root:}") String providerSecretFileRoot,
-      @Value("${my-workflow.backend.audit.retention-days:365}") int auditRetentionDays
+      @Value("${my-workflow.backend.audit.retention-days:365}") int auditRetentionDays,
+      @Value("${my-workflow.backend.oidc.issuer:}") String oidcIssuer,
+      @Value("${my-workflow.backend.oidc.jwks-uri:}") String oidcJwksUri,
+      @Value("${my-workflow.backend.oidc.audience:}") String oidcAudience,
+      @Value("${my-workflow.backend.oidc.user-id-claim:sub}") String oidcUserIdClaim,
+      @Value("${my-workflow.backend.oidc.team-id-claim:team_id}") String oidcTeamIdClaim,
+      @Value("${my-workflow.backend.oidc.display-name-claim:name}") String oidcDisplayNameClaim
   ) {
     this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
     this.providerSecretFileRoot = blankToNull(providerSecretFileRoot)
@@ -29,6 +36,14 @@ public class BackendProperties {
         .orElse(null);
     this.devPrincipal = new DevPrincipal(devUserId, devTeamId, devDisplayName);
     this.auditRetention = new AuditRetention(auditRetentionDays, "REPORT_ONLY", false);
+    this.oidc = new Oidc(
+        oidcIssuer,
+        oidcJwksUri,
+        oidcAudience,
+        oidcUserIdClaim,
+        oidcTeamIdClaim,
+        oidcDisplayNameClaim
+    );
   }
 
   public BackendProperties(
@@ -37,7 +52,7 @@ public class BackendProperties {
       String devTeamId,
       String devDisplayName
   ) {
-    this(dataRoot, devUserId, devTeamId, devDisplayName, "", 365);
+    this(dataRoot, devUserId, devTeamId, devDisplayName, "", 365, "", "", "", "sub", "team_id", "name");
   }
 
   public Path dataRoot() {
@@ -54,6 +69,10 @@ public class BackendProperties {
 
   public AuditRetention auditRetention() {
     return auditRetention;
+  }
+
+  public Oidc oidc() {
+    return oidc;
   }
 
   public record DevPrincipal(
@@ -75,10 +94,32 @@ public class BackendProperties {
     }
   }
 
+  public record Oidc(
+      String issuer,
+      String jwksUri,
+      String audience,
+      String userIdClaim,
+      String teamIdClaim,
+      String displayNameClaim
+  ) {
+    public Oidc {
+      issuer = blankToNull(issuer).orElse(null);
+      jwksUri = blankToNull(jwksUri).orElse(null);
+      audience = blankToNull(audience).orElse(null);
+      userIdClaim = requiredClaimName(userIdClaim, "sub");
+      teamIdClaim = requiredClaimName(teamIdClaim, "team_id");
+      displayNameClaim = requiredClaimName(displayNameClaim, "name");
+    }
+  }
+
   private static Optional<String> blankToNull(String value) {
     if (value == null || value.isBlank()) {
       return Optional.empty();
     }
     return Optional.of(value.trim());
+  }
+
+  private static String requiredClaimName(String value, String defaultValue) {
+    return blankToNull(value).orElse(defaultValue);
   }
 }
