@@ -144,6 +144,7 @@ public class OpsController {
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}", "poll mapped backend run response"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events", "read durable lifecycle events"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/artifacts", "list backend artifact refs"),
+          new IntegrationEndpoint("POST", "/v1/agent-runs/{runId}/artifacts", "upload run-scoped remote runner artifact content"),
           new IntegrationEndpoint("GET", "/v1/artifacts/{artifactId}", "read safe artifact content"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/approvals", "read approval requests"),
           new IntegrationEndpoint("POST", "/v1/agent-runs/{runId}/approvals", "submit approval decision"),
@@ -175,6 +176,7 @@ public class OpsController {
       boolean externalDirectorySync,
       boolean productionSecretManager,
       boolean remoteRunnerDispatch,
+      boolean remoteRunnerArtifactUpload,
       boolean multiNodeStreamFanout
   ) {
     static IntegrationCapabilities current() {
@@ -186,6 +188,7 @@ public class OpsController {
           true,
           true,
           false,
+          true,
           true,
           true,
           true,

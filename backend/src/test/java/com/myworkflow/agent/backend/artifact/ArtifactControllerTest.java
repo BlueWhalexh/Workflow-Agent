@@ -85,6 +85,70 @@ class ArtifactControllerTest {
     assertThat(rawBody).doesNotContain("secret-token");
   }
 
+  @Test
+  void uploadsRemoteRunnerArtifactContentForRegisteredRunRef() throws Exception {
+    String workspaceId = createWorkspace();
+    MvcResult createRunResult = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "userMessage": "上传远端 artifact",
+                  "mode": "deterministic-open-agent"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andReturn();
+    String runId = JsonPath.read(createRunResult.getResponse().getContentAsString(), "$.data.runId");
+    pollRun(runId, "SUCCEEDED");
+    String artifactRef = ".agent-runs/%s/remote-upload.json".formatted(runId);
+
+    MvcResult uploadResult = mockMvc.perform(post("/v1/agent-runs/{runId}/artifacts", runId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "schemaVersion": "remote-runner-artifact-upload.v1",
+                  "artifactRef": "%s",
+                  "content": "{\\"remote\\":true,\\"authorization\\":\\"[REDACTED]\\"}"
+                }
+                """.formatted(artifactRef)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.runId").value(runId))
+        .andExpect(jsonPath("$.data.artifactRef").value(artifactRef))
+        .andExpect(jsonPath("$.data.absolutePath").doesNotExist())
+        .andExpect(jsonPath("$.data.content").doesNotExist())
+        .andReturn();
+    assertThat(uploadResult.getResponse().getContentAsString())
+        .doesNotContain("authorization")
+        .doesNotContain("secret")
+        .doesNotContain("workspaceRoot");
+
+    MvcResult listResult = mockMvc.perform(get("/v1/agent-runs/{runId}/artifacts", runId))
+        .andExpect(status().isOk())
+        .andReturn();
+    String uploadedArtifactId = JsonPath.read(
+        listResult.getResponse().getContentAsString(),
+        "$.data[2].artifactId"
+    );
+
+    mockMvc.perform(get("/v1/artifacts/{artifactId}", uploadedArtifactId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.artifactRef").value(artifactRef))
+        .andExpect(jsonPath("$.data.content").value("{\"remote\":true,\"authorization\":\"[REDACTED]\"}"))
+        .andExpect(jsonPath("$.data.absolutePath").doesNotExist());
+
+    mockMvc.perform(post("/v1/agent-runs/{runId}/artifacts", runId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "schemaVersion": "remote-runner-artifact-upload.v1",
+                  "artifactRef": "../outside.json",
+                  "content": "{}"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+  }
+
   private String createWorkspace() throws Exception {
     MvcResult result = mockMvc.perform(post("/v1/workspaces")
             .contentType(MediaType.APPLICATION_JSON)
@@ -149,7 +213,8 @@ class ArtifactControllerTest {
             false,
             List.of(
                 ".agent-runs/%s/artifact.json".formatted(request.runId()),
-                ".agent-runs/%s/raw-provider/response.json".formatted(request.runId())
+                ".agent-runs/%s/raw-provider/response.json".formatted(request.runId()),
+                ".agent-runs/%s/remote-upload.json".formatted(request.runId())
             ),
             false,
             List.of()

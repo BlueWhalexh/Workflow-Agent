@@ -44,6 +44,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/events')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/artifacts')]").exists())
+        .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/agent-runs/{runId}/artifacts')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/workspaces/{workspaceId}/remote-runners')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/heartbeat')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/lease')]").exists())
@@ -58,6 +59,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.capabilities.externalDirectorySync").value(true))
         .andExpect(jsonPath("$.data.capabilities.productionSecretManager").value(true))
         .andExpect(jsonPath("$.data.capabilities.remoteRunnerDispatch").value(true))
+        .andExpect(jsonPath("$.data.capabilities.remoteRunnerArtifactUpload").value(true))
         .andExpect(jsonPath("$.data.capabilities.multiNodeStreamFanout").value(false))
         .andReturn();
 

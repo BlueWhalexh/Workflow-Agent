@@ -4062,6 +4062,56 @@ Evidence boundaries:
 - Test literals such as `manager-auth-token-not-real` and `http-provider-secret-not-real` are fake fixtures, not real credentials.
 - J42A is not vendor KMS/Vault/Keychain SDK, key rotation, public secret registration API, team-scoped credential API, remote runner secret distribution, or real provider smoke.
 
+## Java Remote Runner Artifact Upload Baseline
+
+Status: implemented as J43A backend artifact callback/upload baseline.
+
+Scope delivered:
+
+- Added `POST /v1/agent-runs/{runId}/artifacts`.
+- The endpoint accepts `schemaVersion=remote-runner-artifact-upload.v1`, a run-scoped safe relative `artifactRef`, and text `content`.
+- Upload writes content only under the backend-managed workspace content root.
+- Upload requires the run's workspace to be accessible with `WORKSPACE_EDITOR`.
+- Public upload response returns only `runId`, `artifactRef`, and `uploadedAt`; it does not echo content or absolute paths.
+- `/v1/ops/integration-contract` now advertises the runtime upload endpoint and `remoteRunnerArtifactUpload=true`.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ArtifactControllerTest`
+  - Initial RED failed with HTTP `405 METHOD_NOT_ALLOWED` for `POST /v1/agent-runs/{runId}/artifacts`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ArtifactControllerTest`
+  - 2 Java tests passed.
+  - Covers existing artifact list/read behavior, remote artifact content upload, no public content/absolute path echo on upload, path traversal rejection, and subsequent safe artifact read through the existing artifact API.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ArtifactControllerTest,OpsIntegrationContractControllerTest`
+  - 3 Java tests passed.
+  - Covers artifact upload behavior and `/v1/ops/integration-contract` runtime endpoint/capability exposure.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 162 Java tests passed, 0 failures, 0 errors, 0 skipped.
+- `npm test`
+  - 51 test files / 200 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}|ANTHROPIC_AUTH_TOKEN=tp-[A-Za-z0-9]{20,}" src tests docs backend frontend --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+
+Evidence boundaries:
+
+- J43A is a backend HTTP callback/upload baseline exercised with MockMvc and an injected fake worker.
+- It does not implement real remote runner identity, mTLS, runner-scoped upload tokens, object storage, binary streaming, remote cancellation callback, remote artifact bundle upload, or multi-node fanout.
+- The upload path does not change `agent-backend-response.v1`; remote runners still return artifact refs through the existing result envelope.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

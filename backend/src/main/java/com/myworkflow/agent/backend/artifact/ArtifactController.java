@@ -1,12 +1,17 @@
 package com.myworkflow.agent.backend.artifact;
 
 import com.myworkflow.agent.backend.api.ApiEnvelope;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -42,6 +47,27 @@ public class ArtifactController {
     ));
   }
 
+  @PostMapping(
+      path = "/v1/agent-runs/{runId}/artifacts",
+      consumes = MediaType.APPLICATION_JSON_VALUE
+  )
+  public ApiEnvelope<ArtifactUploadResponse> uploadRunArtifact(
+      @PathVariable String runId,
+      @Valid @RequestBody ArtifactUploadRequest request
+  ) {
+    ArtifactService.ArtifactUploadResult result = artifactService.uploadRunArtifact(
+        runId,
+        request.schemaVersion(),
+        request.artifactRef(),
+        request.content()
+    );
+    return ApiEnvelope.ok(new ArtifactUploadResponse(
+        result.runId(),
+        result.artifactRef(),
+        result.uploadedAt()
+    ));
+  }
+
   private static ArtifactResponse toResponse(ArtifactRefRecord artifact) {
     return new ArtifactResponse(
         artifact.artifactId(),
@@ -74,6 +100,20 @@ public class ArtifactController {
       String contentType,
       Instant createdAt,
       String content
+  ) {
+  }
+
+  public record ArtifactUploadRequest(
+      @NotBlank String schemaVersion,
+      @NotBlank String artifactRef,
+      @NotNull String content
+  ) {
+  }
+
+  public record ArtifactUploadResponse(
+      String runId,
+      String artifactRef,
+      Instant uploadedAt
   ) {
   }
 }
