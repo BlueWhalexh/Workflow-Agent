@@ -4534,6 +4534,70 @@ Evidence boundaries:
 - It does not implement approval mutation, artifact diff rendering, SSE/EventSource streaming, real external provider execution, or production remote runner E2E.
 - The artifact preview content is sanitized for public UI and must not be treated as raw provider payload.
 
+## Frontend Artifact Read Browser Runtime Smoke
+
+Status: verified as a real local browser/backend/runtime artifact-read smoke.
+
+Scope verified:
+
+- Started the Java backend on `http://127.0.0.1:18080` with the local TypeScript worker repo root configured.
+- Started the Vite frontend on `http://127.0.0.1:5173` with `/v1`, `/health`, and `/ready` proxied to the Java backend.
+- Created workspace `ws_32b1cbea1745465791a952861d125bc3` through the real Java HTTP API.
+- Opened the React workbench in the in-app browser and confirmed it rendered `Artifact Read Browser Smoke` with `后端已连接`.
+- Submitted an assistant run through the UI composer.
+- Verified the UI reached `Run 已完成` for `run_342594890be2407eb98ace5692ce830e`, showed `Worker response recorded`, artifact ref `.agent-runs/open-agent/run_342594890be2407eb98ace5692ce830e.json`, and `wroteWorkspace: false`.
+- Clicked the UI `对比` action and verified the right-side assistant panel rendered artifact preview title `ARTIFACT · NOT_REQUIRED · application/json`.
+- Verified the artifact preview contained `"schemaVersion": "open-agent-runtime.v1"` from the backend artifact read response.
+- Verified browser-visible text did not contain `apiKeySecretRef`, `secret://`, `rawProviderPayload`, `ANTHROPIC_AUTH_TOKEN`, `MIMO_API_KEY`, or `tp-*` token-shaped values.
+- Verified browser console error log was empty.
+
+Direct backend evidence:
+
+- `GET /health`
+  - Returned `java-backend-api.v1` with `status: ok`.
+- Vite-proxied `GET /health`
+  - Returned the same `java-backend-api.v1` health envelope.
+- `GET /v1/agent-runs/run_342594890be2407eb98ace5692ce830e`
+  - Returned `SUCCEEDED`, `outputKind: draft`, one artifact ref, `requiresApproval: false`, and `wroteWorkspace: false`.
+- `GET /v1/agent-runs/run_342594890be2407eb98ace5692ce830e/events`
+  - Returned `RUN_QUEUED -> RUNNING -> COMPLETED`.
+- `GET /v1/agent-runs/run_342594890be2407eb98ace5692ce830e/artifacts`
+  - Returned one artifact: `art_0a137bc84495430c93cd597bbcba6383`, kind `ARTIFACT`, redaction status `NOT_REQUIRED`, content type `application/json`.
+- `GET /v1/artifacts/art_0a137bc84495430c93cd597bbcba6383`
+  - Returned the artifact content through the public Java API envelope.
+
+Verification:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-artifact-api.test.ts`
+  - 2 test files / 7 tests passed.
+- `npm test`
+  - 52 test files / 203 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 162 Java backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Strict token scan for real token-shaped values returned no matches:
+  - `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, `ANTHROPIC_AUTH_TOKEN=tp-*`.
+
+Environment note:
+
+- The first backend start inside the sandbox failed with `java.net.SocketException: Operation not permitted` while binding port `18080`.
+- Re-running the same Spring Boot command with approved local port-listening permission started successfully.
+- Port `8080` was occupied by a non-project Docker process, so the smoke used `18080` and configured Vite with `MY_WORKFLOW_BACKEND_URL=http://127.0.0.1:18080`.
+
+Evidence boundaries:
+
+- This is a real local browser + Java backend + local TypeScript worker smoke.
+- It is not a real external provider E2E.
+- It is not production remote runner dispatch/fanout E2E.
+- It does not implement approval mutation, artifact diff visualization, SSE/EventSource UI consumption, OAuth login/session lifecycle, or production secret manager behavior.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
