@@ -1,3 +1,4 @@
+import type { ArtifactContentView } from "../features/artifacts/artifact-api.js";
 import type { AssistantRunSessionView } from "../features/assistant/run-session.js";
 import { loadWorkspaceBootstrap, type WorkspaceSummaryView } from "../features/workspace/workspace-api.js";
 import type { ApiFetch } from "../shared/api/envelope.js";
@@ -99,6 +100,29 @@ export function applyAssistantRunSessionToWorkbench(
         artifact: session.approval.artifactRefs[0] ?? "无",
         target: session.approval.targetWorkspacePaths[0] ?? "无",
         wroteWorkspace: session.approval.wroteWorkspace,
+      },
+    },
+  });
+}
+
+export function applyArtifactContentToWorkbench(
+  data: WorkbenchViewModel,
+  artifact: ArtifactContentView,
+): WorkbenchViewModel {
+  const publicArtifact = sanitizeForPublicUi(artifact) as ArtifactContentView;
+
+  return publicWorkbench({
+    ...data,
+    assistant: {
+      ...data.assistant,
+      approval: {
+        ...data.assistant.approval,
+        artifact: publicArtifact.artifactRef,
+        artifactPreview: {
+          title: `${publicArtifact.kind} · ${publicArtifact.redactionStatus}`,
+          contentType: publicArtifact.contentType,
+          content: publicArtifact.content,
+        },
       },
     },
   });

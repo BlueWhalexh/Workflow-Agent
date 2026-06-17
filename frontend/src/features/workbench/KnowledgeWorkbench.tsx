@@ -6,14 +6,18 @@ import { Sidebar } from "./Sidebar";
 type KnowledgeWorkbenchProps = {
   backendStatusLabel: string;
   data: WorkbenchViewModel;
+  assistantArtifactReading?: boolean;
   assistantSubmitting?: boolean;
+  onAssistantReadArtifact?: () => void | Promise<void>;
   onAssistantSubmit?: (userMessage: string) => void | Promise<void>;
 };
 
 export function KnowledgeWorkbench({
   backendStatusLabel,
   data,
+  assistantArtifactReading,
   assistantSubmitting,
+  onAssistantReadArtifact,
   onAssistantSubmit,
 }: KnowledgeWorkbenchProps) {
   return (
@@ -49,7 +53,9 @@ export function KnowledgeWorkbench({
       </main>
       <AssistantPanel
         assistant={data.assistant}
+        isReadingArtifact={assistantArtifactReading}
         isSubmitting={assistantSubmitting}
+        onReadArtifact={onAssistantReadArtifact}
         onSubmit={onAssistantSubmit}
       />
     </div>

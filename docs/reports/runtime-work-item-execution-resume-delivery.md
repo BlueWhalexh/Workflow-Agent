@@ -4484,7 +4484,55 @@ Evidence boundaries:
 - This is a frontend unit-level and typecheck-verified wiring slice.
 - It now proves browser click behavior against a running local Java backend and local TypeScript worker.
 - It is still not a real external provider E2E and not a production remote runner E2E.
-- It does not implement approval mutation UI, artifact read UI, SSE/EventSource streaming, real external provider execution, or remote runner artifact upload/fanout.
+- That slice did not implement approval mutation UI, artifact read UI, SSE/EventSource streaming, real external provider execution, or remote runner artifact upload/fanout.
+
+## Frontend Artifact Read Workbench Wiring
+
+Status: implemented as a thin frontend artifact-read wiring slice.
+
+Scope delivered:
+
+- Added a safe approval artifact preview field to the workbench view model.
+- Added `applyArtifactContentToWorkbench` so read artifact content is mapped into the assistant approval panel without exposing backend-private fields.
+- Wired the assistant `对比` action to list current run artifacts, select the current approval artifact ref, read its content, and update the workbench preview.
+- Kept fixture/offline, no-artifact, and read-failure cases as visible safety messages instead of silent failures.
+- Rendered artifact preview content in the right-side assistant panel with bounded height and wrapping.
+- Preserved the existing boundary that `targetWorkspacePaths` and artifact refs are display/approval context, not proof that workspace files were written.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Failed because `applyArtifactContentToWorkbench` did not exist yet.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 5 tests passed.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-artifact-api.test.ts`
+  - 2 test files / 7 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 52 test files / 203 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 162 Java backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Strict token scan for real token-shaped values returned no matches:
+  - `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, `ANTHROPIC_AUTH_TOKEN=tp-*`.
+
+Evidence boundaries:
+
+- This slice uses fake `fetch` unit tests plus TypeScript/React wiring and does not by itself prove a browser click against a live backend.
+- It does not implement approval mutation, artifact diff rendering, SSE/EventSource streaming, real external provider execution, or production remote runner E2E.
+- The artifact preview content is sanitized for public UI and must not be treated as raw provider payload.
 
 ## Boundaries
 

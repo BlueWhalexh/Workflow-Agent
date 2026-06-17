@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { listRunArtifacts, readArtifact } from "../features/artifacts/artifact-api";
 import { runAssistantTask } from "../features/assistant/run-session";
 import { KnowledgeWorkbench } from "../features/workbench/KnowledgeWorkbench";
 import {
   activeWorkspaceIdFromWorkbench,
+  applyArtifactContentToWorkbench,
   applyAssistantRunSessionToWorkbench,
   loadWorkbenchBootstrapView,
   type WorkbenchBootstrapView,
@@ -17,6 +19,7 @@ export function App() {
     data: workbenchFixture,
   });
   const [assistantSubmitting, setAssistantSubmitting] = useState(false);
+  const [assistantArtifactReading, setAssistantArtifactReading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -70,11 +73,63 @@ export function App() {
     }
   }
 
+  async function handleReadArtifact() {
+    const runId = bootstrap.data.assistant.run.id;
+    const artifactRef = bootstrap.data.assistant.approval.artifact;
+    if (bootstrap.status !== "connected" || !runId || artifactRef === "无") {
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text: "后端未连接或当前运行没有可读取的产物。",
+        }),
+      }));
+      return;
+    }
+
+    setAssistantArtifactReading(true);
+    try {
+      const artifacts = await listRunArtifacts(window.fetch.bind(window), runId);
+      const selectedArtifact = artifacts.find((artifact) => artifact.artifactRef === artifactRef) ?? artifacts[0];
+      if (!selectedArtifact) {
+        setBootstrap((current) => ({
+          ...current,
+          data: appendAssistantMessage(current.data, {
+            author: "安全检查",
+            kind: "ai",
+            text: "当前运行没有返回可读取的产物。",
+          }),
+        }));
+        return;
+      }
+
+      const artifact = await readArtifact(window.fetch.bind(window), selectedArtifact.artifactId);
+      setBootstrap((current) => ({
+        ...current,
+        data: applyArtifactContentToWorkbench(current.data, artifact),
+      }));
+    } catch {
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text: "读取产物失败，请稍后重试或检查后端连接。",
+        }),
+      }));
+    } finally {
+      setAssistantArtifactReading(false);
+    }
+  }
+
   return (
     <KnowledgeWorkbench
       backendStatusLabel={bootstrap.statusLabel}
       data={bootstrap.data}
+      assistantArtifactReading={assistantArtifactReading}
       assistantSubmitting={assistantSubmitting}
+      onAssistantReadArtifact={handleReadArtifact}
       onAssistantSubmit={handleAssistantSubmit}
     />
   );

@@ -72,6 +72,11 @@ export type AssistantViewModel = {
     artifact: string;
     target: string;
     wroteWorkspace: boolean;
+    artifactPreview?: {
+      title: string;
+      contentType: string;
+      content: string;
+    };
   };
   composerText: string;
 };

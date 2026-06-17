@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest";
 import {
   activeWorkspaceIdFromWorkbench,
+  applyArtifactContentToWorkbench,
   applyAssistantRunSessionToWorkbench,
   loadWorkbenchBootstrapView,
 } from "../../frontend/src/app/bootstrap.js";
 import { workbenchFixture } from "../../frontend/src/app/fixtures.js";
+import type { ArtifactContentView } from "../../frontend/src/features/artifacts/artifact-api.js";
 import type { AssistantRunSessionView } from "../../frontend/src/features/assistant/run-session.js";
 
 describe("frontend workbench bootstrap", () => {
@@ -164,6 +166,41 @@ describe("frontend workbench bootstrap", () => {
     });
     expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
+  });
+
+  test("applyArtifactContentToWorkbench maps a read artifact into a safe approval preview", () => {
+    const unsafeArtifact: ArtifactContentView & {
+      source: unknown;
+      apiKeySecretRef: string;
+      rawProviderPayload: string;
+    } = {
+      artifactId: "artifact_123",
+      runId: "run_live",
+      artifactRef: ".agent-runs/run_live/report.md",
+      kind: "REPORT",
+      redactionStatus: "CLEAN",
+      contentType: "text/markdown",
+      createdAt: "2026-06-17T10:12:13Z",
+      content: "## 候选补丁\n\n建议更新知识页。\n\nserver: /Users/didi/private/workspace/report.md",
+      source: {
+        serverStorageRef: "/Users/didi/private/workspace",
+      },
+      apiKeySecretRef: "secret://must-not-render",
+      rawProviderPayload: "must-not-render",
+    };
+
+    const nextWorkbench = applyArtifactContentToWorkbench(workbenchFixture, unsafeArtifact);
+
+    expect(nextWorkbench.assistant.approval.artifact).toBe(".agent-runs/run_live/report.md");
+    expect(nextWorkbench.assistant.approval.artifactPreview).toEqual({
+      title: "REPORT · CLEAN",
+      contentType: "text/markdown",
+      content: "## 候选补丁\n\n建议更新知识页。\n\nserver: [redacted-path]",
+    });
+    expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("rawProviderPayload");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
+    expect(JSON.stringify(nextWorkbench)).not.toContain("/Users/didi/private/workspace");
   });
 });
 

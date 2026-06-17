@@ -3,11 +3,19 @@ import type { AssistantViewModel } from "../../app/types";
 
 type AssistantPanelProps = {
   assistant: AssistantViewModel;
+  isReadingArtifact?: boolean;
   isSubmitting?: boolean;
+  onReadArtifact?: () => void | Promise<void>;
   onSubmit?: (userMessage: string) => void | Promise<void>;
 };
 
-export function AssistantPanel({ assistant, isSubmitting = false, onSubmit }: AssistantPanelProps) {
+export function AssistantPanel({
+  assistant,
+  isReadingArtifact = false,
+  isSubmitting = false,
+  onReadArtifact,
+  onSubmit,
+}: AssistantPanelProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -73,6 +81,14 @@ export function AssistantPanel({ assistant, isSubmitting = false, onSubmit }: As
             <span>target: {assistant.approval.target}</span>
             <span>wroteWorkspace: {String(assistant.approval.wroteWorkspace)}</span>
           </div>
+          {assistant.approval.artifactPreview ? (
+            <div className="artifact-preview">
+              <span>
+                {assistant.approval.artifactPreview.title} · {assistant.approval.artifactPreview.contentType}
+              </span>
+              <pre>{assistant.approval.artifactPreview.content}</pre>
+            </div>
+          ) : null}
           <div className="approval-actions">
             <button className="mini-button primary" type="button">
               批准
@@ -80,8 +96,8 @@ export function AssistantPanel({ assistant, isSubmitting = false, onSubmit }: As
             <button className="mini-button danger" type="button">
               拒绝
             </button>
-            <button className="mini-button" type="button">
-              对比
+            <button className="mini-button" type="button" disabled={isReadingArtifact} onClick={() => void onReadArtifact?.()}>
+              {isReadingArtifact ? "读取中" : "对比"}
             </button>
           </div>
         </section>
