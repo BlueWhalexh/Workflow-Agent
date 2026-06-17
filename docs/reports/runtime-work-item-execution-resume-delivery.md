@@ -3790,6 +3790,59 @@ Evidence boundaries:
 - J37A tests use local JDK `HttpServer` instances as ephemeral discovery/JWKS endpoints. No real OIDC provider, OAuth server, SSO session, token introspection endpoint, IAM directory, or external identity provider was called.
 - J37A is an issuer discovery and redacted diagnostics baseline only. It does not implement OAuth login/session flow, refresh tokens, token introspection, external directory sync, production role sync, real IdP smoke, or frontend login UX.
 
+## Phase J38A - Java Backend Integration Readiness Contract
+
+Status: implemented for J38A. The Java backend now exposes a thin integration-readiness contract for frontend and runtime integration planning.
+
+Scope delivered:
+
+- Added `GET /v1/ops/integration-contract`.
+- The endpoint returns `java-backend-integration-contract.v1` inside the existing `java-backend-api.v1` envelope.
+- The contract lists frontend-required endpoints for identity, workspaces, runs, events, artifacts, approvals, audit, provider credentials, and auth diagnostics.
+- The contract lists runtime-required endpoints for run creation/polling, events, artifacts, approvals, remote runner registry/heartbeat/lease, and auth diagnostics.
+- The contract records SSE replay semantics: `Last-Event-ID` is the replay cursor and EOF is not terminal evidence.
+- Capability flags mark implemented baselines true and remaining production gaps false.
+- The response does not expose access token, refresh token, API key, `apiKeySecretRef`, Authorization material, issuer/JWKS URI values, workspace root, provider runtime, or raw provider payload.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J38A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest,OpenApiContractTest`
+  - Initial RED: `GET /v1/ops/integration-contract` returned HTTP 404.
+  - OpenAPI RED: `/v1/ops/integration-contract` path was absent from `/v3/api-docs`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest,OpenApiContractTest,OpsControllerTest,OpsAuthConfigControllerTest`
+  - 6 Java tests passed.
+  - Covers integration contract response, redaction boundary, OpenAPI path presence, health/readiness, and auth-config ops coverage.
+
+Debugging note:
+
+- First focused GREEN attempt failed at compile time.
+- Root cause: private helper methods had the same names and signatures as record component accessors `frontendRequiredEndpoints()` and `runtimeRequiredEndpoints()`, but record accessors must be public.
+- Fix: rename helpers to `frontendEndpointContract()` and `runtimeEndpointContract()`.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 138 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-backend-integration-readiness-contract.md`
+  - No unchecked J38A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J38A is a backend contract discovery baseline only. It does not implement frontend API integration, runtime real E2E, OAuth login/session flow, refresh tokens, token introspection, external directory sync, production secret manager, remote runner dispatch/artifact upload/cancellation, multi-node fanout, real provider smoke, or real IdP smoke.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

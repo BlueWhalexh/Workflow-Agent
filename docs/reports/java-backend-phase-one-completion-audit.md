@@ -19,6 +19,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Area | Current evidence | Status |
 | --- | --- | --- |
 | Java platform skeleton | J1 report and backend Maven/Spring Boot skeleton | Implemented baseline |
+| Backend integration readiness contract | J38A exposes `/v1/ops/integration-contract` with frontend/runtime endpoint lists, public envelope schema, SSE notes, and explicit false flags for remaining production gaps | Implemented baseline |
 | Workspace / identity baseline | J2 workspace API, path guard, JDBC repository, Flyway/Testcontainers | Implemented baseline |
 | Async run/job bridge | J3A async `agent-runs`, job/attempt schema, local TS worker bridge | Implemented baseline |
 | Artifact registry | J4A artifact ref registry/list/safe read | Implemented baseline |
@@ -48,6 +49,28 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J38A: `Java Backend Integration Readiness Contract` is now implemented as a backend-owned contract discovery slice for frontend/runtime integration planning.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-backend-integration-readiness-contract.md`
+
+Scope that required approval:
+
+- Adds `GET /v1/ops/integration-contract`.
+- Exposes stable frontend-required and runtime-required endpoint lists.
+- Exposes `java-backend-api.v1` as the public envelope schema and documents SSE `Last-Event-ID` replay semantics.
+- Publishes capability flags that keep incomplete production capabilities false.
+
+SOP result:
+
+- Frontend and runtime integrators can discover the backend contract without parsing OpenAPI or dated docs first.
+- Implemented baseline capabilities such as async runs, SSE events, approvals, artifacts, provider credential metadata, and OIDC JWT bearer are marked true.
+- Incomplete capabilities such as OAuth login/session, token introspection, external directory sync, production secret manager, remote runner dispatch, and multi-node stream fanout remain false.
+- The contract response does not expose access token, refresh token, API key, `apiKeySecretRef`, Authorization material, issuer/JWKS URI values, workspace root, provider runtime, or raw provider payload.
+- J38A is not frontend API integration, runtime E2E, production OAuth/session, production secret management, external directory sync, remote runner dispatch/artifact upload/cancellation, or multi-node fanout.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J37A: `Java OIDC Discovery Auth Diagnostics Baseline` is now implemented as a narrow issuer discovery and redacted configuration diagnostics slice.
 
@@ -179,7 +202,11 @@ SOP result:
    - `/v1/ops/auth-config` exposes only redacted mode/configured metadata and claim names.
    - Still no token introspection, OAuth login/session lifecycle, refresh tokens, external directory sync, production role sync, or real IdP smoke.
 
-14. J38A+: external directory sync / production OAuth completion.
+14. J38A: backend integration readiness contract. Completed baseline.
+   - `/v1/ops/integration-contract` exposes frontend/runtime endpoint lists and readiness flags.
+   - Still no frontend API integration, runtime real E2E, token introspection, OAuth login/session lifecycle, production secret manager, remote runner dispatch, external directory sync, or multi-node fanout.
+
+15. J39A+: external directory sync / production OAuth completion.
    - User/team CRUD, external invite delivery, OAuth login/session integration, and role sync.
 
 ## Completion Criteria For Backend Phase One
@@ -198,4 +225,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J37A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, token introspection/OAuth session flow, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
+No J38A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as frontend API integration, runtime real E2E, production KMS/Keychain/Vault integration, token introspection/OAuth session flow, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.

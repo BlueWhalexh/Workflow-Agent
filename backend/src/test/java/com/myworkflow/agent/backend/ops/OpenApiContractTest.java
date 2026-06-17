@@ -26,6 +26,8 @@ class OpenApiContractTest {
         .andExpect(jsonPath("$.info.version").value("v1"))
         .andExpect(jsonPath("$.paths['/health']").exists())
         .andExpect(jsonPath("$.paths['/ready']").exists())
+        .andExpect(jsonPath("$.paths['/v1/ops/integration-contract']").exists())
+        .andExpect(jsonPath("$.paths['/v1/ops/integration-contract'].get").exists())
         .andExpect(jsonPath("$.paths['/health'].get.responses['200'].content['application/json'].schema.$ref")
             .value("#/components/schemas/ApiEnvelopeOpsStatusResponse"))
         .andExpect(jsonPath("$.paths['/ready'].get.responses['200'].content['application/json'].schema.$ref")
