@@ -1,10 +1,15 @@
 package com.myworkflow.agent.backend.identity;
 
 import com.myworkflow.agent.backend.api.ApiEnvelope;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,11 +55,35 @@ public class IdentityController {
         .toList());
   }
 
+  @PutMapping(path = "/teams/{teamId}/members/{userId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ApiEnvelope<TeamMemberResponse> upsertTeamMember(
+      @PathVariable String teamId,
+      @PathVariable String userId,
+      @Valid @RequestBody UpsertTeamMemberRequest request
+  ) {
+    return ApiEnvelope.ok(toTeamMemberResponse(teamDirectoryService.upsertCurrentTeamMember(
+        teamId,
+        userId,
+        request.displayName(),
+        request.role()
+    )));
+  }
+
+  @PostMapping("/teams/{teamId}/members/{userId}/disable")
+  public ApiEnvelope<TeamMemberResponse> disableTeamMember(
+      @PathVariable String teamId,
+      @PathVariable String userId
+  ) {
+    return ApiEnvelope.ok(toTeamMemberResponse(teamDirectoryService.disableCurrentTeamMember(teamId, userId)));
+  }
+
   private static TeamMemberResponse toTeamMemberResponse(TeamMemberRecord member) {
     return new TeamMemberResponse(
         member.teamId(),
         member.userId(),
-        member.role()
+        member.displayName(),
+        member.role(),
+        member.status()
     );
   }
 
@@ -75,7 +104,15 @@ public class IdentityController {
   public record TeamMemberResponse(
       String teamId,
       String userId,
-      TeamRole role
+      String displayName,
+      TeamRole role,
+      TeamMemberStatus status
+  ) {
+  }
+
+  public record UpsertTeamMemberRequest(
+      String displayName,
+      @NotNull TeamRole role
   ) {
   }
 }

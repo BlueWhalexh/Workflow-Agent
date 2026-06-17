@@ -42,35 +42,36 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
 | Full OIDC/OAuth | J31A fail-closed guard and J32A bearer verifier SPI exist; no real OIDC discovery, JWKS validation, token introspection, SSO, sessions, or directory claim sync | Partially implemented baseline |
-| Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
+| User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; no external directory sync or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
 
-J33A: `Java File Secret Resolver Baseline` is now implemented as a local file-backed provider secret adapter slice.
+J34A: `Java Team Directory Lifecycle Baseline` is now implemented as a local team directory lifecycle slice.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-file-secret-resolver-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-team-directory-lifecycle-baseline.md`
 
 Scope that required approval:
 
-- Adds a conditional local `FileProviderSecretResolver`.
-- Adds `my-workflow.backend.provider-secrets.file-root`.
-- Extends the run path so non-`env://` refs can be resolved through existing `ProviderSecretResolver` beans.
-- Requires secret-boundary tests, docs, and report updates.
+- Adds explicit local team member lifecycle fields and API.
+- Extends `team_memberships` with status metadata.
+- Prevents disabled team members from retaining or being granted workspace access.
+- Requires permission-boundary tests, JDBC migration/controller smoke, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
-- User asked to continue backend development after J32A.
-- `file://...` provider credential refs can be resolved only when a backend file-root is configured.
-- File refs are constrained to root-relative files under `my-workflow.backend.provider-secrets.file-root`.
-- Path traversal, absolute paths, directories, missing files, oversized files, and blank file content fail closed before worker invocation.
-- Resolved file secret values enter only `AgentWorkerSecretInjection` for workers that explicitly support secret injection.
-- J33A is not production KMS, Keychain, Vault, public secret upload, secret rotation, encrypted storage, remote runner secret distribution, or real provider execution.
+- User asked to continue backend development after J33A.
+- Active `TEAM_ADMIN` can upsert current-team backend-known member metadata.
+- Active `TEAM_ADMIN` can disable current-team backend-known members; self-disable is rejected.
+- Non-admin team members cannot manage the directory and receive `TEAM_FORBIDDEN`.
+- Disabled members cannot retain or be granted workspace access through the workspace member API.
+- Public team member responses contain directory fields only: `teamId`, `userId`, `displayName`, `role`, `status`.
+- J34A is not production OIDC/OAuth/JWKS, external IAM/directory sync, invite flow, global team CRUD, session management, or production RBAC sync.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -114,9 +115,14 @@ SOP result:
    - Injected verifier maps bearer token to backend principal.
    - Still no real OIDC discovery, JWKS validation, token introspection, session lifecycle, or directory sync.
 
-10. J34A+: real OIDC/OAuth integration and directory lifecycle.
+10. J34A: local team directory lifecycle baseline. Completed baseline.
+   - Active team admin can upsert/disable current-team backend-known member metadata.
+   - Disabled team members cannot retain or be granted workspace access.
+   - Still no external OIDC/IAM directory sync, invite flow, global team CRUD, or production role sync.
+
+11. J35A+: real OIDC/OAuth integration and external directory sync.
    - OIDC/OAuth adapter and claim mapping.
-   - User/team CRUD and role sync.
+   - User/team CRUD, invite flow, and role sync.
 
 ## Completion Criteria For Backend Phase One
 
@@ -134,4 +140,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J33A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, real OIDC/JWKS integration, real production runner identity/dispatch/artifact upload, directory lifecycle, and multi-node stream fanout.
+No J34A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, real OIDC/JWKS integration, external directory sync/invites, real production runner identity/dispatch/artifact upload, and multi-node stream fanout.

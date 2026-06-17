@@ -1,6 +1,7 @@
 package com.myworkflow.agent.backend.workspace;
 
 import com.myworkflow.agent.backend.identity.TeamMemberRecord;
+import com.myworkflow.agent.backend.identity.TeamMemberStatus;
 import com.myworkflow.agent.backend.identity.TeamRole;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,7 +35,7 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
   public WorkspaceRecord save(WorkspaceRecord workspace, String ownerUserId, WorkspaceRole role) {
     upsertUser(ownerUserId);
     upsertTeam(workspace.teamId());
-    upsertTeamMembership(workspace.teamId(), ownerUserId, TeamRole.TEAM_ADMIN);
+    upsertTeamMembership(workspace.teamId(), ownerUserId, TeamRole.TEAM_ADMIN, TeamMemberStatus.ACTIVE);
     upsertWorkspace(workspace);
     upsertWorkspaceMember(workspace.workspaceId(), ownerUserId, role);
     return workspace;
@@ -64,8 +65,10 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
             SELECT w.id, w.team_id, w.name, w.server_storage_ref, w.default_branch, w.status, w.created_at
             FROM workspaces w
             JOIN workspace_members wm ON wm.workspace_id = w.id
+            JOIN team_memberships tm ON tm.team_id = w.team_id AND tm.user_id = wm.user_id
             WHERE wm.user_id = ?
               AND w.team_id = ?
+              AND tm.status = 'ACTIVE'
             ORDER BY w.created_at ASC, w.id ASC
             """,
         WORKSPACE_ROW_MAPPER,
@@ -78,14 +81,64 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
   public List<TeamMemberRecord> listKnownTeamMembers(String teamId) {
     return jdbcTemplate.query(
         """
-            SELECT team_id, user_id, role
-            FROM team_memberships
-            WHERE team_id = ?
-            ORDER BY user_id ASC
+            SELECT tm.team_id, tm.user_id, u.display_name, tm.role, tm.status
+            FROM team_memberships tm
+            JOIN users u ON u.id = tm.user_id
+            WHERE tm.team_id = ?
+            ORDER BY tm.user_id ASC
             """,
         TEAM_MEMBER_ROW_MAPPER,
         teamId
     );
+  }
+
+  @Override
+  public Optional<TeamMemberRecord> findTeamMember(String teamId, String userId) {
+    try {
+      return Optional.ofNullable(jdbcTemplate.queryForObject(
+          """
+              SELECT tm.team_id, tm.user_id, u.display_name, tm.role, tm.status
+              FROM team_memberships tm
+              JOIN users u ON u.id = tm.user_id
+              WHERE tm.team_id = ?
+                AND tm.user_id = ?
+              """,
+          TEAM_MEMBER_ROW_MAPPER,
+          teamId,
+          userId
+      ));
+    } catch (EmptyResultDataAccessException exception) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public TeamMemberRecord upsertTeamMember(String teamId, String userId, String displayName, TeamRole role) {
+    upsertUser(userId, displayName);
+    upsertTeam(teamId);
+    upsertTeamMembership(teamId, userId, role, TeamMemberStatus.ACTIVE);
+    return findTeamMember(teamId, userId)
+        .orElseThrow(() -> new IllegalArgumentException("Team member not found"));
+  }
+
+  @Override
+  public TeamMemberRecord disableTeamMember(String teamId, String userId) {
+    int updated = jdbcTemplate.update(
+        """
+            UPDATE team_memberships
+            SET status = ?
+            WHERE team_id = ?
+              AND user_id = ?
+            """,
+        TeamMemberStatus.DISABLED.name(),
+        teamId,
+        userId
+    );
+    if (updated == 0) {
+      throw new IllegalArgumentException("Team member not found");
+    }
+    return findTeamMember(teamId, userId)
+        .orElseThrow(() -> new IllegalArgumentException("Team member not found"));
   }
 
   @Override
@@ -136,9 +189,11 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
               SELECT wm.role
               FROM workspace_members wm
               JOIN workspaces w ON w.id = wm.workspace_id
+              JOIN team_memberships tm ON tm.team_id = w.team_id AND tm.user_id = wm.user_id
               WHERE wm.workspace_id = ?
                 AND wm.user_id = ?
                 AND w.team_id = ?
+                AND tm.status = 'ACTIVE'
               """,
           String.class,
           workspaceId,
@@ -158,9 +213,10 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
     if (!workspace.teamId().equals(teamId)) {
       throw new IllegalArgumentException("Workspace member team id must match the workspace team");
     }
+    ensureTeamMemberCanReceiveWorkspaceGrant(teamId, userId);
     upsertUser(userId);
     upsertTeam(teamId);
-    upsertTeamMembership(teamId, userId, TeamRole.TEAM_MEMBER);
+    upsertTeamMembership(teamId, userId, TeamRole.TEAM_MEMBER, TeamMemberStatus.ACTIVE);
     upsertWorkspaceMember(workspaceId, userId, role);
   }
 
@@ -219,6 +275,10 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
   }
 
   private void upsertUser(String userId) {
+    upsertUser(userId, userId);
+  }
+
+  private void upsertUser(String userId, String displayName) {
     jdbcTemplate.update(
         """
             INSERT INTO users (id, external_subject, display_name, status)
@@ -229,7 +289,7 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
             """,
         userId,
         userId,
-        userId
+        displayName
     );
   }
 
@@ -247,18 +307,28 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
     );
   }
 
-  private void upsertTeamMembership(String teamId, String userId, TeamRole role) {
+  private void upsertTeamMembership(String teamId, String userId, TeamRole role, TeamMemberStatus status) {
     jdbcTemplate.update(
         """
-            INSERT INTO team_memberships (team_id, user_id, role)
-            VALUES (?, ?, ?)
+            INSERT INTO team_memberships (team_id, user_id, role, status)
+            VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
-              role = IF(role = 'TEAM_ADMIN', 'TEAM_ADMIN', VALUES(role))
+              role = IF(role = 'TEAM_ADMIN', 'TEAM_ADMIN', VALUES(role)),
+              status = VALUES(status)
             """,
         teamId,
         userId,
-        role.name()
+        role.name(),
+        status.name()
     );
+  }
+
+  private void ensureTeamMemberCanReceiveWorkspaceGrant(String teamId, String userId) {
+    findTeamMember(teamId, userId)
+        .filter((member) -> member.status() == TeamMemberStatus.DISABLED)
+        .ifPresent((member) -> {
+          throw new IllegalArgumentException("Team member is disabled");
+        });
   }
 
   private void upsertWorkspace(WorkspaceRecord workspace) {
@@ -324,7 +394,9 @@ public class JdbcWorkspaceRepository implements WorkspaceRepository {
     return new TeamMemberRecord(
         resultSet.getString("team_id"),
         resultSet.getString("user_id"),
-        TeamRole.valueOf(resultSet.getString("role"))
+        resultSet.getString("display_name"),
+        TeamRole.valueOf(resultSet.getString("role")),
+        TeamMemberStatus.valueOf(resultSet.getString("status"))
     );
   }
 }

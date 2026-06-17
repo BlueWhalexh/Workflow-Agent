@@ -2,6 +2,7 @@ package com.myworkflow.agent.backend.workspace;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -88,5 +89,35 @@ class WorkspaceJdbcControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+  }
+
+  @Test
+  void teamDirectoryLifecycleApiPersistsThroughJdbcRepository() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "JDBC Team Directory",
+                  "defaultBranch": "main"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(put("/v1/teams/{teamId}/members/{userId}", "team_jdbc", "editor_jdbc")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "displayName": "JDBC Editor",
+                  "role": "TEAM_MEMBER"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.displayName").value("JDBC Editor"))
+        .andExpect(jsonPath("$.data.role").value("TEAM_MEMBER"))
+        .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+    mockMvc.perform(post("/v1/teams/{teamId}/members/{userId}/disable", "team_jdbc", "editor_jdbc"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("DISABLED"));
   }
 }

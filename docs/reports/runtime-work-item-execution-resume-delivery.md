@@ -3579,6 +3579,65 @@ Evidence boundaries:
 - J33A tests use local files, MockMvc, fake/capturing workers, and MySQL Testcontainers. No real external provider, KMS, Keychain, Vault, or remote runner was called.
 - J33A does not implement production KMS, Keychain/Vault integration, public secret upload/registration, secret rotation, encrypted secret storage, remote runner secret distribution, or real provider execution.
 
+## Phase J34A - Java Team Directory Lifecycle Baseline
+
+Status: implemented for J34A. The Java backend now has a local team directory lifecycle baseline for backend-known members.
+
+Scope delivered:
+
+- Added `TeamMemberStatus` and extended team member records/responses with `displayName` and `status`.
+- Added `PUT /v1/teams/{teamId}/members/{userId}` for active team admins to upsert current-team member metadata.
+- Added `POST /v1/teams/{teamId}/members/{userId}/disable` for active team admins to disable current-team members.
+- Added disabled-member workspace access/grant guard in both in-memory and JDBC workspace repositories.
+- Added Flyway `V12__team_member_lifecycle_baseline.sql` for `team_memberships.status` and `updated_at`.
+- Added default-profile lifecycle controller tests, repository contract coverage, JDBC controller smoke, and schema artifact coverage.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J34A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamDirectoryLifecycleControllerTest`
+  - Initial RED: 2 tests failed as expected.
+  - Expected failure: new team member lifecycle endpoints returned `NOT_FOUND` / HTTP 404 because they did not exist yet.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=InMemoryWorkspaceRepositoryContractTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `TeamMemberStatus`, `disableTeamMember`, and `TeamMemberRecord.status()` did not exist yet.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamDirectoryLifecycleControllerTest,InMemoryWorkspaceRepositoryContractTest`
+  - 4 Java tests passed.
+  - Covers active team admin upsert/disable, public response no workspace/secret fields, non-admin `TEAM_FORBIDDEN`, disabled-member workspace grant rejection, and disabled-member existing workspace access rejection in default profile.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=JdbcWorkspaceRepositoryTest`
+  - 1 Java Testcontainers test passed.
+  - Covers Flyway v12 migration and JDBC repository disabled-member grant guard through the repository contract.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=WorkspaceJdbcControllerTest`
+  - 2 Java Testcontainers tests passed.
+  - Covers workspace API persistence and team directory lifecycle API persistence through the JDBC profile.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=TeamDirectoryLifecycleControllerTest,TeamMemberControllerTest,InMemoryWorkspaceRepositoryContractTest,JdbcWorkspaceRepositoryTest,WorkspaceJdbcControllerTest,WorkspaceSchemaArtifactTest`
+  - 9 Java tests passed.
+  - Covers J34A focused behavior plus existing team listing compatibility and schema artifact expectations.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 123 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches after removing a token-prefix literal from the J34A plan command example.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-team-directory-lifecycle-baseline.md`
+  - No unchecked J34A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J34A tests use MockMvc/JUnit and MySQL Testcontainers only. No real OIDC provider, JWKS endpoint, IAM directory, invite system, or external identity provider was called.
+- J34A is a local backend-known directory lifecycle baseline only. It does not implement production OIDC/OAuth/JWKS, external directory sync, global team CRUD, invite flow, sessions, production RBAC sync, or multi-team administration.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

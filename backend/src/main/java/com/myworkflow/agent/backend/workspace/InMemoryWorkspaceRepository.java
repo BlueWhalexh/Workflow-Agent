@@ -1,6 +1,7 @@
 package com.myworkflow.agent.backend.workspace;
 
 import com.myworkflow.agent.backend.identity.TeamMemberRecord;
+import com.myworkflow.agent.backend.identity.TeamMemberStatus;
 import com.myworkflow.agent.backend.identity.TeamRole;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -22,7 +23,7 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
   @Override
   public WorkspaceRecord save(WorkspaceRecord workspace, String ownerUserId, WorkspaceRole role) {
     workspaces.put(workspace.workspaceId(), workspace);
-    grantTeamMembership(workspace.teamId(), ownerUserId, TeamRole.TEAM_ADMIN);
+    grantTeamMembership(workspace.teamId(), ownerUserId, ownerUserId, TeamRole.TEAM_ADMIN, TeamMemberStatus.ACTIVE);
     memberships.compute(workspace.workspaceId(), (workspaceId, existing) -> {
       List<WorkspaceMembership> updated = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
       updated.add(new WorkspaceMembership(ownerUserId, workspace.teamId(), role));
@@ -50,10 +51,61 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
         .map((membership) -> new TeamMemberRecord(
             teamId,
             membership.userId(),
-            membership.role()
+            membership.displayName(),
+            membership.role(),
+            membership.status()
         ))
         .sorted(Comparator.comparing(TeamMemberRecord::userId))
         .toList();
+  }
+
+  @Override
+  public Optional<TeamMemberRecord> findTeamMember(String teamId, String userId) {
+    return teamMemberships.getOrDefault(teamId, List.of()).stream()
+        .filter(membership -> membership.userId().equals(userId))
+        .findFirst()
+        .map((membership) -> new TeamMemberRecord(
+            teamId,
+            membership.userId(),
+            membership.displayName(),
+            membership.role(),
+            membership.status()
+        ));
+  }
+
+  @Override
+  public TeamMemberRecord upsertTeamMember(String teamId, String userId, String displayName, TeamRole role) {
+    grantTeamMembership(teamId, userId, displayName, role, TeamMemberStatus.ACTIVE);
+    return findTeamMember(teamId, userId)
+        .orElseThrow(() -> new IllegalArgumentException("Team member not found"));
+  }
+
+  @Override
+  public TeamMemberRecord disableTeamMember(String teamId, String userId) {
+    final boolean[] disabled = {false};
+    teamMemberships.compute(teamId, (ignored, existing) -> {
+      List<TeamMembership> current = existing == null ? List.of() : existing;
+      List<TeamMembership> updated = new ArrayList<>();
+      for (TeamMembership membership : current) {
+        if (membership.userId().equals(userId)) {
+          disabled[0] = true;
+          updated.add(new TeamMembership(
+              membership.userId(),
+              membership.displayName(),
+              membership.role(),
+              TeamMemberStatus.DISABLED
+          ));
+        } else {
+          updated.add(membership);
+        }
+      }
+      return List.copyOf(updated);
+    });
+    if (!disabled[0]) {
+      throw new IllegalArgumentException("Team member not found");
+    }
+    return findTeamMember(teamId, userId)
+        .orElseThrow(() -> new IllegalArgumentException("Team member not found"));
   }
 
   @Override
@@ -89,6 +141,11 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   @Override
   public Optional<WorkspaceRole> findRole(String workspaceId, String userId, String teamId) {
+    if (findTeamMember(teamId, userId)
+        .filter((member) -> member.status() == TeamMemberStatus.ACTIVE)
+        .isEmpty()) {
+      return Optional.empty();
+    }
     return memberships.getOrDefault(workspaceId, List.of()).stream()
         .filter(membership -> membership.userId().equals(userId) && membership.teamId().equals(teamId))
         .map(WorkspaceMembership::role)
@@ -104,7 +161,8 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
     if (!workspace.teamId().equals(teamId)) {
       throw new IllegalArgumentException("Workspace member team id must match the workspace team");
     }
-    grantTeamMembership(teamId, userId, TeamRole.TEAM_MEMBER);
+    ensureTeamMemberCanReceiveWorkspaceGrant(teamId, userId);
+    grantTeamMembership(teamId, userId, userId, TeamRole.TEAM_MEMBER, TeamMemberStatus.ACTIVE);
     memberships.compute(workspaceId, (ignored, existing) -> {
       List<WorkspaceMembership> updated = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
       updated.removeIf(membership -> membership.userId().equals(userId) && membership.teamId().equals(teamId));
@@ -172,19 +230,37 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
     });
   }
 
-  private void grantTeamMembership(String teamId, String userId, TeamRole role) {
+  private void grantTeamMembership(
+      String teamId,
+      String userId,
+      String displayName,
+      TeamRole role,
+      TeamMemberStatus status
+  ) {
     teamMemberships.compute(teamId, (ignored, existing) -> {
       List<TeamMembership> updated = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
       TeamRole resolvedRole = role;
+      String resolvedDisplayName = displayName;
       for (TeamMembership membership : updated) {
         if (membership.userId().equals(userId)) {
           resolvedRole = highestTeamRole(membership.role(), role);
+          if (displayName == null || displayName.trim().isEmpty()) {
+            resolvedDisplayName = membership.displayName();
+          }
         }
       }
       updated.removeIf((membership) -> membership.userId().equals(userId));
-      updated.add(new TeamMembership(userId, resolvedRole));
+      updated.add(new TeamMembership(userId, resolvedDisplayName, resolvedRole, status));
       return List.copyOf(updated);
     });
+  }
+
+  private void ensureTeamMemberCanReceiveWorkspaceGrant(String teamId, String userId) {
+    findTeamMember(teamId, userId)
+        .filter((member) -> member.status() == TeamMemberStatus.DISABLED)
+        .ifPresent((member) -> {
+          throw new IllegalArgumentException("Team member is disabled");
+        });
   }
 
   private static TeamRole highestTeamRole(TeamRole left, TeamRole right) {
@@ -203,7 +279,9 @@ public class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   private record TeamMembership(
       String userId,
-      TeamRole role
+      String displayName,
+      TeamRole role,
+      TeamMemberStatus status
   ) {
   }
 }

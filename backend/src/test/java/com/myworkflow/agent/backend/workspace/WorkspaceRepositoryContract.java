@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import com.myworkflow.agent.backend.identity.TeamMemberRecord;
 import com.myworkflow.agent.backend.identity.TeamRole;
+import com.myworkflow.agent.backend.identity.TeamMemberStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -101,6 +102,15 @@ final class WorkspaceRepositoryContract {
     assertThat(repository.listKnownTeamMembers(teamId))
         .extracting(TeamMemberRecord::userId)
         .contains(viewerUserId);
+    TeamMemberRecord disabled = repository.disableTeamMember(teamId, viewerUserId);
+    assertThat(disabled.status()).isEqualTo(TeamMemberStatus.DISABLED);
+    assertThatThrownBy(() -> repository.grantAccess(
+        workspaceId,
+        viewerUserId,
+        teamId,
+        WorkspaceRole.WORKSPACE_VIEWER
+    ))
+        .isInstanceOf(IllegalArgumentException.class);
     assertThat(repository.revokeAccess(workspaceId, viewerUserId, teamId)).isFalse();
     assertThatThrownBy(() -> repository.grantAccess(
         workspaceId,
