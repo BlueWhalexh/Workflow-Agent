@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -26,7 +27,6 @@ public class AgentRunService {
 
   private static final String CREDENTIAL_RUNTIME_REF_PREFIX = "credential.";
   private static final String ENV_SECRET_REF_PREFIX = "env://";
-  private static final String SECRET_REF_PREFIX = "secret://";
   private static final String PROVIDER_CREDENTIAL_API_KEY_ENV_NAME = "PROVIDER_CREDENTIAL_API_KEY";
 
   private final WorkspaceService workspaceService;
@@ -296,19 +296,15 @@ public class AgentRunService {
       }
       return new ResolvedApiKeySecret(envName, AgentWorkerSecretInjection.empty());
     }
-    if (secretRef.startsWith(SECRET_REF_PREFIX)) {
-      ProviderSecretResolver providerSecretResolver = providerSecretResolverProvider.getIfAvailable();
-      if (providerSecretResolver == null) {
-        throw new IllegalArgumentException("Provider credential secret refs require a backend secret resolver");
-      }
-      String secretValue = providerSecretResolver.resolveSecretValue(secretRef)
-          .orElseThrow(() -> new IllegalArgumentException("Provider credential secret ref could not be resolved"));
-      return new ResolvedApiKeySecret(
-          PROVIDER_CREDENTIAL_API_KEY_ENV_NAME,
-          new AgentWorkerSecretInjection(Map.of(PROVIDER_CREDENTIAL_API_KEY_ENV_NAME, secretValue))
-      );
-    }
-    throw new IllegalArgumentException("Unsupported provider credential secret ref scheme");
+    String secretValue = providerSecretResolverProvider.stream()
+        .map(resolver -> resolver.resolveSecretValue(secretRef))
+        .flatMap(Optional::stream)
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Provider credential secret ref could not be resolved"));
+    return new ResolvedApiKeySecret(
+        PROVIDER_CREDENTIAL_API_KEY_ENV_NAME,
+        new AgentWorkerSecretInjection(Map.of(PROVIDER_CREDENTIAL_API_KEY_ENV_NAME, secretValue))
+    );
   }
 
   private static void putString(Map<String, Object> runtime, String key, String value) {

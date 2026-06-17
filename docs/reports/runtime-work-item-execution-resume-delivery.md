@@ -3522,6 +3522,63 @@ Evidence boundaries:
 - J32A tests use injected verifier fixtures only. No real OIDC provider, JWKS endpoint, token introspection endpoint, or external IAM was called.
 - J32A does not implement token signature validation, discovery, sessions, SSO, invite flow, global user/team directory CRUD, or claim-to-role sync.
 
+## Phase J33A - Java File Secret Resolver Baseline
+
+Status: implemented for J33A. The Java backend now has a local file-backed provider secret resolver baseline for configured-root `file://...` provider credential refs.
+
+Scope delivered:
+
+- Added `FileProviderSecretResolver`.
+- Added optional `my-workflow.backend.provider-secrets.file-root` configuration on `BackendProperties`.
+- Updated `AgentRunService` so non-`env://` refs resolve through available `ProviderSecretResolver` beans.
+- Added `FileProviderSecretResolverTest`.
+- Added `FileProviderSecretRunControllerTest`.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J33A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=FileProviderSecretResolverTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `FileProviderSecretResolver` did not exist yet.
+
+Debug evidence:
+
+- First focused integration attempt failed during Spring context startup with `No default constructor found` for `FileProviderSecretResolver`.
+- Root cause: the component had a production `BackendProperties` constructor and a package-private test constructor, but Spring was not given an explicit constructor selection signal.
+- Fix: annotate the production constructor with `@Autowired`.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=FileProviderSecretResolverTest`
+  - 3 Java tests passed.
+  - Covers root-relative file ref resolution, traversal rejection, and non-file scheme ignore behavior.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ProviderCredentialRunControllerTest,FileProviderSecretRunControllerTest,ProviderSecretPolicyControllerTest`
+  - 7 Java tests passed.
+  - Covers existing `secret://` resolver fixture compatibility, provider runtime ref policy, configured-root `file://` run path injection, traversal fail-closed behavior, and no raw secret/ref in worker request metadata.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 119 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" ...touched J33A files...`
+  - No trailing whitespace or conflict-marker matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-file-secret-resolver-baseline.md`
+  - No unchecked J33A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J33A tests use local files, MockMvc, fake/capturing workers, and MySQL Testcontainers. No real external provider, KMS, Keychain, Vault, or remote runner was called.
+- J33A does not implement production KMS, Keychain/Vault integration, public secret upload/registration, secret rotation, encrypted secret storage, remote runner secret distribution, or real provider execution.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

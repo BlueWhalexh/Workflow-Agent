@@ -39,8 +39,8 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
-| Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; no raw secret in worker request | Implemented baseline |
-| External secret manager / KMS | No production KMS, Keychain/file adapter, rotation, public secret registration, or remote runner distribution | Not implemented |
+| Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
+| External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
 | Full OIDC/OAuth | J31A fail-closed guard and J32A bearer verifier SPI exist; no real OIDC discovery, JWKS validation, token introspection, SSO, sessions, or directory claim sync | Partially implemented baseline |
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
@@ -49,27 +49,28 @@ Complete backend phase one under the project SOP: central Java backend control p
 
 ## Latest Gate Resolution
 
-J32A: `Java Bearer Identity Adapter Baseline` is now implemented as an OIDC-ready bearer verifier adapter slice.
+J33A: `Java File Secret Resolver Baseline` is now implemented as a local file-backed provider secret adapter slice.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-bearer-identity-adapter-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-file-secret-resolver-baseline.md`
 
 Scope that required approval:
 
-- Adds a backend `BearerTokenVerifier` SPI.
-- Adds `BearerTokenAuthenticationFilter`.
-- Wires bearer authentication into the Spring Security filter chain.
-- Requires security, tests, docs, and report updates.
+- Adds a conditional local `FileProviderSecretResolver`.
+- Adds `my-workflow.backend.provider-secrets.file-root`.
+- Extends the run path so non-`env://` refs can be resolved through existing `ProviderSecretResolver` beans.
+- Requires secret-boundary tests, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
-- User asked to continue backend development after J31A.
-- `prod` / `production` profiles can authenticate through a verified bearer principal when a `BearerTokenVerifier` bean is configured.
-- Verified bearer identity is preferred over spoofed `X-Dev-*` headers in production-like profiles.
-- Invalid bearer tokens fail closed through the existing `AUTHENTICATION_REQUIRED` error envelope and do not echo the raw token.
-- J32A is not full OIDC/OAuth. It does not implement real identity provider integration, OIDC discovery, JWKS signature validation, token introspection, SSO/session lifecycle, invite flow, global directory lifecycle, or claim-to-role sync.
+- User asked to continue backend development after J32A.
+- `file://...` provider credential refs can be resolved only when a backend file-root is configured.
+- File refs are constrained to root-relative files under `my-workflow.backend.provider-secrets.file-root`.
+- Path traversal, absolute paths, directories, missing files, oversized files, and blank file content fail closed before worker invocation.
+- Resolved file secret values enter only `AgentWorkerSecretInjection` for workers that explicitly support secret injection.
+- J33A is not production KMS, Keychain, Vault, public secret upload, secret rotation, encrypted storage, remote runner secret distribution, or real provider execution.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -97,19 +98,23 @@ SOP result:
    - Inject raw secret only through per-run worker environment for supporting local workers.
    - Still no external KMS, public secret registration, rotation, or remote runner distribution.
 
-6. J30A: remote runner registration/lease design and baseline. Completed baseline.
+6. J33A: local file secret resolver baseline. Completed baseline.
+   - Configured-root `file://...` refs can be resolved through existing secret injection.
+   - Still no KMS/Keychain/Vault, rotation, public secret registration, or remote runner distribution.
+
+7. J30A: remote runner registration/lease design and baseline. Completed baseline.
    - Workspace-scoped registry, heartbeat, lease lifecycle, and workspace-owner guard.
    - No runner-scoped secret distribution until a dedicated secret phase.
 
-7. J31A: identity hardening baseline. Completed baseline.
+8. J31A: identity hardening baseline. Completed baseline.
    - `prod` / `production` profiles fail closed instead of trusting dev identity.
    - Still no real OIDC/OAuth provider, token validation, session lifecycle, or user/team directory CRUD.
 
-8. J32A: bearer identity adapter baseline. Completed baseline.
+9. J32A: bearer identity adapter baseline. Completed baseline.
    - Injected verifier maps bearer token to backend principal.
    - Still no real OIDC discovery, JWKS validation, token introspection, session lifecycle, or directory sync.
 
-9. J33A+: real OIDC/OAuth integration and directory lifecycle.
+10. J34A+: real OIDC/OAuth integration and directory lifecycle.
    - OIDC/OAuth adapter and claim mapping.
    - User/team CRUD and role sync.
 
@@ -129,4 +134,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J32A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, real OIDC/JWKS integration, real production runner identity/dispatch/artifact upload, directory lifecycle, and multi-node stream fanout.
+No J33A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, real OIDC/JWKS integration, real production runner identity/dispatch/artifact upload, directory lifecycle, and multi-node stream fanout.
