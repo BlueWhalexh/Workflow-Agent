@@ -33,6 +33,7 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Audit retention policy | J27A owner-visible report-only retention metadata, no destructive purge | Implemented baseline |
 | Run event streaming | J17A SSE, J22A reconnect cursor and JDBC event sequence | Implemented baseline |
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
+| Remote runner registry / lease | J30A workspace-scoped runner metadata API, heartbeat, exclusive lease, workspace audit | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
@@ -42,32 +43,32 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Full user/team directory CRUD | Current team and member listing only; no full directory lifecycle | Not implemented |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
-| Production remote runner platform | Contract/signature guards exist; no runner registry, heartbeat, leases, authz, artifact upload, remote cancellation, or secret distribution | Not implemented |
+| Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
 
-J29A: `Java Provider Secret Injection Baseline` is now implemented as an approved scope expansion.
+J30A: `Java Remote Runner Registry And Lease Baseline` is now implemented as a workspace-scoped control-plane metadata slice.
 
 Plan:
 
-- `docs/superpowers/plans/2026-06-17-java-provider-secret-injection-baseline.md`
+- `docs/superpowers/plans/2026-06-17-java-remote-runner-registry-lease-baseline.md`
 
 Scope that required approval:
 
-- Adds a backend internal `ProviderSecretResolver` SPI for `secret://...` credential refs.
-- Adds out-of-band `AgentWorkerSecretInjection` so raw secret values do not enter `AgentWorkerRequest`.
-- Extends `AgentRunService` and `LocalTsAgentWorker` secret handling.
-- Requires worker contract, service, tests, docs, and report updates.
+- Adds Flyway `remote_runners` schema for workspace-scoped runner metadata.
+- Adds JDBC repository, service, controller, and tests for register/list/heartbeat/lease.
+- Adds a new public API surface under `/v1/workspaces/{workspaceId}/remote-runners`.
+- Requires DB schema, public API, service, tests, docs, and report updates.
 - Touched more than five files.
 
 SOP result:
 
-- User approved the scope expansion.
-- DB-backed credential refs can resolve `secret://...` through a backend resolver SPI when such a resolver is configured.
-- The run path passes only `apiKeyEnvName = "PROVIDER_CREDENTIAL_API_KEY"` in the worker request.
-- Raw secret values move only through `AgentWorkerSecretInjection` and local worker process environment.
-- Default workers reject non-empty secret injection unless they explicitly opt in.
-- J29A is not a production secret manager. It does not implement KMS, Keychain/file adapters, secret rotation, public secret registration, remote runner secret distribution, or real provider execution.
+- User asked to continue backend development; the scope expansion was paused and called out before implementation because it touches DB schema/public API and more than five files.
+- Workspace owner can register a runner endpoint/capability set, record heartbeat, and claim a TTL-bound exclusive lease.
+- Viewer calls are rejected by the existing workspace role guard.
+- Public response and audit messages do not expose runner tokens, signature secrets, provider tokens, Authorization material, or raw secret aliases.
+- Endpoint URLs with userinfo credentials are rejected.
+- J30A is not a production remote runner platform. It does not implement real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, runner-scoped credential access, or remote runner secret distribution.
 - Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 ## Recommended Phase Order
@@ -95,8 +96,8 @@ SOP result:
    - Inject raw secret only through per-run worker environment for supporting local workers.
    - Still no external KMS, public secret registration, rotation, or remote runner distribution.
 
-6. J30A: remote runner registration/lease design and baseline.
-   - Registry, heartbeat, lease lifecycle, runner authz boundaries.
+6. J30A: remote runner registration/lease design and baseline. Completed baseline.
+   - Workspace-scoped registry, heartbeat, lease lifecycle, and workspace-owner guard.
    - No runner-scoped secret distribution until a dedicated secret phase.
 
 7. J31A+: identity hardening and directory lifecycle.
@@ -119,4 +120,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J29A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, production runner platform, identity hardening, and multi-node stream fanout.
+No J30A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as external secret manager/KMS, real production runner identity/dispatch/artifact upload, identity hardening, and multi-node stream fanout.

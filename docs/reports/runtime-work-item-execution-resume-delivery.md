@@ -3372,6 +3372,59 @@ Evidence boundaries:
 - `RESOLVED_SECRET_VALUE` and `test-local-worker-secret` in tests are fake strings, not real provider tokens.
 - J29A is a local backend/worker secret injection baseline. It does not implement production KMS, Keychain/file adapter, secret rotation, public secret registration API, remote runner secret distribution, or real provider execution.
 
+## Phase J30A - Java Remote Runner Registry Lease Baseline
+
+Status: implemented for J30A. The Java backend now has a workspace-scoped remote runner registry / heartbeat / lease metadata baseline under the JDBC profile. This is a control-plane metadata slice, not a production remote runner dispatch platform.
+
+Scope delivered:
+
+- Added Flyway migration `V11__remote_runner_registry_baseline.sql`.
+- Added `RemoteRunnerRecord`, `RemoteRunnerStatus`, `RemoteRunnerRepository`, `RemoteRunnerService`, and `RemoteRunnerController`.
+- Added owner-only public endpoints:
+  - `GET /v1/workspaces/{workspaceId}/remote-runners`
+  - `PUT /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}`
+  - `POST /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/heartbeat`
+  - `POST /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/lease`
+- Added workspace audit events for register, heartbeat, and lease metadata actions.
+- Added URL/userinfo and raw-secret-alias rejection for runner registration.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J30A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=RemoteRunnerControllerTest,RemoteRunnerRepositoryTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `RemoteRunnerRepository`, `RemoteRunnerRecord`, and `RemoteRunnerStatus` did not exist yet.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=RemoteRunnerControllerTest,RemoteRunnerRepositoryTest`
+  - 5 Java tests passed.
+  - Covers workspace owner runner registration/list, heartbeat, exclusive lease, viewer forbidden guard, endpoint URL credential rejection, raw secret alias rejection, OpenAPI path exposure, Flyway v11 migration, and JDBC repository lease conflict behavior.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 109 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" ...`
+  - No trailing whitespace or conflict marker matches in touched backend/docs/prototype files.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-remote-runner-registry-lease-baseline.md`
+  - No unchecked J30A plan tasks remain.
+
+Evidence boundaries:
+
+- J30A tests use MockMvc, JUnit, and MySQL Testcontainers. No real remote runner service and no real external provider call were executed.
+- The runner endpoint URL is metadata only. J30A does not dispatch jobs to registered runners.
+- J30A does not implement runner identity tokens, mTLS, remote artifact upload, remote cancellation, multi-node scheduler, runner-scoped credential access, or remote runner secret distribution.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

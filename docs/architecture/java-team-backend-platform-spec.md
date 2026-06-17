@@ -1,6 +1,6 @@
 # Java 团队后端平台技术方案
 
-> 状态：J1 skeleton 已实现；J2 Workspace / Identity 基线已实现，包含 dev principal、workspace API、path guard、JDBC repository、Flyway migration 和 MySQL/Testcontainers 验证；J3A async AgentRun / AgentJob / local TS worker bridge 基线已实现；J4A artifact registry / list / safe text read 基线已实现；J5A approval request / decision metadata 基线已实现；J6A cancel-safe terminal guard、J6B retry policy、J6C stale lock recovery repository 和 J6D run event history 基线已实现；J7A local-dev SecurityContext、workspace role guard 和 append-only audit baseline 已实现；J8A remote HTTP worker contract spike 已实现；J9A provider runtime reference policy baseline 已实现；J10A public workspace member management baseline 已实现；J11A owner-only audit listing API baseline 已实现；J12A owner-only workspace member removal baseline 已实现；J13A current team discovery baseline 已实现；J14A backend-known team member listing baseline 已实现；J15A workspace owner transfer baseline 已实现；J16A audit pagination/filtering baseline 已实现；J17A run event SSE streaming baseline 已实现；J18A audit export baseline 已实现；J19A audit record digest baseline 已实现；J20A remote runner signature baseline 已实现；J21A remote runner production secret guard 已实现；J22A run event SSE replay cursor baseline 已实现；J23A provider runtime raw secret config guard 已实现；J23B provider runtime env-name guard 已实现；J24A provider credential metadata schema baseline 已实现；J24B provider credential metadata repository baseline 已实现；J24C provider credential service scope guard baseline 已实现；J24D provider credential runtime descriptor baseline 已实现；J24E agent-run DB-backed credential ref wiring baseline 已实现；J25A provider credential public metadata API baseline 已实现；J26A provider credential lifecycle guard baseline 已实现；J27A audit retention policy baseline 已实现；J28A audit signed record integrity baseline 已实现；J29A provider secret injection baseline 已实现；剩余：WebSocket / multi-node stream fanout、完整 OIDC/OAuth、完整 user/team directory CRUD、外部 secret manager/KMS/keychain/file adapter 和生产级 remote runner platform。本文定义 Java 中心化团队后端的目标架构、技术选型、模块边界和分阶段路线。
+> 状态：J1 skeleton 已实现；J2 Workspace / Identity 基线已实现，包含 dev principal、workspace API、path guard、JDBC repository、Flyway migration 和 MySQL/Testcontainers 验证；J3A async AgentRun / AgentJob / local TS worker bridge 基线已实现；J4A artifact registry / list / safe text read 基线已实现；J5A approval request / decision metadata 基线已实现；J6A cancel-safe terminal guard、J6B retry policy、J6C stale lock recovery repository 和 J6D run event history 基线已实现；J7A local-dev SecurityContext、workspace role guard 和 append-only audit baseline 已实现；J8A remote HTTP worker contract spike 已实现；J9A provider runtime reference policy baseline 已实现；J10A public workspace member management baseline 已实现；J11A owner-only audit listing API baseline 已实现；J12A owner-only workspace member removal baseline 已实现；J13A current team discovery baseline 已实现；J14A backend-known team member listing baseline 已实现；J15A workspace owner transfer baseline 已实现；J16A audit pagination/filtering baseline 已实现；J17A run event SSE streaming baseline 已实现；J18A audit export baseline 已实现；J19A audit record digest baseline 已实现；J20A remote runner signature baseline 已实现；J21A remote runner production secret guard 已实现；J22A run event SSE replay cursor baseline 已实现；J23A provider runtime raw secret config guard 已实现；J23B provider runtime env-name guard 已实现；J24A provider credential metadata schema baseline 已实现；J24B provider credential metadata repository baseline 已实现；J24C provider credential service scope guard baseline 已实现；J24D provider credential runtime descriptor baseline 已实现；J24E agent-run DB-backed credential ref wiring baseline 已实现；J25A provider credential public metadata API baseline 已实现；J26A provider credential lifecycle guard baseline 已实现；J27A audit retention policy baseline 已实现；J28A audit signed record integrity baseline 已实现；J29A provider secret injection baseline 已实现；J30A workspace-scoped remote runner registry / heartbeat / lease baseline 已实现；剩余：WebSocket / multi-node stream fanout、完整 OIDC/OAuth、完整 user/team directory CRUD、外部 secret manager/KMS/keychain/file adapter、runner-scoped secret distribution、remote job dispatch/artifact upload/cancellation 和生产级 remote runner platform。本文定义 Java 中心化团队后端的目标架构、技术选型、模块边界和分阶段路线。
 
 ## 1. 目标对齐
 
@@ -9,7 +9,7 @@
 - 后端长期形态是一个中心服务，管理多个用户和多个 workspace。
 - Phase 1 可以先本地启动，但架构方向不是个人本地 wrapper。
 - Phase 1 采用服务端托管 workspace：workspace 文件由中心服务托管，agent 在服务端执行。
-- 架构上保留未来 remote runner 扩展位，但第一版不实现 runner 注册、心跳、任务派发和回传协议。
+- 架构上保留未来 remote runner 扩展位；J30A 已实现 workspace-scoped runner 注册、心跳和租约元数据 baseline，但仍不实现远程任务派发、artifact upload、remote cancellation 或 runner-scoped secret distribution。
 - Java 后端是控制面，负责 API、用户、workspace、权限、run、approval、artifact、audit、job 和 secret 边界。
 - TypeScript agent runtime 先保留为执行引擎，通过 worker/bridge 被 Java 调用。
 - Java 后端只消费 `agent-backend-response.v1`，不解析 fixed workflow、deterministic open-agent 或 OpenAgentGraph 的 runtime result shape。
@@ -136,6 +136,10 @@ Browser / CLI / API Client
 - `agentbridge`
   - Java `AgentWorker` port 与 TS worker adapter 实现。
   - 只理解 `agent-backend-response.v1`。
+- `runner`
+  - Remote runner registry、heartbeat 和 lease metadata。
+  - J30A 当前只做 workspace-scoped 控制面元数据，由 `WORKSPACE_OWNER` 管理并写 workspace audit。
+  - 不分发 runner token、provider secret 或远程任务。
 - `providersecret`
   - Provider credential reference、secret 解析、per-run secret injection policy。
   - API 接收 credential reference，不接收 token 值。
@@ -263,6 +267,18 @@ ArtifactRef
   redactionStatus
   contentType
 
+RemoteRunner
+  id
+  workspaceId
+  runnerRef
+  displayName
+  endpointUrl
+  status
+  capabilities
+  lastSeenAt
+  leaseOwner
+  leaseExpiresAt
+
 AuditEvent
   id
   actorUserId
@@ -306,6 +322,10 @@ GET  /v1/workspaces/{workspaceId}/audit-events
 GET  /v1/workspaces/{workspaceId}/audit-events/export
 GET  /v1/workspaces/{workspaceId}/provider-credentials
 PUT  /v1/workspaces/{workspaceId}/provider-credentials/{credentialRef}
+GET  /v1/workspaces/{workspaceId}/remote-runners
+PUT  /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}
+POST /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/heartbeat
+POST /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}/lease
 
 POST /v1/workspaces/{workspaceId}/agent-runs
 GET  /v1/agent-runs/{runId}
@@ -354,6 +374,7 @@ API 规则：
 - Phase J19A audit list/export public response 包含 `recordDigest`，格式为 `sha256:<64 lowercase hex chars>`；Phase J28A 后该 digest 在 append 时持久化，并增加 `previousRecordDigest`、`chainDigest`、`signatureKind`、`signatureValue` 本地完整性字段。
 - Phase J20A remote-http worker 可通过 `remote-http.signature-secret` 校验 signed remote runner result envelope；该校验使用 fixed field name + UTF-8 length-prefixed canonical payload，不改变 public API response，也不让 Java 解析 runtime-private result shape。
 - Phase J21A 在 `prod` / `production` profile 下要求 remote-http worker 配置非空 `remote-http.signature-secret`，避免生产误用 unsigned local spike。
+- Phase J30A workspace owner 可通过 `GET/PUT /v1/workspaces/{workspaceId}/remote-runners` 维护 workspace-scoped runner metadata，并通过 heartbeat/lease endpoint 记录在线和租约状态；public response 不包含 runner token、signature secret、provider secret 或 Authorization material。
 - run 创建需要通过 `Idempotency-Key` 支持幂等。
 - API response 可以包含 `displayText`、`status`、`outputKind`、`artifactRefs`、approval flags 和 workspace write evidence。
 - API response 不得包含 provider token、raw Authorization header、本地绝对路径或 TS runtime-private result field。
@@ -569,7 +590,7 @@ Local-first 应该是部署配置，而不是另一套架构。
 
 Remote runner 不进入 Phase 1，但设计需要保留这些扩展位：
 
-当前实现状态：J8A 已实现 remote runner contract spike。`AgentWorker` 暴露 `workerKind()`，默认 local TS worker 仍是 `LOCAL_TS_WORKER`；配置 `my-workflow.backend.agent-worker.kind=remote-http` 时，Java 使用 `RemoteHttpAgentWorker` POST 现有 `AgentWorkerRequest`，验证 `agent-remote-runner-result.v1` 传输 envelope，并把嵌套 `agent-backend-response.v1` 交给既有 run 状态机。J20A 后续补充 remote runner signature baseline：配置 `my-workflow.backend.agent-worker.remote-http.signature-secret` 后，Java 要求 `signatureKind=hmac-sha256` 和 `signature=hmac-sha256:<base64>`，并用该 secret 对 envelope identity 与嵌套 public `agent-backend-response.v1` 字段做 HMAC-SHA256 校验；canonical payload 使用 fixed field name + UTF-8 byte length prefix，避免换行或 list separator 导致字段边界碰撞。J21A 后续补充 production secret guard：当 active profile 包含 `prod` 或 `production` 时，remote-http worker 构造阶段要求非空 `remote-http.signature-secret`；未配置 secret 的 `signatureKind=unsigned-local-spike` 只保留为本地/default profile spike 路径。J20A/J21A 不等同于 runner 身份体系、key rotation、KMS/secret manager、mTLS、runner registration、heartbeat 或 lease。
+当前实现状态：J8A 已实现 remote runner contract spike。`AgentWorker` 暴露 `workerKind()`，默认 local TS worker 仍是 `LOCAL_TS_WORKER`；配置 `my-workflow.backend.agent-worker.kind=remote-http` 时，Java 使用 `RemoteHttpAgentWorker` POST 现有 `AgentWorkerRequest`，验证 `agent-remote-runner-result.v1` 传输 envelope，并把嵌套 `agent-backend-response.v1` 交给既有 run 状态机。J20A 后续补充 remote runner signature baseline：配置 `my-workflow.backend.agent-worker.remote-http.signature-secret` 后，Java 要求 `signatureKind=hmac-sha256` 和 `signature=hmac-sha256:<base64>`，并用该 secret 对 envelope identity 与嵌套 public `agent-backend-response.v1` 字段做 HMAC-SHA256 校验；canonical payload 使用 fixed field name + UTF-8 byte length prefix，避免换行或 list separator 导致字段边界碰撞。J21A 后续补充 production secret guard：当 active profile 包含 `prod` 或 `production` 时，remote-http worker 构造阶段要求非空 `remote-http.signature-secret`；未配置 secret 的 `signatureKind=unsigned-local-spike` 只保留为本地/default profile spike 路径。J30A 已实现 workspace-scoped remote runner registry / heartbeat / lease metadata baseline：workspace owner 可以注册 runner endpoint/capabilities、记录 heartbeat、claim exclusive lease，并写入 workspace audit。J30A 仍不等同于 runner 身份体系、key rotation、KMS/secret manager、mTLS、远程任务派发、artifact upload、remote cancellation 或 runner-scoped secret distribution。
 
 - `AgentWorker` 是 interface，不是 concrete local process dependency。
 - `RunAttempt.workerKind` 区分 `LOCAL_TS_WORKER` 和未来的 `REMOTE_RUNNER`。
@@ -779,6 +800,10 @@ Remote runner 不进入 Phase 1，但设计需要保留这些扩展位：
 ### Phase J29: Provider Secret Injection Baseline
 
 当前实现状态：J29A 已实现本地 provider secret injection baseline。JDBC credential metadata 中的 `secret://...` ref 可由后端 `ProviderSecretResolver` SPI 解析成内存 secret value；`AgentRunService` 为该 secret 生成固定 worker env name `PROVIDER_CREDENTIAL_API_KEY`，并通过 `AgentWorkerSecretInjection` 传给支持该能力的 worker。`LocalTsAgentWorker` 只把 secret 注入子进程环境，仍只把 `AgentWorkerRequest` JSON 写入 stdin；worker request、provider runtime map、run artifact 和 public response 不包含 raw secret 或 `apiKeySecretRef`。默认 worker 不支持非空 secret injection，避免 remote HTTP worker 在没有专门 secret distribution 设计时接收 raw secret。J29A 不提供生产 KMS、Keychain/file secret adapter、secret rotation、public secret registration API、remote runner secret distribution 或真实 provider 调用。
+
+### Phase J30: Remote Runner Registry And Lease Baseline
+
+当前实现状态：J30A 已实现 workspace-scoped remote runner registry / heartbeat / lease baseline。JDBC profile 下新增 `remote_runners` schema；workspace owner 可以通过 `PUT /v1/workspaces/{workspaceId}/remote-runners/{runnerRef}` 注册 runner endpoint/capabilities，通过 `POST .../heartbeat` 记录在线状态，通过 `POST .../lease` claim 有 TTL 的 exclusive lease，并通过 `GET .../remote-runners` 列出当前 workspace runner metadata。viewer 调用返回 `WORKSPACE_FORBIDDEN`；endpoint URL 拒绝 userinfo credentials；public response 不返回 runner token、signature secret、provider token、Authorization material 或 raw secret alias；注册、heartbeat 和 lease 会写入 workspace audit metadata。J30A 不把 runner registry 接入 job dispatch，不实现 remote artifact upload、remote cancellation、runner identity/auth token、mTLS、multi-node scheduler、runner-scoped credential access 或 remote runner secret distribution。
 
 ## 17. 验证策略
 
