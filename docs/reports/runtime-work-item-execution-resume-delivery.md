@@ -4157,6 +4157,59 @@ Evidence boundaries:
 - The second browser smoke used a real local Java backend on port `18080`; port `8080` was occupied by a non-project nginx service during verification.
 - This slice does not implement OAuth/session UI, run creation, event polling/SSE, artifact reads, approval mutation, provider credential UI, real runtime execution, or workspace writes.
 
+## Frontend Run API Adapter
+
+Status: implemented as the first frontend runtime API adapter slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-frontend-run-api-adapter-phase3.md`
+
+Scope delivered:
+
+- Added `frontend/src/features/runs/run-api.ts`.
+- Added `createAgentRun(fetcher, workspaceId, input)` for `POST /v1/workspaces/{workspaceId}/agent-runs`.
+- Added `getAgentRun(fetcher, runId)` for `GET /v1/agent-runs/{runId}`.
+- Added `cancelAgentRun(fetcher, runId)` for `POST /v1/agent-runs/{runId}/cancel`.
+- Added `listRunEvents(fetcher, runId)` for `GET /v1/agent-runs/{runId}/events`.
+- Mapped Java backend `AgentRunResponse` and `RunEventResponse` into frontend view types.
+- Reused `java-backend-api.v1` envelope unwrap and public UI safety filtering.
+- Tests assert request bodies do not include `workspaceRoot` and mapped views do not expose `apiKeySecretRef`, runtime `source`, raw provider payload, or server absolute paths.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-run-api.test.ts`
+  - Initial RED failed because `frontend/src/features/runs/run-api.js` did not exist.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-run-api.test.ts`
+  - 3 tests passed.
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-workspace-api.test.ts tests/unit/frontend-public-safety.test.ts tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-vite-proxy.test.ts tests/unit/frontend-run-api.test.ts`
+  - 6 test files / 18 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 50 test files / 196 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `git diff --cached --check`
+  - Passed with no whitespace errors for the staged run API adapter file set.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs frontend src tests --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+
+Evidence boundaries:
+
+- This slice uses fake `fetch` unit tests and does not call a real Java backend.
+- This slice does not wire the React UI to run creation, event polling/SSE, artifact reads, approval decisions, or real runtime execution.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
