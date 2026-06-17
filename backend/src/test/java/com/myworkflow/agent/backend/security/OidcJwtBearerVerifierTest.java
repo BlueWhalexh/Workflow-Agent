@@ -1,6 +1,7 @@
 package com.myworkflow.agent.backend.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.myworkflow.agent.backend.config.BackendProperties;
 import com.myworkflow.agent.backend.identity.BackendPrincipal;
@@ -33,6 +34,26 @@ class OidcJwtBearerVerifierTest {
     audience = "my-workflow-backend";
     keyPair = generateRsaKeyPair();
     jwksServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    issuer = "http://127.0.0.1:%d".formatted(jwksServer.getAddress().getPort());
+    jwksUri = issuer + "/jwks";
+    jwksServer.createContext("/.well-known/openid-configuration", exchange -> {
+      byte[] body = """
+          {"issuer":"%s","jwks_uri":"%s"}
+          """.formatted(issuer, jwksUri).getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().add("Content-Type", "application/json");
+      exchange.sendResponseHeaders(200, body.length);
+      exchange.getResponseBody().write(body);
+      exchange.close();
+    });
+    jwksServer.createContext("/bad/.well-known/openid-configuration", exchange -> {
+      byte[] body = """
+          {"issuer":"%s"}
+          """.formatted(issuer + "/bad").getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().add("Content-Type", "application/json");
+      exchange.sendResponseHeaders(200, body.length);
+      exchange.getResponseBody().write(body);
+      exchange.close();
+    });
     jwksServer.createContext("/jwks", exchange -> {
       byte[] body = jwksJson((RSAPublicKey) keyPair.getPublic()).getBytes(StandardCharsets.UTF_8);
       exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -41,7 +62,6 @@ class OidcJwtBearerVerifierTest {
       exchange.close();
     });
     jwksServer.start();
-    jwksUri = "http://127.0.0.1:%d/jwks".formatted(jwksServer.getAddress().getPort());
   }
 
   @AfterEach
@@ -54,7 +74,29 @@ class OidcJwtBearerVerifierTest {
   @Test
   void validJwtFromConfiguredJwksMapsClaimsToPrincipal() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "team_id", "name")
+        directJwksProperties("sub", "team_id", "name")
+    );
+    String token = jwtPayload("""
+        {
+          "iss": "%s",
+          "sub": "oidc-user-1",
+          "aud": "%s",
+          "team_id": "team-oidc",
+          "name": "OIDC User",
+          "iat": %d,
+          "exp": %d
+        }
+        """.formatted(issuer, audience, nowEpochSeconds(), futureEpochSeconds()));
+
+    Optional<BackendPrincipal> principal = verifier.verify(token);
+
+    assertThat(principal).hasValue(new BackendPrincipal("oidc-user-1", "team-oidc", "OIDC User"));
+  }
+
+  @Test
+  void issuerDiscoveryResolvesJwksUriAndMapsClaimsToPrincipal() throws Exception {
+    ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
+        discoveryProperties("sub", "team_id", "name")
     );
     String token = jwtPayload("""
         {
@@ -76,7 +118,7 @@ class OidcJwtBearerVerifierTest {
   @Test
   void wrongAudienceIsRejected() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "team_id", "name")
+        directJwksProperties("sub", "team_id", "name")
     );
     String token = jwtPayload("""
         {
@@ -96,7 +138,7 @@ class OidcJwtBearerVerifierTest {
   @Test
   void wrongIssuerIsRejected() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "team_id", "name")
+        directJwksProperties("sub", "team_id", "name")
     );
     String token = jwtPayload("""
         {
@@ -116,7 +158,7 @@ class OidcJwtBearerVerifierTest {
   @Test
   void expiredTokenIsRejected() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "team_id", "name")
+        directJwksProperties("sub", "team_id", "name")
     );
     String token = jwtPayload("""
         {
@@ -136,7 +178,7 @@ class OidcJwtBearerVerifierTest {
   @Test
   void tokenSignedByUnknownKeyIsRejected() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "team_id", "name")
+        directJwksProperties("sub", "team_id", "name")
     );
     KeyPair originalKeyPair = keyPair;
     keyPair = generateRsaKeyPair();
@@ -159,7 +201,7 @@ class OidcJwtBearerVerifierTest {
   @Test
   void missingConfiguredTeamClaimIsRejected() throws Exception {
     ConfigurableOidcBearerTokenVerifier verifier = new ConfigurableOidcBearerTokenVerifier(
-        oidcProperties("sub", "tenant_id", "name")
+        directJwksProperties("sub", "tenant_id", "name")
     );
     String token = jwtPayload("""
         {
@@ -176,14 +218,60 @@ class OidcJwtBearerVerifierTest {
     assertThat(verifier.verify(token)).isEmpty();
   }
 
-  private BackendProperties.Oidc oidcProperties(
+  @Test
+  void issuerUriAndJwksUriConflictIsRejected() {
+    assertThatThrownBy(() -> new BackendProperties.Oidc(
+        issuer,
+        issuer,
+        jwksUri,
+        audience,
+        "sub",
+        "team_id",
+        "name"
+    )).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void discoveryPayloadWithoutJwksUriIsRejected() {
+    BackendProperties.Oidc properties = new BackendProperties.Oidc(
+        issuer + "/bad",
+        null,
+        null,
+        audience,
+        "sub",
+        "team_id",
+        "name"
+    );
+
+    assertThatThrownBy(() -> new ConfigurableOidcBearerTokenVerifier(properties))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  private BackendProperties.Oidc directJwksProperties(
+      String userIdClaim,
+      String teamIdClaim,
+      String displayNameClaim
+  ) {
+    return new BackendProperties.Oidc(
+        null,
+        issuer,
+        jwksUri,
+        audience,
+        userIdClaim,
+        teamIdClaim,
+        displayNameClaim
+    );
+  }
+
+  private BackendProperties.Oidc discoveryProperties(
       String userIdClaim,
       String teamIdClaim,
       String displayNameClaim
   ) {
     return new BackendProperties.Oidc(
         issuer,
-        jwksUri,
+        null,
+        null,
         audience,
         userIdClaim,
         teamIdClaim,

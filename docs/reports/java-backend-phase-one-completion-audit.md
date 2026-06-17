@@ -35,19 +35,41 @@ Complete backend phase one under the project SOP: central Java backend control p
 | Remote runner hardening | J20A HMAC result envelope, J21A production secret guard | Implemented baseline |
 | Remote runner registry / lease | J30A workspace-scoped runner metadata API, heartbeat, exclusive lease, workspace audit | Implemented baseline |
 | Identity hardening | J31A disables dev header and dev principal fallback for `prod` / `production` profiles | Implemented baseline |
-| Bearer identity adapter | J32A `BearerTokenVerifier` SPI maps verified bearer token to `BackendPrincipal`; J36A adds config-backed OIDC/JWKS JWT verification | Implemented baseline |
+| Bearer identity adapter | J32A `BearerTokenVerifier` SPI maps verified bearer token to `BackendPrincipal`; J36A adds config-backed OIDC/JWKS JWT verification; J37A adds issuer discovery and redacted auth diagnostics | Implemented baseline |
 | Provider credential internals | J24A schema, J24B repository, J24C scope guard, J24D descriptor, J24E run ref wiring | Implemented baseline |
 | Public provider credential API | J25A workspace-scoped owner upsert/list API, env-backed metadata, redacted public response | Implemented baseline |
 | Provider credential lifecycle | J26A owner-only disable API, disabled refs not resolved for runs, redacted audit | Implemented baseline |
 | Provider secret injection | J29A resolver SPI + local worker per-run env injection for `secret://`; J33A local file resolver for configured-root `file://`; no raw secret in worker request | Implemented baseline |
 | External secret manager / KMS | J33A local file adapter baseline exists; no production KMS, Keychain adapter, rotation, public secret registration, or remote runner distribution | Partially implemented baseline |
-| Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, and J36A JWKS verifier baseline exist; no OIDC discovery, token introspection, SSO, sessions, OAuth login flow, or directory claim sync | Partially implemented baseline |
+| Full OIDC/OAuth | J31A fail-closed guard, J32A bearer verifier SPI, J36A JWKS verifier baseline, and J37A issuer discovery/auth diagnostics exist; no token introspection, SSO, sessions, OAuth login flow, or directory claim sync | Partially implemented baseline |
 | User/team directory lifecycle | J13A/J14A current team and backend-known member listing; J34A local team admin upsert/disable member metadata and disabled-member workspace access/grant guard; J35A local invite create/list/revoke/accept onboarding metadata; no external directory sync or full team CRUD | Partially implemented baseline |
 | Persisted signed audit records | J28A persists SHA-256 record digest, previous chain digest, chain digest, and local `sha256-chain-v1` signature metadata | Implemented baseline |
 | WebSocket / multi-node fanout | Bounded SSE replay only; no broker/multi-node/WebSocket fanout | Not implemented |
 | Production remote runner platform | Contract/signature guards and J30A workspace-scoped registry/heartbeat/lease metadata exist; no real runner identity, job dispatch, artifact upload, remote cancellation, multi-node scheduler, or secret distribution | Partially implemented baseline |
 
 ## Latest Gate Resolution
+
+J37A: `Java OIDC Discovery Auth Diagnostics Baseline` is now implemented as a narrow issuer discovery and redacted configuration diagnostics slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-java-oidc-discovery-auth-diagnostics-baseline.md`
+
+Scope that required approval:
+
+- Adds `my-workflow.backend.oidc.issuer-uri` as an alternative to direct `jwks-uri`.
+- Performs OIDC discovery against `${issuer-uri}/.well-known/openid-configuration` to resolve `jwks_uri`.
+- Adds fail-fast validation for ambiguous `issuer-uri`/`jwks-uri` config and malformed discovery payloads.
+- Adds `GET /v1/ops/auth-config` as a redacted ops diagnostics endpoint.
+
+SOP result:
+
+- Direct `jwks-uri` mode remains compatible.
+- Discovery mode validates signed JWTs through the discovered `jwks_uri` and still uses the existing bearer verifier SPI.
+- The ops diagnostics response includes only mode, configured booleans, and claim names.
+- The ops diagnostics response does not include raw issuer URI, JWKS URI, token, secret, Authorization material, or provider payload.
+- J37A is not OAuth login/session management, token introspection, refresh tokens, external user/team directory sync, production role sync, or a real IdP smoke.
+- Verification evidence is archived in `docs/reports/runtime-work-item-execution-resume-delivery.md`.
 
 J36A: `Java OIDC JWKS Verifier Baseline` is now implemented as a configurable bearer verifier slice.
 
@@ -152,7 +174,12 @@ SOP result:
    - Optional issuer/audience validation and explicit claim mapping.
    - Still no OIDC discovery, token introspection, OAuth login/session lifecycle, refresh tokens, external directory sync, or production role sync.
 
-13. J37A+: external directory sync / production OAuth completion.
+13. J37A: OIDC issuer discovery and redacted auth diagnostics baseline. Completed baseline.
+   - `issuer-uri` discovery resolves `jwks_uri` for JWT validation.
+   - `/v1/ops/auth-config` exposes only redacted mode/configured metadata and claim names.
+   - Still no token introspection, OAuth login/session lifecycle, refresh tokens, external directory sync, production role sync, or real IdP smoke.
+
+14. J38A+: external directory sync / production OAuth completion.
    - User/team CRUD, external invite delivery, OAuth login/session integration, and role sync.
 
 ## Completion Criteria For Backend Phase One
@@ -171,4 +198,4 @@ Phase one should not be marked complete until all of the following are true and 
 
 ## Current Decision Needed
 
-No J36A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, OIDC discovery/token introspection/OAuth session flow, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.
+No J37A approval is pending. The next implementation slice should be selected explicitly because remaining backend phase-one gaps still include public/security-sensitive areas such as production KMS/Keychain/Vault integration, token introspection/OAuth session flow, external directory sync, real email invite delivery/link-token handling, production runner identity/dispatch/artifact upload, and multi-node stream fanout.

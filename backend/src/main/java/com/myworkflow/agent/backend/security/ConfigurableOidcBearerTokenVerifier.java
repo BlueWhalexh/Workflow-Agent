@@ -1,9 +1,17 @@
 package com.myworkflow.agent.backend.security;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myworkflow.agent.backend.config.BackendProperties;
 import com.myworkflow.agent.backend.identity.BackendPrincipal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Optional;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -15,22 +23,28 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "my-workflow.backend.oidc.jwks-uri")
+@ConditionalOnExpression("!'${my-workflow.backend.oidc.jwks-uri:}'.trim().isEmpty() || !'${my-workflow.backend.oidc.issuer-uri:}'.trim().isEmpty()")
 public class ConfigurableOidcBearerTokenVerifier implements BearerTokenVerifier {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+      .connectTimeout(Duration.ofSeconds(5))
+      .build();
 
   private final BackendProperties.Oidc oidc;
   private final NimbusJwtDecoder jwtDecoder;
 
+  @Autowired
   public ConfigurableOidcBearerTokenVerifier(BackendProperties properties) {
     this(properties.oidc());
   }
 
   ConfigurableOidcBearerTokenVerifier(BackendProperties.Oidc oidc) {
-    if (oidc.jwksUri() == null) {
-      throw new IllegalArgumentException("OIDC JWKS URI must be configured");
+    if (oidc.jwksUri() == null && oidc.issuerUri() == null) {
+      throw new IllegalArgumentException("OIDC JWKS URI or issuer URI must be configured");
     }
     this.oidc = oidc;
-    this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(oidc.jwksUri()).build();
+    this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(resolveJwksUri(oidc)).build();
     this.jwtDecoder.setJwtValidator(tokenValidator(oidc));
   }
 
@@ -54,9 +68,9 @@ public class ConfigurableOidcBearerTokenVerifier implements BearerTokenVerifier 
   }
 
   private static OAuth2TokenValidator<Jwt> tokenValidator(BackendProperties.Oidc oidc) {
-    OAuth2TokenValidator<Jwt> validator = oidc.issuer() == null
+    OAuth2TokenValidator<Jwt> validator = oidc.validationIssuer() == null
         ? JwtValidators.createDefault()
-        : JwtValidators.createDefaultWithIssuer(oidc.issuer());
+        : JwtValidators.createDefaultWithIssuer(oidc.validationIssuer());
     if (oidc.audience() == null) {
       return validator;
     }
@@ -75,6 +89,57 @@ public class ConfigurableOidcBearerTokenVerifier implements BearerTokenVerifier 
       );
       return OAuth2TokenValidatorResult.failure(error);
     };
+  }
+
+  private static String resolveJwksUri(BackendProperties.Oidc oidc) {
+    if (oidc.jwksUri() != null) {
+      return oidc.jwksUri();
+    }
+    return discoverJwksUri(oidc.issuerUri());
+  }
+
+  private static String discoverJwksUri(String issuerUri) {
+    try {
+      HttpRequest request = HttpRequest.newBuilder(discoveryUri(issuerUri))
+          .timeout(Duration.ofSeconds(5))
+          .GET()
+          .build();
+      HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new IllegalStateException("OIDC discovery request failed");
+      }
+      JsonNode document = OBJECT_MAPPER.readTree(response.body());
+      String discoveredIssuer = text(document, "issuer").orElse(null);
+      if (discoveredIssuer != null && !issuerUri.equals(discoveredIssuer)) {
+        throw new IllegalStateException("OIDC discovery issuer mismatch");
+      }
+      return text(document, "jwks_uri")
+          .orElseThrow(() -> new IllegalStateException("OIDC discovery did not return jwks_uri"));
+    } catch (IllegalStateException exception) {
+      throw exception;
+    } catch (Exception exception) {
+      throw new IllegalStateException("OIDC discovery failed", exception);
+    }
+  }
+
+  private static URI discoveryUri(String issuerUri) {
+    return URI.create(stripTrailingSlash(issuerUri) + "/.well-known/openid-configuration");
+  }
+
+  private static String stripTrailingSlash(String value) {
+    String result = value;
+    while (result.endsWith("/")) {
+      result = result.substring(0, result.length() - 1);
+    }
+    return result;
+  }
+
+  private static Optional<String> text(JsonNode document, String fieldName) {
+    JsonNode value = document.get(fieldName);
+    if (value == null || !value.isTextual() || value.asText().isBlank()) {
+      return Optional.empty();
+    }
+    return Optional.of(value.asText().trim());
   }
 
   private static Optional<String> claim(Jwt jwt, String claimName) {

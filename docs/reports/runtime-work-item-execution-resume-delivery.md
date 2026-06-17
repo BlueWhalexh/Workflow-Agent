@@ -3737,6 +3737,59 @@ Evidence boundaries:
 - J36A tests use local JDK `HttpServer` as an ephemeral JWKS endpoint. No real OIDC provider, OAuth server, SSO session, token introspection endpoint, IAM directory, or external identity provider was called.
 - J36A is a configurable JWT/JWKS verifier baseline only. It does not implement OIDC discovery, OAuth login/session flow, refresh tokens, external directory sync, production role sync, real IdP smoke, or frontend login UX.
 
+## Phase J37A - Java OIDC Discovery Auth Diagnostics Baseline
+
+Status: implemented for J37A. The Java backend now supports OIDC issuer discovery for JWKS resolution and exposes a redacted auth configuration diagnostics endpoint.
+
+Scope delivered:
+
+- Added `my-workflow.backend.oidc.issuer-uri` as an alternative to direct `my-workflow.backend.oidc.jwks-uri`.
+- Kept direct `jwks-uri` mode compatible for existing J36A configuration.
+- Added fail-fast config validation so `issuer-uri` and `jwks-uri` cannot be configured together.
+- Added discovery resolution from `${issuer-uri}/.well-known/openid-configuration`, requiring a non-blank `jwks_uri` and validating discovered issuer when present.
+- Preserved existing issuer/audience/claim validation and `BackendPrincipal` mapping through the existing bearer verifier SPI.
+- Added `GET /v1/ops/auth-config`, returning only redacted auth mode metadata and claim names.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J37A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OidcJwtBearerVerifierTest,OpsAuthConfigControllerTest`
+  - Initial RED: test compilation failed as expected.
+  - Expected failure: `BackendProperties.Oidc` did not yet accept the new `issuerUri` constructor/configuration field.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OidcJwtBearerVerifierTest,OpsAuthConfigControllerTest,OpsControllerTest,OpenApiContractTest`
+  - 14 Java tests passed.
+  - Covers issuer discovery, direct JWKS compatibility, invalid audience/issuer/signature/expiry/claim rejection, config conflict rejection, malformed discovery rejection, health/readiness/openapi smoke, and redacted `/v1/ops/auth-config` response.
+
+Debugging note:
+
+- First focused run failed while loading Spring context for `OpsAuthConfigControllerTest`.
+- Root cause: `ConfigurableOidcBearerTokenVerifier` had both a public production constructor and a package-private test constructor; Spring needed explicit constructor selection.
+- Fix: annotate the production `BackendProperties` constructor with `@Autowired`.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 137 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-oidc-discovery-auth-diagnostics-baseline.md`
+  - No unchecked J37A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J37A tests use local JDK `HttpServer` instances as ephemeral discovery/JWKS endpoints. No real OIDC provider, OAuth server, SSO session, token introspection endpoint, IAM directory, or external identity provider was called.
+- J37A is an issuer discovery and redacted diagnostics baseline only. It does not implement OAuth login/session flow, refresh tokens, token introspection, external directory sync, production role sync, real IdP smoke, or frontend login UX.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

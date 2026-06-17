@@ -23,6 +23,7 @@ public class BackendProperties {
       @Value("${my-workflow.backend.dev-principal.display-name:Dev User}") String devDisplayName,
       @Value("${my-workflow.backend.provider-secrets.file-root:}") String providerSecretFileRoot,
       @Value("${my-workflow.backend.audit.retention-days:365}") int auditRetentionDays,
+      @Value("${my-workflow.backend.oidc.issuer-uri:}") String oidcIssuerUri,
       @Value("${my-workflow.backend.oidc.issuer:}") String oidcIssuer,
       @Value("${my-workflow.backend.oidc.jwks-uri:}") String oidcJwksUri,
       @Value("${my-workflow.backend.oidc.audience:}") String oidcAudience,
@@ -37,6 +38,7 @@ public class BackendProperties {
     this.devPrincipal = new DevPrincipal(devUserId, devTeamId, devDisplayName);
     this.auditRetention = new AuditRetention(auditRetentionDays, "REPORT_ONLY", false);
     this.oidc = new Oidc(
+        oidcIssuerUri,
         oidcIssuer,
         oidcJwksUri,
         oidcAudience,
@@ -52,7 +54,7 @@ public class BackendProperties {
       String devTeamId,
       String devDisplayName
   ) {
-    this(dataRoot, devUserId, devTeamId, devDisplayName, "", 365, "", "", "", "sub", "team_id", "name");
+    this(dataRoot, devUserId, devTeamId, devDisplayName, "", 365, "", "", "", "", "sub", "team_id", "name");
   }
 
   public Path dataRoot() {
@@ -95,6 +97,7 @@ public class BackendProperties {
   }
 
   public record Oidc(
+      String issuerUri,
       String issuer,
       String jwksUri,
       String audience,
@@ -103,12 +106,49 @@ public class BackendProperties {
       String displayNameClaim
   ) {
     public Oidc {
+      issuerUri = blankToNull(issuerUri).orElse(null);
       issuer = blankToNull(issuer).orElse(null);
       jwksUri = blankToNull(jwksUri).orElse(null);
       audience = blankToNull(audience).orElse(null);
       userIdClaim = requiredClaimName(userIdClaim, "sub");
       teamIdClaim = requiredClaimName(teamIdClaim, "team_id");
       displayNameClaim = requiredClaimName(displayNameClaim, "name");
+      if (issuerUri != null && jwksUri != null) {
+        throw new IllegalArgumentException("OIDC issuer-uri and jwks-uri are mutually exclusive");
+      }
+      if (issuerUri != null && issuer != null && !issuerUri.equals(issuer)) {
+        throw new IllegalArgumentException("OIDC issuer must match issuer-uri when both are configured");
+      }
+    }
+
+    public String mode() {
+      if (issuerUri != null) {
+        return "oidc-discovery";
+      }
+      if (jwksUri != null) {
+        return "oidc-jwks";
+      }
+      return "disabled";
+    }
+
+    public boolean discoveryEnabled() {
+      return issuerUri != null;
+    }
+
+    public boolean issuerConfigured() {
+      return validationIssuer() != null;
+    }
+
+    public boolean jwksUriConfigured() {
+      return jwksUri != null;
+    }
+
+    public boolean audienceConfigured() {
+      return audience != null;
+    }
+
+    public String validationIssuer() {
+      return issuer == null ? issuerUri : issuer;
     }
   }
 
