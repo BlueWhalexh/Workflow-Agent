@@ -4210,6 +4210,59 @@ Evidence boundaries:
 - This slice uses fake `fetch` unit tests and does not call a real Java backend.
 - This slice does not wire the React UI to run creation, event polling/SSE, artifact reads, approval decisions, or real runtime execution.
 
+## Frontend Assistant Run Session
+
+Status: implemented as the first assistant-panel-ready runtime session workflow slice.
+
+Plan:
+
+- `docs/superpowers/plans/2026-06-17-frontend-assistant-run-session-phase4.md`
+
+Scope delivered:
+
+- Added `frontend/src/features/assistant/run-session.ts`.
+- Added `runAssistantTask(fetcher, input)`.
+- Composes `createAgentRun`, `getAgentRun`, and `listRunEvents`.
+- Polls until run status leaves `QUEUED` / `RUNNING`.
+- Treats `WAITING_APPROVAL` as a terminal UI pause.
+- Maps backend status to panel title and progress.
+- Maps run events to `{ time, label }`.
+- Preserves approval boundaries by returning explicit `artifactRefs`, `targetWorkspacePaths`, and `wroteWorkspace`.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - Initial RED failed because `frontend/src/features/assistant/run-session.js` did not exist.
+
+Focused verification:
+
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - 2 tests passed.
+- `npm test -- tests/unit/frontend-run-api.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - 2 test files / 5 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 51 test files / 198 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- `git diff --cached --check`
+  - Passed with no whitespace errors for the staged assistant run session file set.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs frontend src tests --glob '!backend/target/**' --glob '!frontend/dist/**'`
+  - No matches; command exited 1 as expected for no token-pattern hits.
+
+Evidence boundaries:
+
+- This slice uses fake `fetch` unit tests and does not call a real Java backend.
+- This slice does not wire the React UI to live controls, timers, EventSource/SSE, cancellation, artifact reads, approval decisions, or real runtime execution.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
