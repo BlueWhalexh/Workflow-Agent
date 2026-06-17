@@ -1,6 +1,7 @@
 package com.myworkflow.agent.backend.identity;
 
 import com.myworkflow.agent.backend.config.BackendProperties;
+import com.myworkflow.agent.backend.security.BackendAuthMode;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,9 +10,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class DevPrincipalProvider implements PrincipalProvider {
 
   private final BackendProperties properties;
+  private final BackendAuthMode authMode;
 
-  public DevPrincipalProvider(BackendProperties properties) {
+  public DevPrincipalProvider(BackendProperties properties, BackendAuthMode authMode) {
     this.properties = properties;
+    this.authMode = authMode;
   }
 
   @Override
@@ -19,6 +22,10 @@ public class DevPrincipalProvider implements PrincipalProvider {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof BackendPrincipal principal) {
       return principal;
+    }
+
+    if (!authMode.devIdentityEnabled()) {
+      throw new AuthenticationRequiredException();
     }
 
     BackendProperties.DevPrincipal devPrincipal = properties.devPrincipal();

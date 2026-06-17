@@ -3,6 +3,7 @@ package com.myworkflow.agent.backend.api;
 import jakarta.validation.ConstraintViolationException;
 import com.myworkflow.agent.backend.approval.ApprovalNotFoundException;
 import com.myworkflow.agent.backend.artifact.ArtifactNotFoundException;
+import com.myworkflow.agent.backend.identity.AuthenticationRequiredException;
 import com.myworkflow.agent.backend.identity.TeamForbiddenException;
 import com.myworkflow.agent.backend.run.AgentRunNotFoundException;
 import com.myworkflow.agent.backend.workspace.InvalidWorkspacePathException;
@@ -87,6 +88,16 @@ public class GlobalApiExceptionHandler {
     return ApiEnvelope.failure(new ApiError(
         "TEAM_FORBIDDEN",
         "The current user cannot access this team",
+        false
+    ));
+  }
+
+  @ExceptionHandler(AuthenticationRequiredException.class)
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  public ApiEnvelope<Void> handleAuthenticationRequired(AuthenticationRequiredException exception) {
+    return ApiEnvelope.failure(new ApiError(
+        "AUTHENTICATION_REQUIRED",
+        "Authentication is required",
         false
     ));
   }

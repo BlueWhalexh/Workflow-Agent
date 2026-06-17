@@ -3425,6 +3425,52 @@ Evidence boundaries:
 - The runner endpoint URL is metadata only. J30A does not dispatch jobs to registered runners.
 - J30A does not implement runner identity tokens, mTLS, remote artifact upload, remote cancellation, multi-node scheduler, runner-scoped credential access, or remote runner secret distribution.
 
+## Phase J31A - Java Identity Hardening Baseline
+
+Status: implemented for J31A. The Java backend now fails closed for production-like identity profiles instead of trusting local development identity headers or silently using the configured dev principal.
+
+Scope delivered:
+
+- Added `BackendAuthMode` to detect production-like profiles.
+- Added `AuthenticationRequiredException` and `AUTHENTICATION_REQUIRED` public API error mapping.
+- Updated `DevHeaderAuthenticationFilter` so `prod` / `production` profiles do not set `BackendPrincipal` from `X-Dev-*` headers.
+- Updated `DevPrincipalProvider` so `prod` / `production` profiles do not fall back to configured dev principal when no authenticated backend principal exists.
+- Added `ProductionIdentityHardeningTest`.
+- Updated Java backend platform spec, phase-one completion audit, delivery report, and J31A plan archive.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ProductionIdentityHardeningTest`
+  - Initial RED: 2 tests failed as expected.
+  - Expected failure: prod profile returned HTTP 200 with `prod-fallback-user` when unauthenticated and HTTP 200 with `spoofed-user` from `X-Dev-*` headers.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ProductionIdentityHardeningTest,SecurityPrincipalControllerTest,IdentityControllerTest`
+  - 6 Java tests passed.
+  - Covers production-like profile rejection of dev headers, production-like no-fallback behavior, and unchanged default/local dev principal behavior.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 111 Java tests passed.
+- `npm run typecheck`
+  - Passed.
+
+Static verification:
+
+- `git diff --check`
+  - Passed.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}" backend docs src tests --glob '!backend/target/**'`
+  - No token pattern matches.
+- `rg -n -- "^- \[ \]" docs/superpowers/plans/2026-06-17-java-identity-hardening-baseline.md`
+  - No unchecked J31A plan tasks remain after final plan update.
+
+Evidence boundaries:
+
+- J31A is an identity hardening baseline only. It does not implement OIDC/OAuth, SSO, session management, invite flow, global user/team directory CRUD, external IAM integration, or production claim-to-role sync.
+- Tests use MockMvc/JUnit only. No external identity provider was called.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

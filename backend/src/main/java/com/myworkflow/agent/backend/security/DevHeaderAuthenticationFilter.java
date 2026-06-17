@@ -21,9 +21,11 @@ public class DevHeaderAuthenticationFilter extends OncePerRequestFilter {
   static final String DISPLAY_NAME_HEADER = "X-Dev-Display-Name";
 
   private final BackendProperties properties;
+  private final BackendAuthMode authMode;
 
-  public DevHeaderAuthenticationFilter(BackendProperties properties) {
+  public DevHeaderAuthenticationFilter(BackendProperties properties, BackendAuthMode authMode) {
     this.properties = properties;
+    this.authMode = authMode;
   }
 
   @Override
@@ -32,6 +34,15 @@ public class DevHeaderAuthenticationFilter extends OncePerRequestFilter {
       HttpServletResponse response,
       FilterChain filterChain
   ) throws ServletException, IOException {
+    if (!authMode.devIdentityEnabled()) {
+      try {
+        filterChain.doFilter(request, response);
+      } finally {
+        SecurityContextHolder.clearContext();
+      }
+      return;
+    }
+
     BackendPrincipal principal = principalFromRequest(request);
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(principal, null, List.of());
