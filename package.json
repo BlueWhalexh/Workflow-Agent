@@ -14,6 +14,7 @@
     "frontend:build": "vite build frontend",
     "frontend:preview": "vite preview frontend --host 127.0.0.1",
     "frontend:typecheck": "tsc -p frontend/tsconfig.json --noEmit",
+    "verify:backend-phase-a-local": "bash scripts/verify-backend-phase-a-local.sh",
     "organize": "tsx src/cli/organize.ts",
     "resume": "tsx src/cli/resume.ts"
   },

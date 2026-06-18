@@ -5480,6 +5480,7 @@ Scope delivered:
 - Added `scripts/dev-mysql-backend.sh` to start the Java backend with `spring.profiles.active=jdbc`, datasource env, repo-root worker wiring, and a `/private/tmp` backend data root.
 - Added `scripts/dev-frontend.sh` to start Vite with `MY_WORKFLOW_BACKEND_URL` pointing at the local backend.
 - Added `scripts/smoke-local-mysql-frontend-origin.sh` as a repeatable frontend-origin/API smoke for Docker MySQL, Java backend, Vite proxy, workspace creation, deterministic run completion, recent-run readback, artifact registry/readback, `wroteWorkspace=false`, and token-shaped scan.
+- Added `scripts/verify-backend-phase-a-local.sh` and `npm run verify:backend-phase-a-local` as the local Phase A acceptance entrypoint.
 - Added `docs/architecture/local-mysql-browser-e2e.md` with the manual browser E2E flow: open workbench, create/select workspace, submit run, refresh, reopen from `最近运行`, and inspect artifact preview.
 
 Validation:
@@ -5492,6 +5493,14 @@ Validation:
   - Passed.
 - Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on scaffold files
   - No matches.
+- `npm run verify:backend-phase-a-local`
+  - Passed after adding the acceptance script.
+  - Covered script syntax, Docker Compose config, backend focused Phase A tests, frontend focused tests, typecheck, frontend build, local MySQL frontend-origin smoke, diff whitespace, and token scan.
+  - Backend focused tests: 4 passed.
+  - Frontend focused tests: 4 files / 27 tests passed.
+  - Smoke run: `run_be28cfec6f5c4641bf381c571de6529e` in workspace `ws_8f5372013e31470abffebb5f04db36bd`.
+  - Smoke artifact ref: `.agent-runs/open-agent/run_be28cfec6f5c4641bf381c571de6529e.json`.
+  - Smoke `wroteWorkspace=false`.
 
 Browser E2E evidence:
 

@@ -62,6 +62,32 @@ docker compose -f docker-compose.local-mysql.yml up -d mysql
 
 该脚本不替代浏览器 DOM 检查；用户侧页面刷新和点击 `最近运行` 仍按上一节手动确认。
 
+## 完整本地验收
+
+Phase A 本地验收入口：
+
+```bash
+npm run verify:backend-phase-a-local
+```
+
+该命令会串行执行：
+
+- 脚本语法检查
+- Docker Compose 配置解析
+- 后端 Phase A focused tests
+- 前端 API/assistant/workbench focused tests
+- TypeScript typecheck
+- 前端 production build
+- local MySQL frontend-origin smoke
+- `git diff --check`
+- token-shaped scan
+
+如果只想跑静态和 focused tests，不启动本地 MySQL/backend/frontend smoke：
+
+```bash
+RUN_MYSQL_FRONTEND_SMOKE=0 npm run verify:backend-phase-a-local
+```
+
 ## 可调环境变量
 
 - `MY_WORKFLOW_MYSQL_PORT`：本地 MySQL 映射端口，默认 `3307`。
