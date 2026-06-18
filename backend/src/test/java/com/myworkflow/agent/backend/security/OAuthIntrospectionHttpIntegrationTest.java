@@ -3,6 +3,8 @@ package com.myworkflow.agent.backend.security;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 
 @SpringBootTest(
     classes = BackendApplication.class,
@@ -74,6 +77,71 @@ class OAuthIntrospectionHttpIntegrationTest {
         .andExpect(jsonPath("$.data.displayName").value("OAuth User"))
         .andExpect(jsonPath("$.data.token").doesNotExist())
         .andExpect(jsonPath("$.error").doesNotExist());
+  }
+
+  @Test
+  void prodProfileRejectsMutatingSessionCookieRequestWithoutCsrfToken() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .cookie(new Cookie("MWA_SESSION", "active-token"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"Cookie Workspace","defaultBranch":"main"}
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(false))
+        .andExpect(jsonPath("$.error.code").value("CSRF_TOKEN_REQUIRED"))
+        .andExpect(content().string(not(containsString("active-token"))));
+  }
+
+  @Test
+  void prodProfileAllowsMutatingSessionCookieRequestWithMatchingCsrfToken() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .cookie(new Cookie("MWA_SESSION", "active-token"))
+            .cookie(new Cookie("MWA_CSRF", "csrf-token"))
+            .header("X-CSRF-Token", "csrf-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"Cookie Workspace","defaultBranch":"main"}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.name").value("Cookie Workspace"))
+        .andExpect(jsonPath("$.data.defaultBranch").value("main"))
+        .andExpect(content().string(not(containsString("active-token"))))
+        .andExpect(content().string(not(containsString("csrf-token"))));
+  }
+
+  @Test
+  void prodProfileRejectsMutatingSessionCookieRequestWithMismatchedCsrfToken() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .cookie(new Cookie("MWA_SESSION", "active-token"))
+            .cookie(new Cookie("MWA_CSRF", "cookie-token"))
+            .header("X-CSRF-Token", "header-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"Cookie Workspace","defaultBranch":"main"}
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(false))
+        .andExpect(jsonPath("$.error.code").value("CSRF_TOKEN_REQUIRED"))
+        .andExpect(content().string(not(containsString("active-token"))))
+        .andExpect(content().string(not(containsString("cookie-token"))))
+        .andExpect(content().string(not(containsString("header-token"))));
+  }
+
+  @Test
+  void prodProfileAllowsMutatingBearerRequestWithoutCsrfToken() throws Exception {
+    mockMvc.perform(post("/v1/workspaces")
+            .header("Authorization", "Bearer active-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"Bearer Workspace","defaultBranch":"main"}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.name").value("Bearer Workspace"))
+        .andExpect(jsonPath("$.data.defaultBranch").value("main"))
+        .andExpect(content().string(not(containsString("active-token"))));
   }
 
   @Test

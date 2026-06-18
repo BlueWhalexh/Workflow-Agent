@@ -21,6 +21,7 @@ public class BackendSecurityConfig {
   SecurityFilterChain backendSecurityFilterChain(
       HttpSecurity http,
       BearerTokenAuthenticationFilter bearerTokenAuthenticationFilter,
+      CookieCsrfProtectionFilter cookieCsrfProtectionFilter,
       DevHeaderAuthenticationFilter devHeaderAuthenticationFilter,
       CorsConfigurationSource backendCorsConfigurationSource
   ) throws Exception {
@@ -32,6 +33,7 @@ public class BackendSecurityConfig {
         .logout(AbstractHttpConfigurer::disable)
         .sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests((requests) -> requests.anyRequest().permitAll())
+        .addFilterBefore(cookieCsrfProtectionFilter, AnonymousAuthenticationFilter.class)
         .addFilterBefore(bearerTokenAuthenticationFilter, AnonymousAuthenticationFilter.class)
         .addFilterBefore(devHeaderAuthenticationFilter, AnonymousAuthenticationFilter.class)
         .build();
@@ -44,11 +46,12 @@ public class BackendSecurityConfig {
       CorsConfiguration configuration = new CorsConfiguration();
       configuration.setAllowedOrigins(properties.cors().allowedOrigins());
       configuration.setAllowCredentials(true);
-      configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+      configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
       configuration.setAllowedHeaders(java.util.List.of(
           "Authorization",
           "Content-Type",
           "Accept",
+          "X-CSRF-Token",
           "Last-Event-ID",
           "X-Dev-User-Id",
           "X-Dev-Team-Id",

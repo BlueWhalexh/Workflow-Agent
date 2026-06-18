@@ -1,5 +1,6 @@
 package com.myworkflow.agent.backend.security;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,6 +44,31 @@ class CorsCredentialPolicyTest {
             .header("Access-Control-Request-Headers", "Content-Type"))
         .andExpect(status().isOk())
         .andExpect(header().string("Access-Control-Allow-Origin", "https://app.example.test"))
+        .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+  }
+
+  @Test
+  void allowedOriginPreflightAllowsCsrfHeaderForCookieMutations() throws Exception {
+    mockMvc.perform(options("/v1/workspaces")
+            .header("Origin", "https://app.example.test")
+            .header("Access-Control-Request-Method", "POST")
+            .header("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Access-Control-Allow-Origin", "https://app.example.test"))
+        .andExpect(header().string("Access-Control-Allow-Headers", containsString("X-CSRF-Token")))
+        .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+  }
+
+  @Test
+  void allowedOriginPreflightAllowsPatchForCookieMutations() throws Exception {
+    mockMvc.perform(options("/v1/workspaces/ws_123")
+            .header("Origin", "https://app.example.test")
+            .header("Access-Control-Request-Method", "PATCH")
+            .header("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Access-Control-Allow-Origin", "https://app.example.test"))
+        .andExpect(header().string("Access-Control-Allow-Methods", containsString("PATCH")))
+        .andExpect(header().string("Access-Control-Allow-Headers", containsString("X-CSRF-Token")))
         .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
   }
 

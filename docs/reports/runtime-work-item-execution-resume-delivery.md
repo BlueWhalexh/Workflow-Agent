@@ -4876,7 +4876,7 @@ Scope delivered:
 - The backend rejects wildcard, non-HTTP(S), userinfo-bearing, path-bearing, query-bearing, fragment-bearing, and trailing-slash CORS origins during configuration construction.
 - Spring Security now uses the backend CORS source explicitly instead of relying on bean-name auto-discovery.
 - When origins are configured, the backend allows credentialed CORS preflight for exact configured frontend origins.
-- The CORS policy allows the current browser-facing methods `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`.
+- The CORS policy allows the current browser-facing methods `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`.
 - The CORS policy allows JSON API and SSE request headers used by the frontend: `Authorization`, `Content-Type`, `Accept`, `Last-Event-ID`, and the local-dev identity headers.
 - Empty CORS config remains the default, so this slice does not open cross-origin access unless an origin allow-list is configured.
 
@@ -4917,6 +4917,59 @@ Evidence boundaries:
 
 - This proves configurable backend credentialed CORS behavior through MockMvc preflight requests.
 - This does not prove a deployed browser cross-origin flow, real OAuth login/callback, cookie attributes such as `SameSite=None; Secure`, CSRF strategy for mutating browser requests, production IdP session behavior, or real frontend-host/backend-host E2E.
+
+## Backend OAuth Session Cookie CSRF Guard
+
+Status: implemented and verified as a narrow mutating-request CSRF guard for the browser session-cookie bridge.
+
+Scope delivered:
+
+- Added `CookieCsrfProtectionFilter` for mutating `POST`, `PUT`, `PATCH`, and `DELETE` requests.
+- The guard applies only when the configured OAuth session cookie is present and no `Authorization: Bearer` header is present.
+- Browser session-cookie writes must provide a matching `MWA_CSRF` cookie and `X-CSRF-Token` header.
+- Missing or mismatched CSRF evidence returns the stable `java-backend-api.v1` failure envelope with `error.code = "CSRF_TOKEN_REQUIRED"`.
+- Bearer-token API clients remain unaffected and do not need the CSRF header.
+- Credentialed CORS now explicitly allows `X-CSRF-Token` and `PATCH` for frontend cookie-auth mutations.
+- CSRF failure responses do not echo session-cookie or CSRF-token values.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionHttpIntegrationTest`
+  - Failed before implementation because `prodProfileRejectsMutatingSessionCookieRequestWithoutCsrfToken` returned `200` instead of `403`.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest`
+  - Failed before allowing the CSRF header because `Access-Control-Allow-Headers` returned `Content-Type` without `X-CSRF-Token`.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest`
+  - Failed before allowing `PATCH` because `allowedOriginPreflightAllowsPatchForCookieMutations` returned `403` with `Invalid CORS request`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=CorsCredentialPolicyTest,OAuthIntrospectionHttpIntegrationTest`
+  - 12 tests passed; Maven reported `BUILD SUCCESS`.
+
+Full verification:
+
+- `npm test`
+  - 55 test files / 212 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:typecheck`
+  - Frontend `tsc -p frontend/tsconfig.json --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 173 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Merge-marker / trailing-whitespace scan
+  - No trailing whitespace or merge-conflict marker matches in this slice's touched files.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on this slice's touched files
+  - No token-shaped matches in this slice's touched files.
+
+Evidence boundaries:
+
+- This proves backend MockMvc behavior for cookie-auth mutating requests, bearer-token bypass, no token echo in failure/success responses, and the CORS header needed by frontend cookie-auth writes.
+- This does not implement OAuth authorization-code redirect, callback handling, refresh-token rotation, server-side session storage, CSRF issuance endpoint, login/callback CSRF state handling, IdP logout, production cookie attributes, or deployed browser E2E.
+- Because it is still not a full OAuth login/session lifecycle, the integration contract keeps `oauthLoginSession: false`.
 
 ## Boundaries
 
