@@ -5479,11 +5479,12 @@ Scope delivered:
 - Added `docker-compose.local-mysql.yml` for a local MySQL `8.4.0` dev database on port `3307` by default.
 - Added `scripts/dev-mysql-backend.sh` to start the Java backend with `spring.profiles.active=jdbc`, datasource env, repo-root worker wiring, and a `/private/tmp` backend data root.
 - Added `scripts/dev-frontend.sh` to start Vite with `MY_WORKFLOW_BACKEND_URL` pointing at the local backend.
+- Added `scripts/smoke-local-mysql-frontend-origin.sh` as a repeatable frontend-origin/API smoke for Docker MySQL, Java backend, Vite proxy, workspace creation, deterministic run completion, recent-run readback, artifact registry/readback, `wroteWorkspace=false`, and token-shaped scan.
 - Added `docs/architecture/local-mysql-browser-e2e.md` with the manual browser E2E flow: open workbench, create/select workspace, submit run, refresh, reopen from `最近运行`, and inspect artifact preview.
 
 Validation:
 
-- `bash -n scripts/dev-mysql-backend.sh scripts/dev-frontend.sh`
+- `bash -n scripts/dev-mysql-backend.sh scripts/dev-frontend.sh scripts/smoke-local-mysql-frontend-origin.sh`
   - Shell syntax passed.
 - `docker compose -f docker-compose.local-mysql.yml config`
   - Compose config rendered successfully.
@@ -5514,6 +5515,20 @@ Browser E2E evidence:
   - After refresh, the page showed `Browser E2E Workspace` and `后端已连接`.
   - The `最近运行` panel showed the MySQL-backed run with `SUCCEEDED`.
   - Clicking that run opened the historical session and displayed durable events, artifact ref, `wroteWorkspace: false`, and JSON artifact preview content.
+
+Repeatable smoke entry:
+
+- `./scripts/smoke-local-mysql-frontend-origin.sh`
+  - Starts local MySQL/backend/frontend with local defaults.
+  - Exercises the same public API chain through the Vite frontend origin.
+  - Does not automate browser DOM clicks and does not call a real external provider.
+- Executed once after adding the script:
+  - Workspace: `ws_6432d7569759411a87d106aa0b889efd`
+  - Run: `run_0c3220f7dcd7406d925b131aa57f709b`
+  - Status: `SUCCEEDED`
+  - Artifact ref: `.agent-runs/open-agent/run_0c3220f7dcd7406d925b131aa57f709b.json`
+  - `wroteWorkspace=false`
+  - Logs: `/private/tmp/my-workflow-agent-local-mysql-smoke`
 
 Evidence boundaries:
 

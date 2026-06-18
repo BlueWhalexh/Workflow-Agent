@@ -43,6 +43,25 @@ docker compose -f docker-compose.local-mysql.yml up -d mysql
 7. 在右侧 `最近运行` 中点击刚才的 run。
 8. 确认页面展示 run status、durable events、artifact ref、`wroteWorkspace` 和 artifact preview。
 
+## 自动化 smoke
+
+可以先跑 frontend-origin/API 级本地 smoke，确认 Docker MySQL、Java backend、Vite proxy、workspace、run history 和 artifact readback 这条链路可重复：
+
+```bash
+./scripts/smoke-local-mysql-frontend-origin.sh
+```
+
+该脚本默认使用：
+
+- MySQL: `127.0.0.1:3308`
+- backend: `http://127.0.0.1:18081`
+- frontend origin: `http://127.0.0.1:5173`
+- logs: `/private/tmp/my-workflow-agent-local-mysql-smoke`
+
+脚本会启动本地 MySQL、backend 和 frontend，通过前端 origin 调用公开 API，创建 workspace 和 deterministic run，轮询到终态，验证最近 run、events、artifact registry、artifact readback、`wroteWorkspace=false` 和 token-shaped scan。
+
+该脚本不替代浏览器 DOM 检查；用户侧页面刷新和点击 `最近运行` 仍按上一节手动确认。
+
 ## 可调环境变量
 
 - `MY_WORKFLOW_MYSQL_PORT`：本地 MySQL 映射端口，默认 `3307`。
