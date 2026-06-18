@@ -5089,6 +5089,37 @@ Evidence boundaries:
 
 - This is a contract/documentation handoff, not frontend implementation or browser E2E.
 
+## Backend Phase A Runtime DB-backed Handoff Smoke
+
+Status: verified as a MySQL-backed Java API -> local TS worker -> durable run/event/artifact handoff smoke.
+
+Scope delivered:
+
+- Added `JdbcRuntimeHandoffControllerTest`.
+- The smoke uses `spring.profiles.active=jdbc` and MySQL Testcontainers.
+- It runs the local TS worker through the Java API and verifies run status, answer output, no workspace write, run events, and artifact refs persisted through the backend.
+- Stabilized `RunEventControllerTest` by disabling MockMvc auto-printing for that SSE-heavy test class; the prior full-suite failure was in Spring Boot's test result printing handler while reading async response headers, not in the backend SSE assertions.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=JdbcRuntimeHandoffControllerTest`
+  - 1 test passed; Maven reported `BUILD SUCCESS`.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=RunEventControllerTest`
+  - 9 tests passed; Maven reported `BUILD SUCCESS`.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 177 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+
+Evidence boundaries:
+
+- This is not a real external provider E2E.
+- This is not a deployed browser E2E.
+- This is not production remote runner identity, mTLS, runner-scoped secret distribution, or multi-node fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

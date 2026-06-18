@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +38,7 @@ import org.springframework.test.web.servlet.MvcResult;
         "my-workflow.backend.data-root=${java.io.tmpdir}/my-workflow-agent-run-event-test"
     }
 )
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
 class RunEventControllerTest {
 
   private static final StaleRecoveryWorker WORKER = new StaleRecoveryWorker();
