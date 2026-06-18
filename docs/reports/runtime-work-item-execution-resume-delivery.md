@@ -5044,6 +5044,27 @@ Evidence boundaries:
 - This proves API capability truthfulness through MockMvc.
 - This does not add OAuth login/callback, vendor KMS, SCIM/LDAP connector, or multi-node stream fanout.
 
+## Backend Phase A MySQL Readiness Smoke
+
+Status: verified as a MySQL/Testcontainers integration smoke for the DB-only Phase A backend.
+
+Scope delivered:
+
+- Added `MysqlBackendPhaseAReadinessTest`.
+- The smoke uses `spring.profiles.active=jdbc` and MySQL Testcontainers.
+- It covers readiness, workspace create/list, agent run create/poll, run events, artifact list/read, and approval list.
+- Response assertions check that token-shaped fields, `apiKeySecretRef`, `workspaceRoot`, and `serverStorageRef` are not exposed.
+
+Focused verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=MysqlBackendPhaseAReadinessTest`
+  - 1 test passed; Maven reported `BUILD SUCCESS`.
+
+Evidence boundaries:
+
+- This is a MySQL integration smoke, not a deployed browser E2E or real provider E2E.
+- The worker in this test is an injected test worker, not a real provider or production remote runner.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
