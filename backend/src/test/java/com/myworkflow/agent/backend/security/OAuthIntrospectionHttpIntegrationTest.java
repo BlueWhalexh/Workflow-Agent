@@ -1,13 +1,16 @@
 package com.myworkflow.agent.backend.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.myworkflow.agent.backend.BackendApplication;
 import com.sun.net.httpserver.HttpServer;
 import jakarta.servlet.http.Cookie;
@@ -18,10 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
     classes = BackendApplication.class,
@@ -77,6 +81,54 @@ class OAuthIntrospectionHttpIntegrationTest {
         .andExpect(jsonPath("$.data.displayName").value("OAuth User"))
         .andExpect(jsonPath("$.data.token").doesNotExist())
         .andExpect(jsonPath("$.error").doesNotExist());
+  }
+
+  @Test
+  void prodProfileIssuesCsrfTokenForAuthenticatedSessionCookieRequests() throws Exception {
+    MvcResult result = mockMvc.perform(get("/v1/session/csrf")
+            .cookie(new Cookie("MWA_SESSION", "active-token")))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Cache-Control", containsString("no-store")))
+        .andExpect(header().string("Set-Cookie", containsString("MWA_CSRF=")))
+        .andExpect(header().string("Set-Cookie", containsString("Path=/")))
+        .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+        .andExpect(header().string("Set-Cookie", containsString("SameSite=Lax")))
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(true))
+        .andExpect(jsonPath("$.data.headerName").value("X-CSRF-Token"))
+        .andExpect(jsonPath("$.data.token").isNotEmpty())
+        .andExpect(content().string(not(containsString("active-token"))))
+        .andReturn();
+
+    String token = JsonPath.read(result.getResponse().getContentAsString(), "$.data.token");
+    Cookie csrfCookie = result.getResponse().getCookie("MWA_CSRF");
+    assertThat(csrfCookie).isNotNull();
+    assertThat(csrfCookie.getValue()).isEqualTo(token);
+  }
+
+  @Test
+  void issuedCsrfTokenAllowsSubsequentSessionCookieMutation() throws Exception {
+    MvcResult csrfResult = mockMvc.perform(get("/v1/session/csrf")
+            .cookie(new Cookie("MWA_SESSION", "active-token")))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    String token = JsonPath.read(csrfResult.getResponse().getContentAsString(), "$.data.token");
+    Cookie csrfCookie = csrfResult.getResponse().getCookie("MWA_CSRF");
+    assertThat(csrfCookie).isNotNull();
+
+    mockMvc.perform(post("/v1/workspaces")
+            .cookie(new Cookie("MWA_SESSION", "active-token"))
+            .cookie(csrfCookie)
+            .header("X-CSRF-Token", token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"Issued CSRF Workspace","defaultBranch":"main"}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.name").value("Issued CSRF Workspace"))
+        .andExpect(content().string(not(containsString("active-token"))))
+        .andExpect(content().string(not(containsString(token))));
   }
 
   @Test

@@ -115,6 +115,7 @@ public class OpsController {
     private static List<IntegrationEndpoint> frontendEndpointContract() {
       return List.of(
           new IntegrationEndpoint("GET", "/v1/me", "current principal"),
+          new IntegrationEndpoint("GET", "/v1/session/csrf", "issue CSRF token for browser session-cookie writes"),
           new IntegrationEndpoint("GET", "/v1/teams", "current team discovery"),
           new IntegrationEndpoint("GET", "/v1/workspaces", "workspace listing"),
           new IntegrationEndpoint(

@@ -30,6 +30,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.apiBasePath").value("/v1"))
         .andExpect(jsonPath("$.data.publicEnvelopeSchema").value("java-backend-api.v1"))
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/me')]").exists())
+        .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/session/csrf')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/workspaces')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/agent-runs')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/events/stream')]").exists())

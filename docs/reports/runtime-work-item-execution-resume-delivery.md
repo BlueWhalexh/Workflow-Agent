@@ -4916,7 +4916,7 @@ Full verification:
 Evidence boundaries:
 
 - This proves configurable backend credentialed CORS behavior through MockMvc preflight requests.
-- This does not prove a deployed browser cross-origin flow, real OAuth login/callback, cookie attributes such as `SameSite=None; Secure`, CSRF strategy for mutating browser requests, production IdP session behavior, or real frontend-host/backend-host E2E.
+- This does not prove a deployed browser cross-origin flow, real OAuth login/callback, production cookie attributes such as `SameSite=None; Secure`, full production CSRF/session lifecycle, production IdP session behavior, or real frontend-host/backend-host E2E.
 
 ## Backend OAuth Session Cookie CSRF Guard
 
@@ -4968,8 +4968,53 @@ Full verification:
 Evidence boundaries:
 
 - This proves backend MockMvc behavior for cookie-auth mutating requests, bearer-token bypass, no token echo in failure/success responses, and the CORS header needed by frontend cookie-auth writes.
-- This does not implement OAuth authorization-code redirect, callback handling, refresh-token rotation, server-side session storage, CSRF issuance endpoint, login/callback CSRF state handling, IdP logout, production cookie attributes, or deployed browser E2E.
+- This does not implement OAuth authorization-code redirect, callback handling, refresh-token rotation, server-side session storage, login/callback CSRF state handling, IdP logout, production cookie attributes, or deployed browser E2E.
 - Because it is still not a full OAuth login/session lifecycle, the integration contract keeps `oauthLoginSession: false`.
+
+## Backend Session CSRF Issuance Contract
+
+Status: implemented and verified as the minimal frontend-facing CSRF issuance bridge for existing OAuth session-cookie reads/writes.
+
+Scope delivered:
+
+- Added `GET /v1/session/csrf`.
+- The endpoint requires an authenticated current principal, so unauthenticated production requests still flow through the existing `AUTHENTICATION_REQUIRED` boundary.
+- Successful responses use the stable `java-backend-api.v1` envelope with `data.token` and `data.headerName = "X-CSRF-Token"`.
+- Successful responses set a same-value `MWA_CSRF` cookie with `Path=/`, `HttpOnly`, `SameSite=Lax`, and a two-hour max age.
+- Responses set `Cache-Control: no-store`.
+- The returned token can be used immediately as `X-CSRF-Token` with the issued `MWA_CSRF` cookie for session-cookie mutations.
+- The frontend integration contract now declares `GET /v1/session/csrf`.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionHttpIntegrationTest`
+  - Failed before implementation because both new CSRF issuance tests hit `GET /v1/session/csrf` and received `404 NOT_FOUND`.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - Failed before implementation because `frontendRequiredEndpoints` did not include `GET /v1/session/csrf`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OAuthIntrospectionHttpIntegrationTest,OpsIntegrationContractControllerTest`
+  - 10 tests passed; Maven reported `BUILD SUCCESS`.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 175 backend tests passed; Maven reported `BUILD SUCCESS`.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `git diff --check`
+  - Passed with no whitespace errors.
+- Merge-marker / trailing-whitespace scan
+  - No trailing whitespace or merge-conflict marker matches in this slice's touched files.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on this slice's touched files
+  - No token-shaped matches in this slice's touched files.
+
+Evidence boundaries:
+
+- This proves the backend MockMvc issuance contract, same-value body/cookie bridge, cache-control behavior, frontend contract declaration, and immediate local session-cookie mutation flow.
+- This is still not OAuth login/callback, server-side session issuance, refresh-token rotation, IdP logout, production cross-site cookie policy, or deployed browser E2E.
+- The cookie currently uses `SameSite=Lax` for the local/browser bridge. A cross-site deployed frontend/backend split still needs an explicit `SameSite=None; Secure` production cookie policy before being called complete.
 
 ## Boundaries
 
