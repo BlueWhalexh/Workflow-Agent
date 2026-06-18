@@ -40,6 +40,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/workspaces/{workspaceId}/provider-credentials')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/teams/{teamId}/directory-sync')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/ops/auth-config')]").exists())
+        .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/ops/integration-contract')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/agent-runs')]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.path == '/v1/workspaces/{workspaceId}/agent-runs' && @.purpose =~ /.*remoteRunnerRef.*/)]").exists())
         .andExpect(jsonPath("$.data.runtimeRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}')]").exists())

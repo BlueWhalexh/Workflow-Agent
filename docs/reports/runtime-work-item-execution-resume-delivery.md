@@ -5065,6 +5065,30 @@ Evidence boundaries:
 - This is a MySQL integration smoke, not a deployed browser E2E or real provider E2E.
 - The worker in this test is an injected test worker, not a real provider or production remote runner.
 
+## Backend Phase A Frontend Handoff Contract
+
+Status: documented and verified for frontend API client handoff.
+
+Scope delivered:
+
+- Added `docs/architecture/java-backend-frontend-handoff.md`.
+- The handoff defines envelope unwrap, CSRF flow, run/event/artifact/approval flow, SSE EOF boundary, and forbidden frontend fields.
+- The integration contract exposes `GET /v1/ops/integration-contract` to frontend clients.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - Failed before implementation because `frontendRequiredEndpoints` did not include `GET /v1/ops/integration-contract`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - 1 test passed; Maven reported `BUILD SUCCESS`.
+
+Evidence boundaries:
+
+- This is a contract/documentation handoff, not frontend implementation or browser E2E.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
