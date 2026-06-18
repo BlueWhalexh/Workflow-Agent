@@ -28,12 +28,13 @@ export class ApiClientError extends Error {
 export type ApiFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 export async function requestApiJson<T>(fetcher: ApiFetch, url: string, init: RequestInit = {}): Promise<T> {
+  const requestInit = await withSessionCsrf(fetcher, init);
   const response = await fetcher(url, {
-    ...init,
+    ...requestInit,
     credentials: "include",
     headers: {
       Accept: "application/json",
-      ...init.headers,
+      ...requestInit.headers,
     },
   });
 
@@ -46,6 +47,53 @@ export async function requestApiJson<T>(fetcher: ApiFetch, url: string, init: Re
   }
 
   return unwrapApiEnvelope<T>((await response.json()) as ApiEnvelope<T>);
+}
+
+async function withSessionCsrf(fetcher: ApiFetch, init: RequestInit): Promise<RequestInit> {
+  if (!requiresSessionCsrf(init)) {
+    return init;
+  }
+
+  const csrfResponse = await fetcher("/v1/session/csrf", {
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  const csrf = unwrapApiEnvelope<{ token: string; headerName: string }>(
+    (await csrfResponse.json()) as ApiEnvelope<{ token: string; headerName: string }>,
+  );
+
+  return {
+    ...init,
+    headers: {
+      ...toHeaderRecord(init.headers),
+      [csrf.headerName]: csrf.token,
+    },
+  };
+}
+
+function requiresSessionCsrf(init: RequestInit): boolean {
+  const method = (init.method ?? "GET").toUpperCase();
+  return !["GET", "HEAD", "OPTIONS"].includes(method) && !hasBearerAuthorization(init.headers);
+}
+
+function hasBearerAuthorization(headers: HeadersInit | undefined): boolean {
+  const authorization = toHeaderRecord(headers).Authorization ?? toHeaderRecord(headers).authorization;
+  return authorization?.startsWith("Bearer ") === true;
+}
+
+function toHeaderRecord(headers: HeadersInit | undefined): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return headers;
 }
 
 export function unwrapApiEnvelope<T>(envelope: ApiEnvelope<T>): T {

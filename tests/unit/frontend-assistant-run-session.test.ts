@@ -14,6 +14,10 @@ describe("frontend assistant run session", () => {
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
 
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
+
       if (url === "/v1/workspaces/ws_123/agent-runs") {
         expect(init?.body).toBe(JSON.stringify({
           userMessage: "准备候选补丁",
@@ -107,6 +111,7 @@ describe("frontend assistant run session", () => {
       },
     });
     expect(calls.map((call) => call.url)).toEqual([
+      "/v1/session/csrf",
       "/v1/workspaces/ws_123/agent-runs",
       "/v1/agent-runs/run_123",
       "/v1/agent-runs/run_123",
@@ -118,6 +123,10 @@ describe("frontend assistant run session", () => {
 
   test("runAssistantTask returns a non-terminal polling view when maxPolls is reached", async () => {
     const fetcher = async (url: string) => {
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
+
       if (url === "/v1/workspaces/ws_123/agent-runs") {
         return jsonEnvelope(runEnvelope({
           status: "QUEUED",
@@ -160,6 +169,10 @@ describe("frontend assistant run session", () => {
     let pollCount = 0;
     const startedAt = Date.now();
     const fetcher = async (url: string) => {
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
+
       if (url === "/v1/workspaces/ws_123/agent-runs") {
         return jsonEnvelope(runEnvelope({
           status: "QUEUED",
@@ -214,6 +227,10 @@ describe("frontend assistant run session", () => {
     const updates: unknown[] = [];
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
+
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
 
       if (url === "/v1/workspaces/ws_123/agent-runs") {
         return jsonEnvelope(runEnvelope({
@@ -302,6 +319,7 @@ describe("frontend assistant run session", () => {
       ],
     });
     expect(calls.map((call) => call.url)).toEqual([
+      "/v1/session/csrf",
       "/v1/workspaces/ws_123/agent-runs",
       "/v1/agent-runs/run_123/events/stream",
       "/v1/agent-runs/run_123",
@@ -344,6 +362,13 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function csrfEnvelope() {
+  return jsonEnvelope({
+    token: "csrf_123",
+    headerName: "X-CSRF-Token",
+  });
 }
 
 function sseResponse(chunks: string[]) {

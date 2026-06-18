@@ -5157,6 +5157,72 @@ Evidence boundaries:
 - This is a frontend API adapter/unit smoke, not a deployed browser E2E.
 - This does not add OAuth login UI, production session wiring, or real provider execution from the browser.
 
+## Frontend Session CSRF And Local Browser Handoff Smoke
+
+Status: verified as a local frontend -> Vite proxy -> Java backend -> local TS worker handoff smoke.
+
+Scope delivered:
+
+- `requestApiJson` now fetches `GET /v1/session/csrf` before mutating browser-session requests and attaches the returned `X-CSRF-Token` to the actual write request.
+- Frontend run, approval, and assistant-session tests now assert the extra CSRF request and token header for POST paths.
+- Started the Java backend on local port `18081` with the default in-memory profile and `MY_WORKFLOW_AGENT_WORKER_REPO_ROOT` pointing at this repository.
+- Started Vite on local port `5173` with `MY_WORKFLOW_BACKEND_URL=http://127.0.0.1:18081`.
+- Verified `GET /v1/ops/integration-contract`, workspace listing, workspace creation, CSRF issuance, run creation, run events, run state, artifacts, approvals, and browser-visible workbench state through the frontend origin.
+- Browser UI showed `后端已连接`, workspace `前后端联通 Smoke`, then successfully submitted an assistant prompt and rendered `Run 已完成`, lifecycle events, artifact ref, and `wroteWorkspace: false`.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-api-client.test.ts`
+  - Failed before implementation because mutating requests directly POSTed without first calling `/v1/session/csrf` or adding `X-CSRF-Token`.
+
+Focused GREEN:
+
+- `npm test -- tests/unit/frontend-api-client.test.ts`
+  - 7 tests passed.
+- `npm test -- tests/unit/frontend-api-client.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-approval-api.test.ts tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 5 test files passed; 25 tests passed.
+- `npm test -- tests/unit/frontend-approval-flow.test.ts tests/unit/frontend-api-client.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-approval-api.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - 5 test files passed; 19 tests passed.
+
+Full verification:
+
+- Initial `npm test`
+  - Failed once in `frontend-approval-flow.test.ts` because that test still expected only GET approvals + POST decision and had not been updated for the shared CSRF preflight.
+- Final `npm test`
+  - 55 test files passed; 214 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed.
+- Merge marker / trailing whitespace scan on this slice's touched files
+  - No matches.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, `ANTHROPIC_AUTH_TOKEN=tp-*`, and token-shaped CSRF examples on this slice's touched files
+  - No matches.
+
+Local handoff smoke:
+
+- `GET http://127.0.0.1:5173/v1/ops/integration-contract`
+  - Returned `java-backend-api.v1` with `java-backend-integration-contract.v1` data and required frontend capabilities.
+- `POST http://127.0.0.1:5173/v1/workspaces`
+  - Created workspace `前后端联通 Smoke`.
+- `GET http://127.0.0.1:5173/v1/session/csrf` then `POST /v1/workspaces/{workspaceId}/agent-runs`
+  - Created a deterministic open-agent run through the frontend origin with CSRF cookie/header.
+- `GET /v1/agent-runs/{runId}/events`
+  - Returned `RUN_QUEUED`, `RUNNING`, and `COMPLETED`.
+- `GET /v1/agent-runs/{runId}` and `GET /v1/agent-runs/{runId}/artifacts`
+  - Returned `SUCCEEDED`, `outputKind: answer`, `wroteWorkspace: false`, and a run artifact ref.
+- In-app browser UI check
+  - Confirmed the workbench displays backend-connected workspace state and renders a submitted assistant run as completed with artifact metadata.
+
+Evidence boundaries:
+
+- This is a local browser/API handoff smoke, not a deployed environment E2E.
+- The worker path used the local TS worker and deterministic/open-agent runtime; no real external provider was called.
+- The backend used the default in-memory profile for this smoke, not MySQL/JDBC.
+- This does not add OAuth login UI, production session persistence, production secret manager, or multi-node fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

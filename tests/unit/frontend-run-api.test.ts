@@ -11,6 +11,9 @@ describe("frontend run API adapter", () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
       return jsonEnvelope({
         runId: "run_123",
         workspaceId: "ws_123",
@@ -52,8 +55,17 @@ describe("frontend run API adapter", () => {
       createdAt: "2026-06-17T10:00:00Z",
       updatedAt: "2026-06-17T10:00:01Z",
     });
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual({
+      url: "/v1/session/csrf",
+      init: {
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    });
+    expect(calls[1]).toEqual({
       url: "/v1/workspaces/ws_123/agent-runs",
       init: {
         method: "POST",
@@ -61,6 +73,7 @@ describe("frontend run API adapter", () => {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          "X-CSRF-Token": "csrf_123",
         },
         body: JSON.stringify({
           userMessage: "准备候选补丁",
@@ -69,7 +82,7 @@ describe("frontend run API adapter", () => {
         }),
       },
     });
-    expect(calls[0].init?.body).not.toContain("workspaceRoot");
+    expect(calls[1].init?.body).not.toContain("workspaceRoot");
     expect(JSON.stringify(run)).not.toContain("secret://must-not-render");
     expect(JSON.stringify(run)).not.toContain("runtimePrivate");
   });
@@ -78,6 +91,9 @@ describe("frontend run API adapter", () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
       return jsonEnvelope({
         runId: "run_123",
         workspaceId: "ws_123",
@@ -113,12 +129,22 @@ describe("frontend run API adapter", () => {
         },
       },
       {
+        url: "/v1/session/csrf",
+        init: {
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      },
+      {
         url: "/v1/agent-runs/run_123/cancel",
         init: {
           method: "POST",
           credentials: "include",
           headers: {
             Accept: "application/json",
+            "X-CSRF-Token": "csrf_123",
           },
         },
       },
@@ -195,4 +221,11 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function csrfEnvelope() {
+  return jsonEnvelope({
+    token: "csrf_123",
+    headerName: "X-CSRF-Token",
+  });
 }

@@ -10,6 +10,10 @@ describe("frontend approval decision flow", () => {
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
 
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
+
       if (init?.method === "POST") {
         return jsonEnvelope({
           approvalId: "appr_pending",
@@ -57,9 +61,18 @@ describe("frontend approval decision flow", () => {
 
     expect(approval.approvalId).toBe("appr_pending");
     expect(approval.decision).toBe("REJECTED");
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     expect(calls[0].url).toBe("/v1/agent-runs/run_123/approvals");
     expect(calls[1]).toEqual({
+      url: "/v1/session/csrf",
+      init: {
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    });
+    expect(calls[2]).toEqual({
       url: "/v1/agent-runs/run_123/approvals",
       init: {
         method: "POST",
@@ -67,6 +80,7 @@ describe("frontend approval decision flow", () => {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          "X-CSRF-Token": "csrf_123",
         },
         body: JSON.stringify({
           approvalId: "appr_pending",
@@ -101,4 +115,11 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function csrfEnvelope() {
+  return jsonEnvelope({
+    token: "csrf_123",
+    headerName: "X-CSRF-Token",
+  });
 }

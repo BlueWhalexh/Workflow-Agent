@@ -108,6 +108,62 @@ describe("frontend API envelope", () => {
     ]);
   });
 
+  test("requestApiJson attaches a backend CSRF token before mutating session requests", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetcher = async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+
+      if (url === "/v1/session/csrf") {
+        return jsonEnvelope({
+          token: "csrf_123",
+          headerName: "X-CSRF-Token",
+        });
+      }
+
+      return jsonEnvelope({
+        runId: "run_123",
+      });
+    };
+
+    const data = await requestApiJson<{ runId: string }>(fetcher, "/v1/workspaces/ws_123/agent-runs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userMessage: "整理当前页",
+      }),
+    });
+
+    expect(data).toEqual({ runId: "run_123" });
+    expect(calls).toEqual([
+      {
+        url: "/v1/session/csrf",
+        init: {
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      },
+      {
+        url: "/v1/workspaces/ws_123/agent-runs",
+        init: {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRF-Token": "csrf_123",
+          },
+          body: JSON.stringify({
+            userMessage: "整理当前页",
+          }),
+        },
+      },
+    ]);
+  });
+
   test("requestApiJson normalizes non-envelope HTTP failures", async () => {
     const fetcher = async () =>
       new Response("not found", {
@@ -124,3 +180,21 @@ describe("frontend API envelope", () => {
     );
   });
 });
+
+function jsonEnvelope(data: unknown) {
+  return Promise.resolve(
+    new Response(
+      JSON.stringify({
+        schemaVersion: "java-backend-api.v1",
+        ok: true,
+        data,
+      }),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      },
+    ),
+  );
+}

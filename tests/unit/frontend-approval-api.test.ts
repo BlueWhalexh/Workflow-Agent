@@ -53,6 +53,9 @@ describe("frontend approval API adapter", () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetcher = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
       return jsonEnvelope({
         approvalId: "appr_1",
         runId: "run_123",
@@ -87,6 +90,15 @@ describe("frontend approval API adapter", () => {
     });
     expect(calls).toEqual([
       {
+        url: "/v1/session/csrf",
+        init: {
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      },
+      {
         url: "/v1/agent-runs/run_123/approvals",
         init: {
           method: "POST",
@@ -94,6 +106,7 @@ describe("frontend approval API adapter", () => {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
+            "X-CSRF-Token": "csrf_123",
           },
           body: JSON.stringify({
             approvalId: "appr_1",
@@ -122,4 +135,11 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function csrfEnvelope() {
+  return jsonEnvelope({
+    token: "csrf_123",
+    headerName: "X-CSRF-Token",
+  });
 }
