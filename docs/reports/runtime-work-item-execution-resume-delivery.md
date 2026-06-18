@@ -4112,6 +4112,44 @@ Evidence boundaries:
 - It does not implement real remote runner identity, mTLS, runner-scoped upload tokens, object storage, binary streaming, remote cancellation callback, remote artifact bundle upload, or multi-node fanout.
 - The upload path does not change `agent-backend-response.v1`; remote runners still return artifact refs through the existing result envelope.
 
+## Java Remote Runner Artifact Upload Registry Guard
+
+Status: implemented as a J43A follow-up hardening slice.
+
+Scope delivered:
+
+- Remote runner artifact upload now requires the `artifactRef` to already be registered for that run in the artifact registry.
+- The endpoint still requires a run-scoped safe relative path, but run-scoped path alone is no longer sufficient.
+- This prevents hidden `.agent-runs/{runId}/...` files that are written to disk but cannot be listed/read through the artifact registry.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ArtifactControllerTest`
+  - Failed before implementation because `.agent-runs/{runId}/unregistered.json` was accepted with HTTP 200.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=ArtifactControllerTest`
+  - 2 Java tests passed.
+
+Full acceptance:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 177 Java tests passed; 0 failures, 0 errors.
+- `npm run typecheck`
+  - TypeScript typecheck passed.
+- `git diff --check`
+  - Passed.
+- `rg -n "[ \t]$|^(<<<<<<<|=======|>>>>>>>)" backend/src/main/java/com/myworkflow/agent/backend/artifact/ArtifactService.java backend/src/test/java/com/myworkflow/agent/backend/artifact/ArtifactControllerTest.java docs/reports/runtime-work-item-execution-resume-delivery.md`
+  - No matches.
+- `rg -n "tp-[A-Za-z0-9]{20,}|Bearer tp-[A-Za-z0-9]{20,}|MIMO_API_KEY=tp-[A-Za-z0-9]{20,}|ANTHROPIC_AUTH_TOKEN=tp-[A-Za-z0-9]{20,}" backend/src/main/java/com/myworkflow/agent/backend/artifact/ArtifactService.java backend/src/test/java/com/myworkflow/agent/backend/artifact/ArtifactControllerTest.java docs/reports/runtime-work-item-execution-resume-delivery.md`
+  - No matches.
+
+Evidence boundaries:
+
+- This is registry/path hardening only.
+- It does not add remote runner identity, runner-scoped upload tokens, object storage, remote cancellation callback, or multi-node fanout.
+
 ## Frontend Control Plane Static Prototype
 
 Status: draft prototype for review. A static HTML console prototype and frontend design note now exist for the future Java backend control plane UI.

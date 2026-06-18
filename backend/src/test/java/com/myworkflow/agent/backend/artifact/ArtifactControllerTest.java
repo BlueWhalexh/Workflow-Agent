@@ -147,6 +147,18 @@ class ArtifactControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+
+    mockMvc.perform(post("/v1/agent-runs/{runId}/artifacts", runId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "schemaVersion": "remote-runner-artifact-upload.v1",
+                  "artifactRef": ".agent-runs/%s/unregistered.json",
+                  "content": "{}"
+                }
+                """.formatted(runId)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
   }
 
   private String createWorkspace() throws Exception {

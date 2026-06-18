@@ -83,6 +83,9 @@ public class ArtifactService {
     if (!isRunScopedArtifactRef(run.runId(), artifactRef)) {
       throw new IllegalArgumentException("Artifact ref must be scoped to the run");
     }
+    if (!isRegisteredArtifactRef(run.runId(), artifactRef)) {
+      throw new IllegalArgumentException("Artifact ref must be registered for the run");
+    }
 
     Path artifactPath = workspaceService.resolveContentPath(run.workspaceId(), artifactRef);
     try {
@@ -108,6 +111,11 @@ public class ArtifactService {
     }
     Path requiredPrefix = Path.of(".agent-runs", runId).normalize();
     return normalized.startsWith(requiredPrefix) && !normalized.equals(requiredPrefix);
+  }
+
+  private boolean isRegisteredArtifactRef(String runId, String artifactRef) {
+    return artifactRepository.findByRunId(runId).stream()
+        .anyMatch((artifact) -> artifact.artifactRef().equals(artifactRef));
   }
 
   public record ArtifactReadResult(
