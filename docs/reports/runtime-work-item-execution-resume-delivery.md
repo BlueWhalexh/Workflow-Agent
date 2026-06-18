@@ -5016,6 +5016,34 @@ Evidence boundaries:
 - This is still not OAuth login/callback, server-side session issuance, refresh-token rotation, IdP logout, production cross-site cookie policy, or deployed browser E2E.
 - The cookie currently uses `SameSite=Lax` for the local/browser bridge. A cross-site deployed frontend/backend split still needs an explicit `SameSite=None; Secure` production cookie policy before being called complete.
 
+## Backend Phase A Contract Truth Cleanup
+
+Status: implemented and verified as a Phase A capability declaration correction.
+
+Scope delivered:
+
+- `productionSecretManager` now reports `false`; the current HTTP/file/env resolvers remain baseline resolver capabilities, not a production KMS/secret-manager completion claim.
+- `httpSecretResolver` reports `true`.
+- `externalDirectorySnapshotSync` reports `true`.
+- `productionDirectoryConnector` reports `false`.
+- `oauthLoginSession` and `multiNodeStreamFanout` remain `false`.
+- `remoteRunnerArtifactUpload` remains `true` because the run-scoped artifact upload endpoint and tests already exist.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - Failed before implementation because `externalDirectorySnapshotSync` was absent from `capabilities`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - 1 test passed; Maven reported `BUILD SUCCESS`.
+
+Evidence boundaries:
+
+- This proves API capability truthfulness through MockMvc.
+- This does not add OAuth login/callback, vendor KMS, SCIM/LDAP connector, or multi-node stream fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
