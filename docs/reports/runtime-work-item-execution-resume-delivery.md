@@ -5472,7 +5472,7 @@ Evidence boundaries:
 
 ## Local MySQL Browser E2E Scaffold
 
-Status: implemented as local developer scaffolding for a browser-visible MySQL-backed frontend/backend smoke.
+Status: implemented and exercised once as a local browser-visible MySQL-backed frontend/backend smoke.
 
 Scope delivered:
 
@@ -5492,11 +5492,33 @@ Validation:
 - Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on scaffold files
   - No matches.
 
+Browser E2E evidence:
+
+- Started Docker MySQL with `MY_WORKFLOW_MYSQL_PORT=3308` because local port `3307` was already used by an unrelated existing container.
+- Started Java backend with `MY_WORKFLOW_MYSQL_PORT=3308 ./scripts/dev-mysql-backend.sh`; Spring Boot used `jdbc` profile, connected to MySQL `8.4`, and applied Flyway migrations through v13.
+- Confirmed backend health:
+  - `curl -sS http://127.0.0.1:18081/ready`
+  - `curl -sS http://127.0.0.1:18081/health`
+- Started Vite with `MY_WORKFLOW_BACKEND_PORT=18081 ./scripts/dev-frontend.sh` and confirmed `curl -I http://127.0.0.1:5173/` returned `HTTP/1.1 200 OK`.
+- Created a local workspace through the Java backend API:
+  - Workspace: `ws_be70d993a98a45ba923435f121a3067f`
+  - Name: `Browser E2E Workspace`
+- Created and completed one deterministic local agent run:
+  - Run: `run_ba0d7d1eccf64617978a541a4edf27f9`
+  - Status: `SUCCEEDED`
+  - Output kind: `answer`
+  - Artifact ref: `.agent-runs/open-agent/run_ba0d7d1eccf64617978a541a4edf27f9.json`
+  - `wroteWorkspace=false`
+- Browser verification via in-app browser:
+  - Opened `http://127.0.0.1:5173/`.
+  - After refresh, the page showed `Browser E2E Workspace` and `后端已连接`.
+  - The `最近运行` panel showed the MySQL-backed run with `SUCCEEDED`.
+  - Clicking that run opened the historical session and displayed durable events, artifact ref, `wroteWorkspace: false`, and JSON artifact preview content.
+
 Evidence boundaries:
 
-- This slice adds a repeatable local scaffold; it does not claim the browser E2E was executed in this slice.
-- The intended smoke is local browser + Vite + Java backend + Docker MySQL, not deployed production E2E.
-- The scaffold defaults to local TS worker behavior and does not call a real external provider.
+- This is a local browser + Vite + Java backend + Docker MySQL E2E, not deployed production E2E.
+- The run used local deterministic/open-agent behavior through the existing local worker path; it did not call a real external provider.
 - It does not add OAuth login/callback, production secret manager, remote runner multi-node dispatch, runner-scoped artifact upload, MinIO/object storage, or production deployment automation.
 
 ## Boundaries
