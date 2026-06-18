@@ -5470,6 +5470,35 @@ Evidence boundaries:
 - This proves MySQL-backed persistence for run envelopes, artifact registry refs, and file-backed artifact preview in a local Spring/Testcontainers environment.
 - This does not prove production multi-node artifact storage, MinIO/object storage upload, remote runner fanout, OAuth/session hardening, or production secret-manager integration.
 
+## Local MySQL Browser E2E Scaffold
+
+Status: implemented as local developer scaffolding for a browser-visible MySQL-backed frontend/backend smoke.
+
+Scope delivered:
+
+- Added `docker-compose.local-mysql.yml` for a local MySQL `8.4.0` dev database on port `3307` by default.
+- Added `scripts/dev-mysql-backend.sh` to start the Java backend with `spring.profiles.active=jdbc`, datasource env, repo-root worker wiring, and a `/private/tmp` backend data root.
+- Added `scripts/dev-frontend.sh` to start Vite with `MY_WORKFLOW_BACKEND_URL` pointing at the local backend.
+- Added `docs/architecture/local-mysql-browser-e2e.md` with the manual browser E2E flow: open workbench, create/select workspace, submit run, refresh, reopen from `最近运行`, and inspect artifact preview.
+
+Validation:
+
+- `bash -n scripts/dev-mysql-backend.sh scripts/dev-frontend.sh`
+  - Shell syntax passed.
+- `docker compose -f docker-compose.local-mysql.yml config`
+  - Compose config rendered successfully.
+- `git diff --check`
+  - Passed.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on scaffold files
+  - No matches.
+
+Evidence boundaries:
+
+- This slice adds a repeatable local scaffold; it does not claim the browser E2E was executed in this slice.
+- The intended smoke is local browser + Vite + Java backend + Docker MySQL, not deployed production E2E.
+- The scaffold defaults to local TS worker behavior and does not call a real external provider.
+- It does not add OAuth login/callback, production secret manager, remote runner multi-node dispatch, runner-scoped artifact upload, MinIO/object storage, or production deployment automation.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
