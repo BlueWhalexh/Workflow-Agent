@@ -167,6 +167,15 @@ describe("frontend workbench bootstrap", () => {
         targetWorkspacePaths: ["knowledge-base/topics/live.md"],
         wroteWorkspace: true,
       },
+      artifacts: [
+        {
+          artifactId: "art_live",
+          artifactRef: ".agent-runs/run_live/report.md",
+          kind: "report",
+          contentType: "text/markdown",
+          content: "# 运行摘要\n\n已整理当前知识页。",
+        },
+      ],
       source: {
         apiKeySecretRef: "secret://must-not-render",
         rawProviderPayload: "must-not-render",
@@ -202,9 +211,58 @@ describe("frontend workbench bootstrap", () => {
       artifact: ".agent-runs/run_live/report.md",
       target: "knowledge-base/topics/live.md",
       wroteWorkspace: true,
+      artifactPreview: {
+        title: "report",
+        contentType: "text/markdown",
+        content: "# 运行摘要\n\n已整理当前知识页。",
+      },
     });
     expect(JSON.stringify(nextWorkbench)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(nextWorkbench)).not.toContain("must-not-render");
+  });
+
+  test("applyAssistantRunSessionToWorkbench clears stale artifact preview when the next run has no artifact", () => {
+    const nextWorkbench = applyAssistantRunSessionToWorkbench(
+      {
+        ...workbenchFixture,
+        assistant: {
+          ...workbenchFixture.assistant,
+          approval: {
+            ...workbenchFixture.assistant.approval,
+            artifactPreview: {
+              title: "old",
+              contentType: "text/plain",
+              content: "stale",
+            },
+          },
+        },
+      },
+      {
+        runId: "run_no_artifact",
+        status: "SUCCEEDED",
+        terminal: true,
+        title: "Run 已完成",
+        progress: 100,
+        displayText: "已完成但没有产物",
+        events: [],
+        approval: {
+          status: "NONE",
+          artifactRefs: [],
+          targetWorkspacePaths: [],
+          wroteWorkspace: false,
+        },
+        artifacts: [],
+      },
+      "总结当前页",
+    );
+
+    expect(nextWorkbench.assistant.approval).toEqual({
+      title: "运行结果",
+      summary: "已完成但没有产物",
+      artifact: "无",
+      target: "无",
+      wroteWorkspace: false,
+    });
   });
 
   test("applyAssistantRunProgressToWorkbench refreshes run status without appending chat messages", () => {
@@ -222,6 +280,7 @@ describe("frontend workbench bootstrap", () => {
         targetWorkspacePaths: [],
         wroteWorkspace: false,
       },
+      artifacts: [],
     });
 
     expect(nextWorkbench.assistant.run).toEqual({

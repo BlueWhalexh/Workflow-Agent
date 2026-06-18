@@ -109,6 +109,7 @@ describe("frontend assistant run session", () => {
         targetWorkspacePaths: ["knowledge-base/topics/frontend.md"],
         wroteWorkspace: false,
       },
+      artifacts: [],
     });
     expect(calls.map((call) => call.url)).toEqual([
       "/v1/session/csrf",
@@ -220,6 +221,97 @@ describe("frontend assistant run session", () => {
     });
     expect(pollCount).toBe(2);
     expect(Date.now() - startedAt).toBeGreaterThanOrEqual(15);
+  });
+
+  test("runAssistantTask reads terminal run artifacts into a public preview", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetcher = async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+
+      if (url === "/v1/session/csrf") {
+        return csrfEnvelope();
+      }
+
+      if (url === "/v1/workspaces/ws_123/agent-runs") {
+        return jsonEnvelope(runEnvelope({
+          status: "QUEUED",
+          outputKind: "none",
+          displayText: null,
+        }));
+      }
+
+      if (url === "/v1/agent-runs/run_123") {
+        return jsonEnvelope(runEnvelope({
+          status: "SUCCEEDED",
+          outputKind: "answer",
+          displayText: "已生成知识库摘要",
+          artifactRefs: [".agent-runs/run_123/report.md"],
+        }));
+      }
+
+      if (url === "/v1/agent-runs/run_123/events") {
+        return jsonEnvelope([]);
+      }
+
+      if (url === "/v1/agent-runs/run_123/artifacts") {
+        return jsonEnvelope([
+          {
+            artifactId: "art_1",
+            runId: "run_123",
+            artifactRef: ".agent-runs/run_123/report.md",
+            kind: "report",
+            redactionStatus: "redacted",
+            contentType: "text/markdown",
+            createdAt: "2026-06-17T10:00:03Z",
+            serverStorageRef: "secret://must-not-render",
+          },
+        ]);
+      }
+
+      if (url === "/v1/artifacts/art_1") {
+        return jsonEnvelope({
+          artifactId: "art_1",
+          runId: "run_123",
+          artifactRef: ".agent-runs/run_123/report.md",
+          kind: "report",
+          redactionStatus: "redacted",
+          contentType: "text/markdown",
+          createdAt: "2026-06-17T10:00:03Z",
+          content: "# 运行摘要\n\n已完成本地 runtime smoke。",
+          rawProviderPayload: {
+            token: "must-not-render",
+          },
+        });
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const session = await runAssistantTask(fetcher, {
+      workspaceId: "ws_123",
+      userMessage: "总结当前知识库",
+      maxPolls: 1,
+    });
+
+    expect(session.artifacts).toEqual([
+      {
+        artifactId: "art_1",
+        artifactRef: ".agent-runs/run_123/report.md",
+        kind: "report",
+        contentType: "text/markdown",
+        content: "# 运行摘要\n\n已完成本地 runtime smoke。",
+      },
+    ]);
+    expect(calls.map((call) => call.url)).toEqual([
+      "/v1/session/csrf",
+      "/v1/workspaces/ws_123/agent-runs",
+      "/v1/agent-runs/run_123",
+      "/v1/agent-runs/run_123/events",
+      "/v1/agent-runs/run_123/artifacts",
+      "/v1/artifacts/art_1",
+    ]);
+    expect(JSON.stringify(session)).not.toContain("serverStorageRef");
+    expect(JSON.stringify(session)).not.toContain("must-not-render");
   });
 
   test("runAssistantTask streams lifecycle events into interim session updates", async () => {

@@ -5261,6 +5261,44 @@ Evidence boundaries:
 - The backend used the default in-memory profile for this smoke, not MySQL/JDBC.
 - This does not add OAuth login UI, production session persistence, production secret manager, or multi-node fanout.
 
+## Frontend Terminal Artifact Preview Handoff
+
+Status: implemented as the next-cycle frontend/API/runtime handoff slice.
+
+Scope delivered:
+
+- `runAssistantTask` now reads run artifact registry entries after a `SUCCEEDED` run when the backend run envelope exposes artifact refs.
+- The assistant session view now returns public artifact previews with `artifactId`, `artifactRef`, `kind`, `contentType`, and content.
+- `applyAssistantRunSessionToWorkbench` maps the first returned artifact preview into the user-side assistant result card, so a completed runtime run can display output content without requiring a separate manual read step.
+- Approval-paused candidate patch runs still do not auto-read candidate artifacts; they retain the explicit approval/manual-read boundary.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - Failed before implementation because `session.artifacts` was `undefined` for a succeeded run with `.agent-runs/{runId}/report.md`.
+
+Focused GREEN:
+
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts`
+  - 6 tests passed.
+- `npm test -- tests/unit/frontend-assistant-run-session.test.ts tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-artifact-api.test.ts tests/unit/frontend-public-safety.test.ts tests/unit/frontend-run-api.test.ts tests/unit/frontend-run-event-stream.test.ts`
+  - 6 test files passed; 24 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 55 test files passed; 216 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed; generated `dist/` output is ignored by `.gitignore`.
+
+Evidence boundaries:
+
+- This is frontend API contract coverage plus build verification, not a deployed browser E2E.
+- The test uses mocked fetch responses from the Java backend contract; it does not call a real provider.
+- This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, or multi-node fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

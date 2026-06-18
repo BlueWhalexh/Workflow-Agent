@@ -1,5 +1,10 @@
 import type { ApiFetch } from "../../shared/api/envelope.js";
 import {
+  listRunArtifacts,
+  readArtifact,
+  type ArtifactContentView,
+} from "../artifacts/artifact-api.js";
+import {
   createAgentRun,
   getAgentRun,
   listRunEvents,
@@ -34,6 +39,15 @@ export type AssistantRunSessionView = {
     targetWorkspacePaths: string[];
     wroteWorkspace: boolean;
   };
+  artifacts: AssistantRunArtifactView[];
+};
+
+export type AssistantRunArtifactView = {
+  artifactId: string;
+  artifactRef: string;
+  kind: string;
+  contentType: string;
+  content: string;
 };
 
 const DEFAULT_MAX_POLLS = 20;
@@ -66,7 +80,8 @@ export async function runAssistantTask(
     input.pollDelayMs ?? DEFAULT_POLL_DELAY_MS,
   );
   const events = streamedEvents.length > 0 ? streamedEvents : await listRunEvents(fetcher, finalRun.runId);
-  return toSessionView(finalRun, events);
+  const artifacts = await loadRunArtifactPreviews(fetcher, finalRun);
+  return toSessionView(finalRun, events, artifacts);
 }
 
 async function streamRunEventsForSession(
@@ -111,7 +126,31 @@ function delay(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-function toSessionView(run: AgentRunView, events: RunEventView[]): AssistantRunSessionView {
+async function loadRunArtifactPreviews(fetcher: ApiFetch, run: AgentRunView): Promise<AssistantRunArtifactView[]> {
+  if (run.status !== "SUCCEEDED" || run.artifactRefs.length === 0) {
+    return [];
+  }
+
+  const artifacts = await listRunArtifacts(fetcher, run.runId);
+  const selectedArtifacts = artifacts.filter((artifact) => run.artifactRefs.includes(artifact.artifactRef));
+  return Promise.all(selectedArtifacts.map((artifact) => readArtifact(fetcher, artifact.artifactId).then(toArtifactPreview)));
+}
+
+function toArtifactPreview(artifact: ArtifactContentView): AssistantRunArtifactView {
+  return {
+    artifactId: artifact.artifactId,
+    artifactRef: artifact.artifactRef,
+    kind: artifact.kind,
+    contentType: artifact.contentType,
+    content: artifact.content,
+  };
+}
+
+function toSessionView(
+  run: AgentRunView,
+  events: RunEventView[],
+  artifacts: AssistantRunArtifactView[] = [],
+): AssistantRunSessionView {
   return {
     runId: run.runId,
     status: run.status,
@@ -126,6 +165,7 @@ function toSessionView(run: AgentRunView, events: RunEventView[]): AssistantRunS
       targetWorkspacePaths: run.targetWorkspacePaths,
       wroteWorkspace: run.wroteWorkspace,
     },
+    artifacts,
   };
 }
 

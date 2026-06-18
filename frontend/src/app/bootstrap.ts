@@ -87,6 +87,17 @@ export function applyAssistantRunSessionToWorkbench(
   session: AssistantRunSessionView,
   userMessage: string,
 ): WorkbenchViewModel {
+  const artifactPreview = session.artifacts?.[0];
+  const mappedArtifactPreview = artifactPreview
+    ? {
+        artifactPreview: {
+          title: artifactPreview.kind,
+          contentType: artifactPreview.contentType,
+          content: artifactPreview.content,
+        },
+      }
+    : {};
+
   return publicWorkbench({
     ...data,
     assistant: {
@@ -105,9 +116,10 @@ export function applyAssistantRunSessionToWorkbench(
       approval: {
         title: session.approval.status === "PENDING" ? "审批草稿" : "运行结果",
         summary: session.displayText ?? session.title,
-        artifact: session.approval.artifactRefs[0] ?? "无",
+        artifact: artifactPreview?.artifactRef ?? session.approval.artifactRefs[0] ?? "无",
         target: session.approval.targetWorkspacePaths[0] ?? "无",
         wroteWorkspace: session.approval.wroteWorkspace,
+        ...mappedArtifactPreview,
       },
     },
   });
