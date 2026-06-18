@@ -13,6 +13,7 @@ import com.myworkflow.agent.backend.run.AgentWorkerResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -133,6 +134,52 @@ class MysqlBackendPhaseAReadinessTest {
         .andExpect(jsonPath("$.data[0].targetWorkspacePaths[0]").value("knowledge-base/phase-a.md"));
   }
 
+  @Test
+  void mysqlBackedWorkspaceRunHistoryReturnsRecentPublicRunsAndReopensArtifactPreview() throws Exception {
+    String workspaceId = createWorkspace("Frontend MySQL Run History");
+    List<String> runIds = new ArrayList<>();
+    for (int index = 0; index < 21; index++) {
+      String runId = createRun(workspaceId, "frontend run history %02d".formatted(index));
+      pollRun(runId, "WAITING_APPROVAL");
+      runIds.add(runId);
+      Thread.sleep(5);
+    }
+
+    String newestRunId = runIds.get(runIds.size() - 1);
+    String oldestRunId = runIds.get(0);
+    MvcResult history = mockMvc.perform(get("/v1/workspaces/{workspaceId}/agent-runs", workspaceId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(20))
+        .andExpect(jsonPath("$.data[0].runId").value(newestRunId))
+        .andExpect(jsonPath("$.data[0].status").value("WAITING_APPROVAL"))
+        .andExpect(jsonPath("$.data[0].outputKind").value("candidate-patch"))
+        .andExpect(jsonPath("$.data[0].artifactRefs[0]")
+            .value(".agent-runs/%s/phase-a-readiness.json".formatted(newestRunId)))
+        .andExpect(jsonPath("$.data[0].workspaceRoot").doesNotExist())
+        .andExpect(jsonPath("$.data[0].source").doesNotExist())
+        .andExpect(jsonPath("$.data[0].workerKind").doesNotExist())
+        .andExpect(jsonPath("$.data[?(@.runId == '%s')]".formatted(oldestRunId)).doesNotExist())
+        .andReturn();
+
+    assertThat(history.getResponse().getContentAsString())
+        .doesNotContain("apiKeySecretRef")
+        .doesNotContain("rawProviderPayload")
+        .doesNotContain("workspaceRoot");
+
+    MvcResult artifacts = mockMvc.perform(get("/v1/agent-runs/{runId}/artifacts", newestRunId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].artifactRef")
+            .value(".agent-runs/%s/phase-a-readiness.json".formatted(newestRunId)))
+        .andExpect(jsonPath("$.data[0].absolutePath").doesNotExist())
+        .andReturn();
+    String artifactId = JsonPath.read(artifacts.getResponse().getContentAsString(), "$.data[0].artifactId");
+
+    mockMvc.perform(get("/v1/artifacts/{artifactId}", artifactId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.content").value("{\"phase\":\"A\",\"mysql\":true}"))
+        .andExpect(jsonPath("$.data.absolutePath").doesNotExist());
+  }
+
   private MvcResult pollRun(String runId, String expectedStatus) throws Exception {
     AssertionError lastError = null;
     long deadline = System.nanoTime() + Duration.ofSeconds(8).toNanos();
@@ -148,6 +195,34 @@ class MysqlBackendPhaseAReadinessTest {
       Thread.sleep(100);
     }
     throw lastError == null ? new AssertionError("Run was not found") : lastError;
+  }
+
+  private String createWorkspace(String name) throws Exception {
+    MvcResult result = mockMvc.perform(post("/v1/workspaces")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "%s",
+                  "defaultBranch": "main"
+                }
+                """.formatted(name)))
+        .andExpect(status().isOk())
+        .andReturn();
+    return JsonPath.read(result.getResponse().getContentAsString(), "$.data.workspaceId");
+  }
+
+  private String createRun(String workspaceId, String userMessage) throws Exception {
+    MvcResult result = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "userMessage": "%s",
+                  "mode": "deterministic-open-agent"
+                }
+                """.formatted(userMessage)))
+        .andExpect(status().isOk())
+        .andReturn();
+    return JsonPath.read(result.getResponse().getContentAsString(), "$.data.runId");
   }
 
   @TestConfiguration

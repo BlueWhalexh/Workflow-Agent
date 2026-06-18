@@ -5425,6 +5425,51 @@ Evidence boundaries:
 - Candidate patch target paths remain suggestions only; this slice does not change approval execution semantics or workspace write boundaries.
 - This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, remote cancellation callback, or multi-node fanout.
 
+## MySQL Workspace Run History Persistence Smoke
+
+Status: implemented as a backend persistence acceptance slice for the user-side recent-run panel.
+
+Scope delivered:
+
+- `GET /v1/workspaces/{workspaceId}/agent-runs` now has a backend-enforced recent window of 20 runs.
+- The JDBC query applies `ORDER BY updated_at DESC, id DESC LIMIT ?`, so the API does not load unbounded workspace run history.
+- The in-memory repository uses the same limit semantics for local development parity.
+- Added a MySQL/Testcontainers smoke that creates 21 completed runs, verifies only the 20 newest public envelopes are returned, verifies the oldest run is omitted, and reopens the newest run's registered artifact preview through `GET /v1/agent-runs/{runId}/artifacts` plus `GET /v1/artifacts/{artifactId}`.
+- The smoke asserts that run history and artifact preview responses do not expose workspace root, worker kind, runtime source, raw provider payload, or provider secret refs.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=MysqlBackendPhaseAReadinessTest`
+  - Failed before implementation because `$.data.length()` for workspace run history was `21` instead of expected `20`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=MysqlBackendPhaseAReadinessTest`
+  - 2 tests passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=AgentRunControllerTest,JdbcAgentRunRepositoryTest,MysqlBackendPhaseAReadinessTest`
+  - 10 tests passed.
+
+Full verification:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 179 backend tests passed.
+- `npm test`
+  - 55 test files passed; 218 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `git diff --check`
+  - Passed.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on touched backend/docs files
+  - No matches.
+
+Evidence boundaries:
+
+- This smoke uses a test-injected local `AgentWorker`; it is not a real provider call.
+- This proves MySQL-backed persistence for run envelopes, artifact registry refs, and file-backed artifact preview in a local Spring/Testcontainers environment.
+- This does not prove production multi-node artifact storage, MinIO/object storage upload, remote runner fanout, OAuth/session hardening, or production secret-manager integration.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

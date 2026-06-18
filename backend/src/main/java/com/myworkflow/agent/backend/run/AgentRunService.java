@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class AgentRunService {
 
+  static final int RECENT_WORKSPACE_RUN_LIMIT = 20;
+
   private static final String CREDENTIAL_RUNTIME_REF_PREFIX = "credential.";
   private static final String ENV_SECRET_REF_PREFIX = "env://";
   private static final String PROVIDER_CREDENTIAL_API_KEY_ENV_NAME = "PROVIDER_CREDENTIAL_API_KEY";
@@ -128,7 +130,7 @@ public class AgentRunService {
 
   public List<AgentRunRecord> listWorkspaceRuns(String workspaceId) {
     WorkspaceRecord workspace = workspaceService.requireWorkspaceRole(workspaceId, WorkspaceRole.WORKSPACE_VIEWER);
-    return repository.findRunsByWorkspaceId(workspace.workspaceId());
+    return repository.findRunsByWorkspaceId(workspace.workspaceId(), RECENT_WORKSPACE_RUN_LIMIT);
   }
 
   public AgentRunRecord cancelRun(String runId) {

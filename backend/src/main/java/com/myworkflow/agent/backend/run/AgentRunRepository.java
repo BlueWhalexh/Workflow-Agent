@@ -10,7 +10,7 @@ public interface AgentRunRepository {
 
   Optional<AgentRunRecord> findRun(String runId);
 
-  List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId);
+  List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId, int limit);
 
   Optional<AgentJobRecord> findJob(String jobId);
 

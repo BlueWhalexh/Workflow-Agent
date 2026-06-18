@@ -106,7 +106,7 @@ public class JdbcAgentRunRepository implements AgentRunRepository {
   }
 
   @Override
-  public List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId) {
+  public List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId, int limit) {
     return jdbcTemplate.query(
         """
             SELECT id, workspace_id, requested_by_user_id, user_message, mode, execute_requested,
@@ -116,9 +116,11 @@ public class JdbcAgentRunRepository implements AgentRunRepository {
             FROM agent_runs
             WHERE workspace_id = ?
             ORDER BY updated_at DESC, id DESC
+            LIMIT ?
             """,
         runRowMapper,
-        workspaceId
+        workspaceId,
+        Math.max(0, limit)
     );
   }
 

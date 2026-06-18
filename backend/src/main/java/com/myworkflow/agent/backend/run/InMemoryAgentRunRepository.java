@@ -29,13 +29,14 @@ public class InMemoryAgentRunRepository implements AgentRunRepository {
   }
 
   @Override
-  public synchronized List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId) {
+  public synchronized List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId, int limit) {
     return runs.values().stream()
         .filter((run) -> run.workspaceId().equals(workspaceId))
         .sorted((left, right) -> {
           int updated = right.updatedAt().compareTo(left.updatedAt());
           return updated != 0 ? updated : right.runId().compareTo(left.runId());
         })
+        .limit(Math.max(0, limit))
         .toList();
   }
 
