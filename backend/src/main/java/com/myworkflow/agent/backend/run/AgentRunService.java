@@ -12,9 +12,10 @@ import com.myworkflow.agent.backend.providersecret.ProviderSecretResolver;
 import com.myworkflow.agent.backend.workspace.WorkspaceRecord;
 import com.myworkflow.agent.backend.workspace.WorkspaceRole;
 import com.myworkflow.agent.backend.workspace.WorkspaceService;
-import java.util.LinkedHashMap;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -123,6 +124,11 @@ public class AgentRunService {
         .orElseThrow(() -> new AgentRunNotFoundException(runId));
     workspaceService.getWorkspace(run.workspaceId());
     return run;
+  }
+
+  public List<AgentRunRecord> listWorkspaceRuns(String workspaceId) {
+    WorkspaceRecord workspace = workspaceService.requireWorkspaceRole(workspaceId, WorkspaceRole.WORKSPACE_VIEWER);
+    return repository.findRunsByWorkspaceId(workspace.workspaceId());
   }
 
   public AgentRunRecord cancelRun(String runId) {

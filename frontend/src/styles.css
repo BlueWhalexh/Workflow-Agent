@@ -753,6 +753,7 @@ button {
 }
 
 .message,
+.recent-runs,
 .approval-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -772,6 +773,7 @@ button {
 }
 
 .message strong,
+.recent-runs strong,
 .approval-card strong {
   display: block;
   margin-bottom: 6px;
@@ -784,6 +786,49 @@ button {
   color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.recent-run-list {
+  display: grid;
+  gap: 7px;
+}
+
+.recent-run-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid #d7e0e8;
+  border-radius: 7px;
+  background: #f8fbfc;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-run-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.recent-run-button span,
+.recent-run-button code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-run-button span {
+  font-size: 12px;
+}
+
+.recent-run-button code {
+  color: #516365;
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 .approval-card {

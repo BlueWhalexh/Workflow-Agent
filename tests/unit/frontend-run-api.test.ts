@@ -3,6 +3,7 @@ import {
   cancelAgentRun,
   createAgentRun,
   getAgentRun,
+  listWorkspaceRuns,
   listRunEvents,
 } from "../../frontend/src/features/runs/run-api.js";
 
@@ -149,6 +150,69 @@ describe("frontend run API adapter", () => {
         },
       },
     ]);
+  });
+
+  test("listWorkspaceRuns loads recent public run envelopes for a workspace", async () => {
+    const fetcher = async (url: string) => {
+      expect(url).toBe("/v1/workspaces/ws_123/agent-runs");
+      return jsonEnvelope([
+        {
+          runId: "run_new",
+          workspaceId: "ws_123",
+          status: "SUCCEEDED",
+          outputKind: "answer",
+          displayText: "已生成摘要",
+          requiresConfirmation: false,
+          requiresApproval: false,
+          artifactRefs: [".agent-runs/run_new/report.md"],
+          wroteWorkspace: false,
+          targetWorkspacePaths: [],
+          createdAt: "2026-06-17T10:00:00Z",
+          updatedAt: "2026-06-17T10:00:03Z",
+          source: {
+            runtimePrivate: true,
+          },
+        },
+        {
+          runId: "run_old",
+          workspaceId: "ws_123",
+          status: "WAITING_APPROVAL",
+          outputKind: "candidate-patch",
+          displayText: "候选补丁等待审批",
+          requiresConfirmation: false,
+          requiresApproval: true,
+          artifactRefs: [".agent-runs/run_old/patch.json"],
+          wroteWorkspace: false,
+          targetWorkspacePaths: ["knowledge-base/topics/run-old.md"],
+          createdAt: "2026-06-17T09:59:00Z",
+          updatedAt: "2026-06-17T09:59:03Z",
+          rawProviderPayload: {
+            token: "must-not-render",
+          },
+        },
+      ]);
+    };
+
+    const runs = await listWorkspaceRuns(fetcher, "ws_123");
+
+    expect(runs.map((run) => run.runId)).toEqual(["run_new", "run_old"]);
+    expect(runs[0]).toEqual({
+      runId: "run_new",
+      workspaceId: "ws_123",
+      status: "SUCCEEDED",
+      outputKind: "answer",
+      displayText: "已生成摘要",
+      requiresConfirmation: false,
+      requiresApproval: false,
+      artifactRefs: [".agent-runs/run_new/report.md"],
+      wroteWorkspace: false,
+      targetWorkspacePaths: [],
+      errorCode: undefined,
+      createdAt: "2026-06-17T10:00:00Z",
+      updatedAt: "2026-06-17T10:00:03Z",
+    });
+    expect(JSON.stringify(runs)).not.toContain("runtimePrivate");
+    expect(JSON.stringify(runs)).not.toContain("must-not-render");
   });
 
   test("listRunEvents maps lifecycle events without runtime-private fields", async () => {

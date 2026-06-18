@@ -33,6 +33,7 @@ class OpsIntegrationContractControllerTest {
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/session/csrf')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/workspaces')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/workspaces/{workspaceId}/agent-runs')]").exists())
+        .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/workspaces/{workspaceId}/agent-runs')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/events/stream')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'GET' && @.path == '/v1/agent-runs/{runId}/artifacts')]").exists())
         .andExpect(jsonPath("$.data.frontendRequiredEndpoints[?(@.method == 'POST' && @.path == '/v1/agent-runs/{runId}/approvals')]").exists())

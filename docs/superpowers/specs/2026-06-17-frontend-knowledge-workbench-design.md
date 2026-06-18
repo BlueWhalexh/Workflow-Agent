@@ -135,7 +135,7 @@ frontend/src/
 1. 健康检查：`GET /health`、`GET /ready`。
 2. 身份和工作区：`GET /v1/me`、`GET /v1/workspaces`、`GET /v1/workspaces/{workspaceId}`。
 3. 成员只作次级信息：`GET /v1/workspaces/{workspaceId}/members`。
-4. 运行：`POST /v1/workspaces/{workspaceId}/agent-runs`、`GET /v1/agent-runs/{runId}`、`POST /v1/agent-runs/{runId}/cancel`。
+4. 运行：`POST /v1/workspaces/{workspaceId}/agent-runs`、`GET /v1/workspaces/{workspaceId}/agent-runs`、`GET /v1/agent-runs/{runId}`、`POST /v1/agent-runs/{runId}/cancel`。
 5. 事件：`GET /v1/agent-runs/{runId}/events`，先轮询，SSE 作为后续增强。
 6. 产物：`GET /v1/agent-runs/{runId}/artifacts`、`GET /v1/artifacts/{artifactId}`。
 7. 审批：`GET /v1/agent-runs/{runId}/approvals`、approval decision endpoint。

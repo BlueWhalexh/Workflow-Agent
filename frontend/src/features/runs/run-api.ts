@@ -85,6 +85,14 @@ export async function getAgentRun(fetcher: ApiFetch, runId: string): Promise<Age
   ));
 }
 
+export async function listWorkspaceRuns(fetcher: ApiFetch, workspaceId: string): Promise<AgentRunView[]> {
+  const runs = await requestApiJson<BackendRunResponse[]>(
+    fetcher,
+    `/v1/workspaces/${encodeURIComponent(workspaceId)}/agent-runs`,
+  );
+  return runs.map(toAgentRunView);
+}
+
 export async function cancelAgentRun(fetcher: ApiFetch, runId: string): Promise<AgentRunView> {
   return toAgentRunView(await requestApiJson<BackendRunResponse>(
     fetcher,

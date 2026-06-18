@@ -123,6 +123,11 @@ public class OpsController {
               "/v1/workspaces/{workspaceId}/agent-runs",
               "create async agent run; optional remoteRunnerRef dispatches to a registered online runner"
           ),
+          new IntegrationEndpoint(
+              "GET",
+              "/v1/workspaces/{workspaceId}/agent-runs",
+              "list recent public run envelopes for a workspace"
+          ),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}", "poll run state"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events", "durable run events"),
           new IntegrationEndpoint("GET", "/v1/agent-runs/{runId}/events/stream", "SSE run event stream"),

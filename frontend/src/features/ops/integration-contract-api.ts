@@ -10,6 +10,7 @@ const REQUIRED_ENDPOINTS: IntegrationEndpointView[] = [
   { method: "GET", path: "/v1/me" },
   { method: "GET", path: "/v1/workspaces" },
   { method: "POST", path: "/v1/workspaces/{workspaceId}/agent-runs" },
+  { method: "GET", path: "/v1/workspaces/{workspaceId}/agent-runs" },
   { method: "GET", path: "/v1/agent-runs/{runId}/events/stream" },
   { method: "GET", path: "/v1/agent-runs/{runId}/artifacts" },
   { method: "POST", path: "/v1/agent-runs/{runId}/approvals" },

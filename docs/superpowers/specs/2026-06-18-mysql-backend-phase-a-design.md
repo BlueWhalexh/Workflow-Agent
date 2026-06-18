@@ -128,6 +128,7 @@ Phase A 不引入 ES。搜索不是当前后端一期主链路。重新评估条
 - `GET /v1/teams`
 - `GET /v1/workspaces`
 - `POST /v1/workspaces/{workspaceId}/agent-runs`
+- `GET /v1/workspaces/{workspaceId}/agent-runs`
 - `GET /v1/agent-runs/{runId}`
 - `GET /v1/agent-runs/{runId}/events`
 - `GET /v1/agent-runs/{runId}/events/stream`

@@ -82,6 +82,15 @@ export const workbenchFixture: WorkbenchViewModel = {
         { time: "10:18:27", label: "approval request opened" },
       ],
     },
+    recentRuns: [
+      {
+        runId: "run_2f91c0",
+        title: "候选补丁等待审批",
+        status: "WAITING_APPROVAL",
+        artifactRefs: ["patch_frontend_workbench_001"],
+        updatedAt: "2026-06-17T10:18:27Z",
+      },
+    ],
     messages: [
       { author: "你", kind: "user", text: "按当前设计，前端第一屏应该长什么样？" },
       {

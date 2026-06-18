@@ -53,6 +53,14 @@ export type RunEventView = {
   label: string;
 };
 
+export type RecentRunView = {
+  runId: string;
+  title: string;
+  status: string;
+  artifactRefs: string[];
+  updatedAt: string;
+};
+
 export type AssistantViewModel = {
   contextChips: string[];
   run: {
@@ -61,6 +69,7 @@ export type AssistantViewModel = {
     progress: number;
     events: RunEventView[];
   };
+  recentRuns: RecentRunView[];
   messages: Array<{
     author: "你" | "助手" | "安全检查";
     text: string;

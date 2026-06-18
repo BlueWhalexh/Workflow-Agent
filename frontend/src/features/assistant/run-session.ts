@@ -84,6 +84,13 @@ export async function runAssistantTask(
   return toSessionView(finalRun, events, artifacts);
 }
 
+export async function loadAssistantRunSession(fetcher: ApiFetch, runId: string): Promise<AssistantRunSessionView> {
+  const run = await getAgentRun(fetcher, runId);
+  const events = await listRunEvents(fetcher, run.runId);
+  const artifacts = await loadRunArtifactPreviews(fetcher, run);
+  return toSessionView(run, events, artifacts);
+}
+
 async function streamRunEventsForSession(
   fetcher: ApiFetch,
   createdRun: AgentRunView,

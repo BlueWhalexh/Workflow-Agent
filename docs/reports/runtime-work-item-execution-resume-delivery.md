@@ -5339,6 +5339,92 @@ Evidence boundaries:
 - The backend used the default in-memory profile, not MySQL/JDBC.
 - This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, remote cancellation callback, or multi-node fanout.
 
+## Workspace Run History And Reopen Local E2E Smoke
+
+Status: implemented as a narrow frontend/backend handoff slice for reopening completed runs after refresh.
+
+Scope delivered:
+
+- Added `GET /v1/workspaces/{workspaceId}/agent-runs`.
+- The endpoint returns recent public backend run envelopes for the workspace, sorted by `updatedAt DESC, id DESC`.
+- The endpoint enforces workspace viewer access and does not expose `userMessage`, worker kind, workspace root, runtime source, or raw provider payload.
+- Added `listWorkspaceRuns(fetcher, workspaceId)` to the frontend run API adapter.
+- `loadWorkbenchBootstrapView` now loads recent runs for the selected workspace and maps them into the right-side AI panel view model.
+- Added `loadAssistantRunSession(fetcher, runId)` so the UI can reopen an existing run by loading public run state, durable events, artifact registry entries, and a safe artifact preview.
+- The right-side AI panel now renders a compact Chinese "最近运行" list; clicking a run opens its status, events, artifact ref, `wroteWorkspace` flag, and artifact preview without creating a new run.
+- `/v1/ops/integration-contract` now advertises `GET /v1/workspaces/{workspaceId}/agent-runs`, and frontend readiness treats it as required.
+
+RED evidence:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=AgentRunControllerTest`
+  - Failed before implementation with HTTP `405 METHOD_NOT_ALLOWED` for `GET /v1/workspaces/{workspaceId}/agent-runs`.
+- `npm test -- tests/unit/frontend-run-api.test.ts`
+  - Failed before implementation because `listWorkspaceRuns` was not exported.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - Failed before implementation because `assistant.recentRuns` was `undefined` and `loadAssistantRunSession` was not exported.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - Failed before implementation because the integration contract did not include `GET /v1/workspaces/{workspaceId}/agent-runs`.
+
+Focused GREEN:
+
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=AgentRunControllerTest`
+  - 4 tests passed.
+- `npm test -- tests/unit/frontend-run-api.test.ts`
+  - 4 tests passed.
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - 2 test files passed; 16 tests passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=OpsIntegrationContractControllerTest`
+  - 1 test passed.
+- `npm test -- tests/unit/frontend-run-api.test.ts tests/unit/frontend-workbench-bootstrap.test.ts tests/unit/frontend-assistant-run-session.test.ts`
+  - 3 test files passed; 20 tests passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test -Dtest=AgentRunControllerTest,OpsIntegrationContractControllerTest`
+  - 5 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 55 test files passed; 218 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `npm run frontend:build`
+  - Vite production build passed.
+- `/Applications/IntelliJ\ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn -f backend/pom.xml test`
+  - 178 backend tests passed.
+- `git diff --check`
+  - Passed.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on this slice's touched files
+  - No matches.
+- Frontend runtime-private import scan for `src/runtime`, runtime imports, `openAgent`, and `openAgentGraph`
+  - No matches in the new frontend run/session/bootstrap paths.
+
+Local E2E smoke:
+
+- Started Java backend on `127.0.0.1:18081` with the default in-memory profile and `MY_WORKFLOW_AGENT_WORKER_REPO_ROOT` pointing at this repository.
+- Started Vite on `127.0.0.1:5173` with `MY_WORKFLOW_BACKEND_URL=http://127.0.0.1:18081`.
+- Initial sandboxed backend/Vite start attempts failed with local port `Operation not permitted`; both services were rerun with explicit local-port escalation.
+- `GET http://127.0.0.1:5173/v1/ops/integration-contract`
+  - Returned `java-backend-api.v1` with `GET /v1/workspaces/{workspaceId}/agent-runs` in frontend required endpoints.
+- `POST http://127.0.0.1:5173/v1/workspaces`
+  - Created workspace `E2E 最近运行工作区`.
+- `GET /v1/session/csrf` then `POST /v1/workspaces/{workspaceId}/agent-runs`
+  - Created deterministic open-agent run `run_6c52a39d47e447859834f9924a601458`.
+- `GET /v1/agent-runs/run_6c52a39d47e447859834f9924a601458`
+  - Returned `status: SUCCEEDED`, `outputKind: answer`, `wroteWorkspace: false`, and artifact ref `.agent-runs/open-agent/run_6c52a39d47e447859834f9924a601458.json`.
+- In-app browser refresh:
+  - UI showed `后端已连接` and workspace `E2E 最近运行工作区`.
+  - The right-side "最近运行" list showed the completed run after refresh.
+  - Clicking the recent run loaded `Run 已完成`, `Worker response recorded`, the `.agent-runs/open-agent/...json` artifact ref, `wroteWorkspace: false`, and `ARTIFACT · application/json` preview.
+- Browser-visible token scan:
+  - The rendered page text did not contain `tp-c50ftlol`, `ANTHROPIC_AUTH_TOKEN`, `apiKeySecretRef`, or `rawProviderPayload`.
+
+Evidence boundaries:
+
+- This is a local E2E smoke, not a deployed environment E2E.
+- The worker path used the local TS worker and deterministic open-agent runtime; no real external provider was called.
+- The backend used the default in-memory profile, not MySQL/JDBC.
+- Candidate patch target paths remain suggestions only; this slice does not change approval execution semantics or workspace write boundaries.
+- This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, remote cancellation callback, or multi-node fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

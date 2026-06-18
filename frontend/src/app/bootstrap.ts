@@ -2,11 +2,12 @@ import type { ArtifactContentView } from "../features/artifacts/artifact-api.js"
 import type { RunApprovalView } from "../features/approvals/approval-api.js";
 import type { AssistantRunSessionView } from "../features/assistant/run-session.js";
 import { loadIntegrationContract } from "../features/ops/integration-contract-api.js";
+import { listWorkspaceRuns, type AgentRunView } from "../features/runs/run-api.js";
 import { loadWorkspaceBootstrap, type WorkspaceSummaryView } from "../features/workspace/workspace-api.js";
 import type { ApiFetch } from "../shared/api/envelope.js";
 import { sanitizeForPublicUi } from "../shared/safety/public-fields.js";
 import { workbenchFixture } from "./fixtures.js";
-import type { TreeItemView, WorkbenchViewModel } from "./types.js";
+import type { RecentRunView, TreeItemView, WorkbenchViewModel } from "./types.js";
 
 export type WorkbenchBootstrapStatus = "connected" | "fixture-fallback" | "contract-mismatch";
 
@@ -40,6 +41,8 @@ export async function loadWorkbenchBootstrapView(fetcher: ApiFetch): Promise<Wor
       };
     }
 
+    const recentRuns = await loadRecentWorkspaceRuns(fetcher, selectedWorkspace.id);
+
     return {
       status: "connected",
       statusLabel: "后端已连接",
@@ -48,6 +51,10 @@ export async function loadWorkbenchBootstrapView(fetcher: ApiFetch): Promise<Wor
         workspaceName: selectedWorkspace.name,
         breadcrumb: [selectedWorkspace.name, ...workbenchFixture.breadcrumb.slice(1)],
         treeItems: workspaceTreeItems(bootstrap.workspaces, selectedWorkspace.id),
+        assistant: {
+          ...workbenchFixture.assistant,
+          recentRuns,
+        },
       }),
     };
   } catch {
@@ -72,6 +79,25 @@ function workspaceTreeItems(workspaces: WorkspaceSummaryView[], selectedWorkspac
     depth: index > 0 || undefined,
     active: workspace.id === selectedWorkspaceId || undefined,
   }));
+}
+
+async function loadRecentWorkspaceRuns(fetcher: ApiFetch, workspaceId: string): Promise<RecentRunView[]> {
+  try {
+    const runs = await listWorkspaceRuns(fetcher, workspaceId);
+    return runs.slice(0, 5).map(toRecentRunView);
+  } catch {
+    return [];
+  }
+}
+
+function toRecentRunView(run: AgentRunView): RecentRunView {
+  return {
+    runId: run.runId,
+    title: run.displayText ?? titleForRunKind(run.outputKind),
+    status: run.status,
+    artifactRefs: run.artifactRefs,
+    updatedAt: run.updatedAt,
+  };
 }
 
 function publicWorkbench(data: WorkbenchViewModel): WorkbenchViewModel {
@@ -123,6 +149,21 @@ export function applyAssistantRunSessionToWorkbench(
       },
     },
   });
+}
+
+function titleForRunKind(outputKind: string): string {
+  switch (outputKind) {
+    case "candidate-patch":
+      return "候选补丁";
+    case "answer":
+      return "回答";
+    case "workflow-report":
+      return "工作流报告";
+    case "route-preview":
+      return "执行预览";
+    default:
+      return "Agent Run";
+  }
 }
 
 export function applyAssistantRunProgressToWorkbench(

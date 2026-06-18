@@ -10,6 +10,8 @@ public interface AgentRunRepository {
 
   Optional<AgentRunRecord> findRun(String runId);
 
+  List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId);
+
   Optional<AgentJobRecord> findJob(String jobId);
 
   List<RunAttemptRecord> findAttempts(String runId);

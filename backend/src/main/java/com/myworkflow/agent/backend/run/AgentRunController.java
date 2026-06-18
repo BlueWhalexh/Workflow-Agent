@@ -48,6 +48,13 @@ public class AgentRunController {
     return ApiEnvelope.ok(toResponse(agentRunService.getRun(runId)));
   }
 
+  @GetMapping("/v1/workspaces/{workspaceId}/agent-runs")
+  public ApiEnvelope<List<AgentRunResponse>> listWorkspaceRuns(@PathVariable String workspaceId) {
+    return ApiEnvelope.ok(agentRunService.listWorkspaceRuns(workspaceId).stream()
+        .map(AgentRunController::toResponse)
+        .toList());
+  }
+
   @PostMapping("/v1/agent-runs/{runId}/cancel")
   public ApiEnvelope<AgentRunResponse> cancelRun(@PathVariable String runId) {
     return ApiEnvelope.ok(toResponse(agentRunService.cancelRun(runId)));

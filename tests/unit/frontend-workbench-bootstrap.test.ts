@@ -49,6 +49,28 @@ describe("frontend workbench bootstrap", () => {
         ]);
       }
 
+      if (url === "/v1/workspaces/ws_backend/agent-runs") {
+        return jsonEnvelope([
+          {
+            runId: "run_recent",
+            workspaceId: "ws_backend",
+            status: "SUCCEEDED",
+            outputKind: "answer",
+            displayText: "已生成最近摘要",
+            requiresConfirmation: false,
+            requiresApproval: false,
+            artifactRefs: [".agent-runs/run_recent/report.md"],
+            wroteWorkspace: false,
+            targetWorkspacePaths: [],
+            createdAt: "2026-06-17T10:00:00Z",
+            updatedAt: "2026-06-17T10:00:03Z",
+            source: {
+              runtimePrivate: true,
+            },
+          },
+        ]);
+      }
+
       throw new Error(`Unexpected URL ${url}`);
     };
 
@@ -74,10 +96,25 @@ describe("frontend workbench bootstrap", () => {
         depth: true,
       },
     ]);
+    expect(bootstrap.data.assistant.recentRuns).toEqual([
+      {
+        runId: "run_recent",
+        title: "已生成最近摘要",
+        status: "SUCCEEDED",
+        artifactRefs: [".agent-runs/run_recent/report.md"],
+        updatedAt: "2026-06-17T10:00:03Z",
+      },
+    ]);
     expect(JSON.stringify(bootstrap)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(bootstrap)).not.toContain("serverStorageRef");
     expect(JSON.stringify(bootstrap)).not.toContain("/Users/didi/private/workspace");
-    expect(calls).toEqual(["/v1/ops/integration-contract", "/v1/me", "/v1/workspaces"]);
+    expect(JSON.stringify(bootstrap)).not.toContain("runtimePrivate");
+    expect(calls).toEqual([
+      "/v1/ops/integration-contract",
+      "/v1/me",
+      "/v1/workspaces",
+      "/v1/workspaces/ws_backend/agent-runs",
+    ]);
   });
 
   test("loadWorkbenchBootstrapView falls back to the fixture when the backend is unavailable", async () => {
@@ -409,6 +446,7 @@ function integrationContractEnvelope(overrides: Record<string, unknown> = {}) {
       { method: "GET", path: "/v1/me" },
       { method: "GET", path: "/v1/workspaces" },
       { method: "POST", path: "/v1/workspaces/{workspaceId}/agent-runs" },
+      { method: "GET", path: "/v1/workspaces/{workspaceId}/agent-runs" },
       { method: "GET", path: "/v1/agent-runs/{runId}/events/stream" },
       { method: "GET", path: "/v1/agent-runs/{runId}/artifacts" },
       { method: "POST", path: "/v1/agent-runs/{runId}/approvals" },

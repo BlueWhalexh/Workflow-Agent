@@ -115,6 +115,82 @@ class AgentRunControllerTest {
   }
 
   @Test
+  void listWorkspaceRunsReturnsRecentPublicRunEnvelopes() throws Exception {
+    String workspaceId = createWorkspace("Run History");
+    String otherWorkspaceId = createWorkspace("Other Run History");
+
+    WORKER.respondWith((request) -> new AgentWorkerResponse(
+        "agent-backend-response.v1",
+        request.runId(),
+        "SUCCEEDED",
+        "answer",
+        "First answer.",
+        false,
+        false,
+        List.of(".agent-runs/%s/first.json".formatted(request.runId())),
+        false,
+        List.of()
+    ));
+    String olderRunId = createRun(workspaceId, "first run");
+    pollRun(olderRunId, "SUCCEEDED");
+
+    WORKER.respondWith((request) -> new AgentWorkerResponse(
+        "agent-backend-response.v1",
+        request.runId(),
+        "WAITING_APPROVAL",
+        "candidate-patch",
+        "Second candidate.",
+        false,
+        true,
+        List.of(".agent-runs/%s/second.json".formatted(request.runId())),
+        false,
+        List.of("knowledge-base/drafts/%s.md".formatted(request.runId()))
+    ));
+    String newerRunId = createRun(workspaceId, "second run");
+    pollRun(newerRunId, "WAITING_APPROVAL");
+
+    WORKER.respondWith((request) -> new AgentWorkerResponse(
+        "agent-backend-response.v1",
+        request.runId(),
+        "SUCCEEDED",
+        "answer",
+        "Other workspace answer.",
+        false,
+        false,
+        List.of(".agent-runs/%s/other.json".formatted(request.runId())),
+        false,
+        List.of()
+    ));
+    String otherRunId = createRun(otherWorkspaceId, "other run");
+    pollRun(otherRunId, "SUCCEEDED");
+
+    MvcResult result = mockMvc.perform(get("/v1/workspaces/{workspaceId}/agent-runs", workspaceId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.schemaVersion").value("java-backend-api.v1"))
+        .andExpect(jsonPath("$.ok").value(true))
+        .andExpect(jsonPath("$.data.length()").value(2))
+        .andExpect(jsonPath("$.data[0].runId").value(newerRunId))
+        .andExpect(jsonPath("$.data[0].workspaceId").value(workspaceId))
+        .andExpect(jsonPath("$.data[0].status").value("WAITING_APPROVAL"))
+        .andExpect(jsonPath("$.data[0].outputKind").value("candidate-patch"))
+        .andExpect(jsonPath("$.data[0].requiresApproval").value(true))
+        .andExpect(jsonPath("$.data[0].artifactRefs[0]").value(".agent-runs/%s/second.json".formatted(newerRunId)))
+        .andExpect(jsonPath("$.data[0].targetWorkspacePaths[0]")
+            .value("knowledge-base/drafts/%s.md".formatted(newerRunId)))
+        .andExpect(jsonPath("$.data[1].runId").value(olderRunId))
+        .andExpect(jsonPath("$.data[1].status").value("SUCCEEDED"))
+        .andExpect(jsonPath("$.data[1].displayText").value("First answer."))
+        .andExpect(jsonPath("$.data[?(@.runId == '%s')]".formatted(otherRunId)).doesNotExist())
+        .andExpect(jsonPath("$.data[0].userMessage").doesNotExist())
+        .andExpect(jsonPath("$.data[0].source").doesNotExist())
+        .andExpect(jsonPath("$.data[0].workspaceRoot").doesNotExist())
+        .andExpect(jsonPath("$.data[0].workerKind").doesNotExist())
+        .andReturn();
+
+    assertThat(result.getResponse().getContentAsString()).doesNotContain("runtimePrivate");
+  }
+
+  @Test
   void runRequestRejectsClientSuppliedWorkspaceRoot() throws Exception {
     String workspaceId = createWorkspace("Reject Workspace Root");
 
@@ -142,6 +218,20 @@ class AgentRunControllerTest {
         .andExpect(status().isOk())
         .andReturn();
     return JsonPath.read(result.getResponse().getContentAsString(), "$.data.workspaceId");
+  }
+
+  private String createRun(String workspaceId, String userMessage) throws Exception {
+    MvcResult result = mockMvc.perform(post("/v1/workspaces/{workspaceId}/agent-runs", workspaceId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "userMessage": "%s",
+                  "mode": "deterministic-open-agent"
+                }
+                """.formatted(userMessage)))
+        .andExpect(status().isOk())
+        .andReturn();
+    return JsonPath.read(result.getResponse().getContentAsString(), "$.data.runId");
   }
 
   private MvcResult pollRun(String runId, String expectedStatus) throws Exception {

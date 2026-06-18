@@ -106,6 +106,23 @@ public class JdbcAgentRunRepository implements AgentRunRepository {
   }
 
   @Override
+  public List<AgentRunRecord> findRunsByWorkspaceId(String workspaceId) {
+    return jdbcTemplate.query(
+        """
+            SELECT id, workspace_id, requested_by_user_id, user_message, mode, execute_requested,
+              auto_approve, status, output_kind, display_text, requires_approval,
+              requires_confirmation, wrote_workspace, artifact_refs, target_workspace_paths,
+              error_code, created_at, updated_at
+            FROM agent_runs
+            WHERE workspace_id = ?
+            ORDER BY updated_at DESC, id DESC
+            """,
+        runRowMapper,
+        workspaceId
+    );
+  }
+
+  @Override
   public Optional<AgentJobRecord> findJob(String jobId) {
     try {
       return Optional.ofNullable(jdbcTemplate.queryForObject(

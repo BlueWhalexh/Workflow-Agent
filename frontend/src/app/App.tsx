@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ApprovalDecisionView } from "../features/approvals/approval-api";
 import { decideLatestRunApproval, NoPendingApprovalError } from "../features/approvals/approval-flow";
 import { listRunArtifacts, readArtifact } from "../features/artifacts/artifact-api";
-import { modeForAssistantMessage, runAssistantTask } from "../features/assistant/run-session";
+import { loadAssistantRunSession, modeForAssistantMessage, runAssistantTask } from "../features/assistant/run-session";
 import { KnowledgeWorkbench } from "../features/workbench/KnowledgeWorkbench";
 import {
   activeWorkspaceIdFromWorkbench,
@@ -23,6 +23,7 @@ export function App() {
     data: workbenchFixture,
   });
   const [assistantSubmitting, setAssistantSubmitting] = useState(false);
+  const [assistantOpeningRun, setAssistantOpeningRun] = useState(false);
   const [assistantApprovalDeciding, setAssistantApprovalDeciding] = useState(false);
   const [assistantArtifactReading, setAssistantArtifactReading] = useState(false);
 
@@ -135,6 +136,40 @@ export function App() {
     }
   }
 
+  async function handleOpenRecentRun(runId: string) {
+    if (bootstrap.status !== "connected" || !runId) {
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text: "后端未连接或当前运行不可打开。",
+        }),
+      }));
+      return;
+    }
+
+    setAssistantOpeningRun(true);
+    try {
+      const session = await loadAssistantRunSession(window.fetch.bind(window), runId);
+      setBootstrap((current) => ({
+        ...current,
+        data: applyAssistantRunSessionToWorkbench(current.data, session, "打开历史运行"),
+      }));
+    } catch {
+      setBootstrap((current) => ({
+        ...current,
+        data: appendAssistantMessage(current.data, {
+          author: "安全检查",
+          kind: "ai",
+          text: "打开历史运行失败，请稍后重试或检查后端连接。",
+        }),
+      }));
+    } finally {
+      setAssistantOpeningRun(false);
+    }
+  }
+
   async function handleApprovalDecision(decision: ApprovalDecisionView) {
     const runId = bootstrap.data.assistant.run.id;
     if (bootstrap.status !== "connected" || !runId) {
@@ -179,8 +214,10 @@ export function App() {
       data={bootstrap.data}
       assistantApprovalDeciding={assistantApprovalDeciding}
       assistantArtifactReading={assistantArtifactReading}
+      assistantOpeningRun={assistantOpeningRun}
       assistantSubmitting={assistantSubmitting}
       onAssistantDecideApproval={handleApprovalDecision}
+      onAssistantOpenRecentRun={handleOpenRecentRun}
       onAssistantReadArtifact={handleReadArtifact}
       onAssistantSubmit={handleAssistantSubmit}
     />

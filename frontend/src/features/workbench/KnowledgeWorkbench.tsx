@@ -9,8 +9,10 @@ type KnowledgeWorkbenchProps = {
   data: WorkbenchViewModel;
   assistantApprovalDeciding?: boolean;
   assistantArtifactReading?: boolean;
+  assistantOpeningRun?: boolean;
   assistantSubmitting?: boolean;
   onAssistantDecideApproval?: (decision: ApprovalDecisionView) => void | Promise<void>;
+  onAssistantOpenRecentRun?: (runId: string) => void | Promise<void>;
   onAssistantReadArtifact?: () => void | Promise<void>;
   onAssistantSubmit?: (userMessage: string) => void | Promise<void>;
 };
@@ -20,8 +22,10 @@ export function KnowledgeWorkbench({
   data,
   assistantApprovalDeciding,
   assistantArtifactReading,
+  assistantOpeningRun,
   assistantSubmitting,
   onAssistantDecideApproval,
+  onAssistantOpenRecentRun,
   onAssistantReadArtifact,
   onAssistantSubmit,
 }: KnowledgeWorkbenchProps) {
@@ -59,9 +63,11 @@ export function KnowledgeWorkbench({
       <AssistantPanel
         assistant={data.assistant}
         isDecidingApproval={assistantApprovalDeciding}
+        isOpeningRun={assistantOpeningRun}
         isReadingArtifact={assistantArtifactReading}
         isSubmitting={assistantSubmitting}
         onDecideApproval={onAssistantDecideApproval}
+        onOpenRecentRun={onAssistantOpenRecentRun}
         onReadArtifact={onAssistantReadArtifact}
         onSubmit={onAssistantSubmit}
       />

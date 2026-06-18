@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { modeForAssistantMessage, runAssistantTask } from "../../frontend/src/features/assistant/run-session.js";
+import {
+  loadAssistantRunSession,
+  modeForAssistantMessage,
+  runAssistantTask,
+} from "../../frontend/src/features/assistant/run-session.js";
 
 describe("frontend assistant run session", () => {
   test("modeForAssistantMessage routes write-intent prompts to llm open-agent candidate approval", () => {
@@ -311,6 +315,119 @@ describe("frontend assistant run session", () => {
       "/v1/artifacts/art_1",
     ]);
     expect(JSON.stringify(session)).not.toContain("serverStorageRef");
+    expect(JSON.stringify(session)).not.toContain("must-not-render");
+  });
+
+  test("loadAssistantRunSession reopens an existing completed run with events and artifact preview", async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string) => {
+      calls.push(url);
+
+      if (url === "/v1/agent-runs/run_recent") {
+        return jsonEnvelope(runEnvelope({
+          runId: "run_recent",
+          status: "SUCCEEDED",
+          outputKind: "answer",
+          displayText: "已生成最近摘要",
+          artifactRefs: [".agent-runs/run_recent/report.md"],
+          source: {
+            runtimePrivate: true,
+          },
+        }));
+      }
+
+      if (url === "/v1/agent-runs/run_recent/events") {
+        return jsonEnvelope([
+          {
+            eventId: "evt_1",
+            runId: "run_recent",
+            eventType: "RUN_QUEUED",
+            status: "QUEUED",
+            message: "Run queued",
+            createdAt: "2026-06-17T10:00:00Z",
+          },
+          {
+            eventId: "evt_2",
+            runId: "run_recent",
+            eventType: "COMPLETED",
+            status: "SUCCEEDED",
+            message: "Worker response recorded",
+            createdAt: "2026-06-17T10:00:03Z",
+          },
+        ]);
+      }
+
+      if (url === "/v1/agent-runs/run_recent/artifacts") {
+        return jsonEnvelope([
+          {
+            artifactId: "art_recent",
+            runId: "run_recent",
+            artifactRef: ".agent-runs/run_recent/report.md",
+            kind: "report",
+            redactionStatus: "clean",
+            contentType: "text/markdown",
+            createdAt: "2026-06-17T10:00:03Z",
+            serverStorageRef: "/Users/didi/private/workspace",
+          },
+        ]);
+      }
+
+      if (url === "/v1/artifacts/art_recent") {
+        return jsonEnvelope({
+          artifactId: "art_recent",
+          runId: "run_recent",
+          artifactRef: ".agent-runs/run_recent/report.md",
+          kind: "report",
+          redactionStatus: "clean",
+          contentType: "text/markdown",
+          createdAt: "2026-06-17T10:00:03Z",
+          content: "# 最近运行\n\n刷新后仍可打开。",
+          rawProviderPayload: {
+            token: "must-not-render",
+          },
+        });
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const session = await loadAssistantRunSession(fetcher, "run_recent");
+
+    expect(session).toEqual({
+      runId: "run_recent",
+      status: "SUCCEEDED",
+      terminal: true,
+      title: "Run 已完成",
+      progress: 100,
+      displayText: "已生成最近摘要",
+      events: [
+        { time: "10:00:00", label: "Run queued" },
+        { time: "10:00:03", label: "Worker response recorded" },
+      ],
+      approval: {
+        status: "NONE",
+        artifactRefs: [".agent-runs/run_recent/report.md"],
+        targetWorkspacePaths: [],
+        wroteWorkspace: false,
+      },
+      artifacts: [
+        {
+          artifactId: "art_recent",
+          artifactRef: ".agent-runs/run_recent/report.md",
+          kind: "report",
+          contentType: "text/markdown",
+          content: "# 最近运行\n\n刷新后仍可打开。",
+        },
+      ],
+    });
+    expect(calls).toEqual([
+      "/v1/agent-runs/run_recent",
+      "/v1/agent-runs/run_recent/events",
+      "/v1/agent-runs/run_recent/artifacts",
+      "/v1/artifacts/art_recent",
+    ]);
+    expect(JSON.stringify(session)).not.toContain("runtimePrivate");
+    expect(JSON.stringify(session)).not.toContain("/Users/didi/private/workspace");
     expect(JSON.stringify(session)).not.toContain("must-not-render");
   });
 

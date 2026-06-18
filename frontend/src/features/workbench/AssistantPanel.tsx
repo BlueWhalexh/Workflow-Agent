@@ -5,9 +5,11 @@ import type { ApprovalDecisionView } from "../approvals/approval-api";
 type AssistantPanelProps = {
   assistant: AssistantViewModel;
   isDecidingApproval?: boolean;
+  isOpeningRun?: boolean;
   isReadingArtifact?: boolean;
   isSubmitting?: boolean;
   onDecideApproval?: (decision: ApprovalDecisionView) => void | Promise<void>;
+  onOpenRecentRun?: (runId: string) => void | Promise<void>;
   onReadArtifact?: () => void | Promise<void>;
   onSubmit?: (userMessage: string) => void | Promise<void>;
 };
@@ -15,9 +17,11 @@ type AssistantPanelProps = {
 export function AssistantPanel({
   assistant,
   isDecidingApproval = false,
+  isOpeningRun = false,
   isReadingArtifact = false,
   isSubmitting = false,
   onDecideApproval,
+  onOpenRecentRun,
   onReadArtifact,
   onSubmit,
 }: AssistantPanelProps) {
@@ -71,6 +75,26 @@ export function AssistantPanel({
       </section>
 
       <div className="chat">
+        {assistant.recentRuns.length > 0 ? (
+          <section className="recent-runs" aria-label="最近运行">
+            <strong>最近运行</strong>
+            <div className="recent-run-list">
+              {assistant.recentRuns.map((run) => (
+                <button
+                  className="recent-run-button"
+                  disabled={isOpeningRun}
+                  key={run.runId}
+                  type="button"
+                  onClick={() => void onOpenRecentRun?.(run.runId)}
+                >
+                  <span>{run.title}</span>
+                  <code>{run.status}</code>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {assistant.messages.slice(0, 3).map((message) => (
           <div className={`message ${message.kind}`} key={`${message.author}-${message.text}`}>
             <strong>{message.author}</strong>
