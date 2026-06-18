@@ -5299,6 +5299,46 @@ Evidence boundaries:
 - The test uses mocked fetch responses from the Java backend contract; it does not call a real provider.
 - This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, or multi-node fanout.
 
+## Frontend Terminal Artifact Preview Local E2E Smoke
+
+Status: verified as a local browser -> Vite proxy -> Java backend -> local TS worker/runtime -> artifact registry -> frontend preview smoke.
+
+Scope verified:
+
+- Started Java backend on `127.0.0.1:18081` with the default in-memory profile and `MY_WORKFLOW_AGENT_WORKER_REPO_ROOT` pointing at this repository.
+- Started Vite on `127.0.0.1:5173` with `MY_WORKFLOW_BACKEND_URL=http://127.0.0.1:18081`.
+- Loaded the user-side knowledge workbench through the in-app browser at `http://127.0.0.1:5173/`.
+- Created a workspace through the Vite origin and submitted `总结当前知识库` from the assistant panel.
+- Browser UI rendered `后端已连接`, `Run 已完成`, run lifecycle events, artifact ref, `wroteWorkspace: false`, and the terminal artifact preview content in the right-side AI panel.
+
+Smoke evidence:
+
+- API contract through Vite origin:
+  - `GET http://127.0.0.1:5173/v1/ops/integration-contract`
+  - Returned `java-backend-api.v1` and frontend/runtime required endpoints, including run events, artifact registry, approval boundary, and remote runner capability flags.
+- Browser-visible run:
+  - `run_c43ef47c19a14528b7c916bb1628d80d`
+  - UI showed `Run 已完成`, `Worker response recorded`, `.agent-runs/open-agent/run_c43ef47c19a14528b7c916bb1628d80d.json`, `wroteWorkspace: false`, and `ARTIFACT · application/json`.
+- Backend readback for the same run:
+  - `GET /v1/agent-runs/{runId}` returned `status: SUCCEEDED`, `outputKind: answer`, `wroteWorkspace: false`.
+  - `GET /v1/agent-runs/{runId}/events` returned `RUN_QUEUED:QUEUED`, `RUNNING:RUNNING`, `COMPLETED:SUCCEEDED`.
+  - `GET /v1/agent-runs/{runId}/artifacts` returned `.agent-runs/open-agent/run_c43ef47c19a14528b7c916bb1628d80d.json`.
+  - `GET /v1/artifacts/{artifactId}` returned `contentType: application/json` with `open-agent-runtime.v1` artifact content.
+- Token pattern scan over the smoke API readback:
+  - No matches for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, or `ANTHROPIC_AUTH_TOKEN=tp-*`.
+
+Debug note:
+
+- The first backend and Vite start attempts failed under sandboxed port binding with `Operation not permitted`; both were rerun with explicit local-port escalation.
+- A hand-written Node fetch smoke through Vite failed when it sent a CSRF header without browser cookie state. Direct backend and Vite-origin POST without that artificial header both returned `200`; the browser run used the real browser cookie/header flow and passed.
+
+Evidence boundaries:
+
+- This is a local E2E smoke, not a deployed environment E2E.
+- The worker path used the local TS worker and deterministic open-agent runtime; no real external provider was called.
+- The backend used the default in-memory profile, not MySQL/JDBC.
+- This does not add OAuth login UI, production session persistence, production secret manager, runner-scoped artifact tokens, remote cancellation callback, or multi-node fanout.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。
