@@ -1,13 +1,14 @@
 import type { ArtifactContentView } from "../features/artifacts/artifact-api.js";
 import type { RunApprovalView } from "../features/approvals/approval-api.js";
 import type { AssistantRunSessionView } from "../features/assistant/run-session.js";
+import { loadIntegrationContract } from "../features/ops/integration-contract-api.js";
 import { loadWorkspaceBootstrap, type WorkspaceSummaryView } from "../features/workspace/workspace-api.js";
 import type { ApiFetch } from "../shared/api/envelope.js";
 import { sanitizeForPublicUi } from "../shared/safety/public-fields.js";
 import { workbenchFixture } from "./fixtures.js";
 import type { TreeItemView, WorkbenchViewModel } from "./types.js";
 
-export type WorkbenchBootstrapStatus = "connected" | "fixture-fallback";
+export type WorkbenchBootstrapStatus = "connected" | "fixture-fallback" | "contract-mismatch";
 
 export type WorkbenchBootstrapView = {
   status: WorkbenchBootstrapStatus;
@@ -17,6 +18,12 @@ export type WorkbenchBootstrapView = {
 
 export async function loadWorkbenchBootstrapView(fetcher: ApiFetch): Promise<WorkbenchBootstrapView> {
   try {
+    const contract = await loadIntegrationContract(fetcher);
+
+    if (!contract.frontendReady) {
+      return fixtureFallback("contract-mismatch", "后端契约不完整");
+    }
+
     const bootstrap = await loadWorkspaceBootstrap(fetcher);
     const selectedWorkspace = bootstrap.workspaces.find((workspace) => workspace.id === bootstrap.selectedWorkspaceId);
 
@@ -44,14 +51,14 @@ export async function loadWorkbenchBootstrapView(fetcher: ApiFetch): Promise<Wor
       }),
     };
   } catch {
-    return fixtureFallback();
+    return fixtureFallback("fixture-fallback", "离线预览");
   }
 }
 
-function fixtureFallback(): WorkbenchBootstrapView {
+function fixtureFallback(status: WorkbenchBootstrapStatus, statusLabel: string): WorkbenchBootstrapView {
   return {
-    status: "fixture-fallback",
-    statusLabel: "离线预览",
+    status,
+    statusLabel,
     data: publicWorkbench(workbenchFixture),
   };
 }

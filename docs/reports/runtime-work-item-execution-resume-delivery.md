@@ -5120,6 +5120,43 @@ Evidence boundaries:
 - This is not a deployed browser E2E.
 - This is not production remote runner identity, mTLS, runner-scoped secret distribution, or multi-node fanout.
 
+## Frontend Backend Contract Gate
+
+Status: verified as a frontend bootstrap guard before marking the user workbench as backend-connected.
+
+Scope delivered:
+
+- Added `frontend/src/features/ops/integration-contract-api.ts`.
+- `loadWorkbenchBootstrapView` now reads `GET /v1/ops/integration-contract` before loading workspace data.
+- The frontend only marks the workbench as `connected` when the backend advertises the stable public envelope, required run/event/artifact/approval endpoints, and required async/SSE/approval/artifact capabilities.
+- If the contract is incomplete, the UI stays on the public fixture fallback with `contract-mismatch` / `后端契约不完整` and does not fetch workspace data.
+
+RED evidence:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - Failed before implementation because bootstrap did not call `/v1/ops/integration-contract` and returned `fixture-fallback` instead of `contract-mismatch` for incomplete contracts.
+
+Focused GREEN:
+
+- `npm test -- tests/unit/frontend-workbench-bootstrap.test.ts`
+  - 8 tests passed.
+
+Full verification:
+
+- `npm test`
+  - 55 test files passed; 213 tests passed.
+- `npm run typecheck`
+  - Root `tsc --noEmit` passed.
+- `git diff --check`
+  - Passed.
+- Strict token scan for `tp-*`, `Bearer tp-*`, `MIMO_API_KEY=tp-*`, and `ANTHROPIC_AUTH_TOKEN=tp-*` on this slice's touched files
+  - No matches.
+
+Evidence boundaries:
+
+- This is a frontend API adapter/unit smoke, not a deployed browser E2E.
+- This does not add OAuth login UI, production session wiring, or real provider execution from the browser.
+
 ## Boundaries
 
 - 没有真实 DeepSeek / Claude Code 调用。

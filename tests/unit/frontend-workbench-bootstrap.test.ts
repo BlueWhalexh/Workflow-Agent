@@ -18,6 +18,10 @@ describe("frontend workbench bootstrap", () => {
     const fetcher = async (url: string) => {
       calls.push(url);
 
+      if (url === "/v1/ops/integration-contract") {
+        return integrationContractEnvelope();
+      }
+
       if (url === "/v1/me") {
         return jsonEnvelope({
           userId: "user_dev",
@@ -73,7 +77,7 @@ describe("frontend workbench bootstrap", () => {
     expect(JSON.stringify(bootstrap)).not.toContain("apiKeySecretRef");
     expect(JSON.stringify(bootstrap)).not.toContain("serverStorageRef");
     expect(JSON.stringify(bootstrap)).not.toContain("/Users/didi/private/workspace");
-    expect(calls).toEqual(["/v1/me", "/v1/workspaces"]);
+    expect(calls).toEqual(["/v1/ops/integration-contract", "/v1/me", "/v1/workspaces"]);
   });
 
   test("loadWorkbenchBootstrapView falls back to the fixture when the backend is unavailable", async () => {
@@ -90,8 +94,40 @@ describe("frontend workbench bootstrap", () => {
     expect(bootstrap.data.workspaceName).toBe("Agent Loop Core");
   });
 
+  test("loadWorkbenchBootstrapView does not connect when the backend integration contract is incomplete", async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string) => {
+      calls.push(url);
+
+      if (url === "/v1/ops/integration-contract") {
+        return integrationContractEnvelope({
+          frontendRequiredEndpoints: [{ method: "GET", path: "/v1/me" }],
+          capabilities: {
+            asyncAgentRuns: true,
+            sseRunEvents: false,
+            approvalBoundary: true,
+            artifactRegistry: true,
+          },
+        });
+      }
+
+      throw new Error(`Unexpected URL ${url}`);
+    };
+
+    const bootstrap = await loadWorkbenchBootstrapView(fetcher);
+
+    expect(bootstrap.status).toBe("contract-mismatch");
+    expect(bootstrap.statusLabel).toBe("后端契约不完整");
+    expect(bootstrap.data.workspaceName).toBe("Agent Loop Core");
+    expect(calls).toEqual(["/v1/ops/integration-contract"]);
+  });
+
   test("loadWorkbenchBootstrapView stays connected when the backend has no visible workspaces", async () => {
     const fetcher = async (url: string) => {
+      if (url === "/v1/ops/integration-contract") {
+        return integrationContractEnvelope();
+      }
+
       if (url === "/v1/me") {
         return jsonEnvelope({
           userId: "user_dev",
@@ -304,4 +340,27 @@ function jsonEnvelope(data: unknown) {
       },
     ),
   );
+}
+
+function integrationContractEnvelope(overrides: Record<string, unknown> = {}) {
+  return jsonEnvelope({
+    schemaVersion: "java-backend-integration-contract.v1",
+    publicEnvelopeSchema: "java-backend-api.v1",
+    frontendRequiredEndpoints: [
+      { method: "GET", path: "/v1/me" },
+      { method: "GET", path: "/v1/workspaces" },
+      { method: "POST", path: "/v1/workspaces/{workspaceId}/agent-runs" },
+      { method: "GET", path: "/v1/agent-runs/{runId}/events/stream" },
+      { method: "GET", path: "/v1/agent-runs/{runId}/artifacts" },
+      { method: "POST", path: "/v1/agent-runs/{runId}/approvals" },
+      { method: "GET", path: "/v1/ops/integration-contract" },
+    ],
+    capabilities: {
+      asyncAgentRuns: true,
+      sseRunEvents: true,
+      approvalBoundary: true,
+      artifactRegistry: true,
+    },
+    ...overrides,
+  });
 }
