@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "scoreModel": {
+    "missingFrontmatterWeight": 1,
+    "inboxNoteWeight": 1,
+    "orphanNoteWeight": 1,
+    "brokenLinkWeight": 2
+  },
+  "preOrganization": {
+    "inboxNotes": 12,
+    "missingFrontmatter": 6,
+    "orphanNotes": 7,
+    "brokenLinks": 2,
+    "score": 29
+  },
+  "expectedPostOrganization": {
+    "inboxNotes": 0,
+    "missingFrontmatter": 0,
+    "orphanNotes": 0,
+    "brokenLinks": 0,
+    "score": 0
+  },
+  "expectedReduction": 29,
+  "expectedReductionRatio": 1
+}
