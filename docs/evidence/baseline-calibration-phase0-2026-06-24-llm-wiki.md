@@ -15,7 +15,7 @@ This evidence supersedes `docs/evidence/baseline-calibration-phase0-2026-06-24.m
 - `daily/`, `projects/`, `resources/`: writable support roots
 - `log.md`: append-only operation log
 
-Demo Vault baseline commit: `TBD-after-first-supplement-commit`
+Demo Vault baseline commit: `153f491d842b9aadfd536db8109955680920bd59`
 
 ## Migration Summary
 

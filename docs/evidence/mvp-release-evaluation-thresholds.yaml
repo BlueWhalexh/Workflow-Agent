@@ -23,7 +23,7 @@
 schemaVersion: 1
 status: phase0-schema-locked
 calibratedAt: 2026-06-24
-calibrationCommit: efba9f361f4216bba523cd07f06ab6f87fe5ab1b
+calibrationCommit: 153f491d842b9aadfd536db8109955680920bd59
 
 # ============================================================
 # Layer A — Outcome(真实交付效果)
