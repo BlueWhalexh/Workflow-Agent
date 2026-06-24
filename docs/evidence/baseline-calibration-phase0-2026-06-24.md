@@ -1,5 +1,7 @@
 # Phase 0 Baseline Calibration
 
+> Superseded by `docs/evidence/baseline-calibration-phase0-2026-06-24-llm-wiki.md` after the P0-T9 LLM Wiki three-layer Demo Vault reorganization on 2026-06-24.
+
 Phase: 0
 Task: P0-T8
 Evidence label: unit/mock + manual/source-audit

@@ -1,0 +1,45 @@
+schemaVersion: 1
+methodologyId: llm-wiki-three-layer
+description: |
+  LLM 是 Wiki 维护者,人类是读者。
+  每次对 knowledge-base/ 的修改必须同步 [[knowledge-base/index]] 和 [[log]]。
+
+layers:
+  raw:
+    role: input
+    purpose: 原始素材,只读
+    writable: false
+    subpaths:
+      - clippings/
+      - assets/
+    requires_frontmatter: false
+  knowledge-base:
+    role: wiki
+    purpose: LLM 维护的结构化知识
+    writable: true
+    requires_frontmatter: true
+    frontmatter_required_fields: [title, type, source, updated]
+    requires_sync:
+      - knowledge-base/index.md
+      - log.md
+    atomic_note_rules:
+      must_link_up_moc: true
+      moc_pattern: "knowledge-base/*/index.md OR knowledge-base/*/MOC*.md"
+  schema:
+    role: rules
+    purpose: 规则与流程
+    writable: false
+    requires_approval_scope: schema-edit
+  daily:
+    role: log
+    writable: true
+  projects:
+    role: project
+    writable: true
+  resources:
+    role: reference
+    writable: true
+
+global_sync_targets:
+  - knowledge-base/index.md
+  - log.md

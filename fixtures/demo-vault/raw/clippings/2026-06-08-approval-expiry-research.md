@@ -1,12 +1,3 @@
----
-title: Approval expiry design note
-project: Delta Research
-type: research
-date: 2026-06-08
-status: inbox
-source: design-reading
----
-
 # Approval expiry design note
 
 Observation: structured approval should expire because the workspace may move while the user is away.

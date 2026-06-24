@@ -1,65 +1,41 @@
 {
   "schemaVersion": 1,
   "notes": {
-    "Inbox/2026-06-01-atlas-search-kickoff.md": {
-      "project": "Atlas Search",
-      "type": "meeting",
-      "targetPath": "Projects/AtlasSearch/2026-06-01-atlas-search-kickoff.md"
-    },
-    "Inbox/2026-06-02-beacon-ops-incident-review.md": {
-      "project": "Beacon Ops",
-      "type": "meeting",
-      "targetPath": "Projects/BeaconOps/2026-06-02-beacon-ops-incident-review.md"
-    },
-    "Inbox/2026-06-03-cobalt-notes-frontmatter-study.md": {
+    "raw/clippings/2026-06-03-frontmatter-study.md": {
+      "targetPath": "knowledge-base/cobalt-notes/frontmatter-schema.md",
       "project": "Cobalt Notes",
       "type": "research",
-      "targetPath": "Projects/CobaltNotes/2026-06-03-cobalt-notes-frontmatter-study.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     },
-    "Inbox/2026-06-04-delta-research-reading.md": {
+    "raw/clippings/2026-06-04-research-reading.md": {
+      "targetPath": "knowledge-base/delta-research/optimistic-locking.md",
       "project": "Delta Research",
       "type": "research",
-      "targetPath": "Projects/DeltaResearch/2026-06-04-delta-research-reading.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     },
-    "Inbox/2026-06-05-atlas-link-quality.md": {
-      "project": "Atlas Search",
-      "type": "meeting",
-      "targetPath": "Projects/AtlasSearch/2026-06-05-atlas-link-quality.md"
-    },
-    "Inbox/2026-06-06-beacon-runtime-lab.md": {
-      "project": "Beacon Ops",
-      "type": "meeting",
-      "targetPath": "Projects/BeaconOps/2026-06-06-beacon-runtime-lab.md"
-    },
-    "Inbox/2026-06-07-cobalt-source-attribution.md": {
+    "raw/clippings/2026-06-07-source-attribution.md": {
+      "targetPath": "knowledge-base/cobalt-notes/source-attribution.md",
       "project": "Cobalt Notes",
       "type": "research",
-      "targetPath": "Projects/CobaltNotes/2026-06-07-cobalt-source-attribution.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     },
-    "Inbox/2026-06-08-delta-approval-expiry.md": {
+    "raw/clippings/2026-06-08-approval-expiry-research.md": {
+      "targetPath": "knowledge-base/delta-research/approval-expiry.md",
       "project": "Delta Research",
       "type": "research",
-      "targetPath": "Projects/DeltaResearch/2026-06-08-delta-approval-expiry.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     },
-    "Inbox/2026-06-09-beacon-sse-replay-test.md": {
+    "raw/clippings/2026-06-09-sse-replay-test.md": {
+      "targetPath": "knowledge-base/beacon-ops/sse-replay.md",
       "project": "Beacon Ops",
       "type": "research",
-      "targetPath": "Projects/BeaconOps/2026-06-09-beacon-sse-replay-test.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     },
-    "Inbox/2026-06-10-atlas-query-taxonomy.md": {
-      "project": "Atlas Search",
-      "type": "research",
-      "targetPath": "Projects/AtlasSearch/2026-06-10-atlas-query-taxonomy.md"
-    },
-    "Inbox/2026-06-11-cobalt-moc-format.md": {
+    "raw/clippings/2026-06-11-moc-format-study.md": {
+      "targetPath": "knowledge-base/cobalt-notes/moc-format.md",
       "project": "Cobalt Notes",
       "type": "meeting",
-      "targetPath": "Projects/CobaltNotes/2026-06-11-cobalt-moc-format.md"
-    },
-    "Inbox/2026-06-12-delta-stale-rejection.md": {
-      "project": "Delta Research",
-      "type": "meeting",
-      "targetPath": "Projects/DeltaResearch/2026-06-12-delta-stale-rejection.md"
+      "sourcePolicy": "preserve-body-and-cite-raw"
     }
   }
 }

@@ -9,4 +9,4 @@ Example rewrite rule:
 中文例子:
 把 "frontmatter required fields" 写入 MOC 时, source 应指向研究笔记原句,不能只写 "LLM inferred".
 
-Related maybe: [[2026-06-03-cobalt-notes-frontmatter-study]]
+Related maybe: [[raw/clippings/2026-06-03-frontmatter-study]]
