@@ -1,0 +1,117 @@
+{
+  "workflow_state": "active",
+  "classification": {
+    "risk": "L3",
+    "mode": "mvp",
+    "scope": "cross_module",
+    "uncertainty": "medium",
+    "profiles": ["api", "data", "docs", "delivery"]
+  },
+  "routing": {
+    "spec_system": "repo_native",
+    "execution_engine": "superpowers",
+    "strategy_id": "complex-real-slice",
+    "required_skills": ["adaptive-dev-workflow", "test-driven-development", "delivery-verification"]
+  },
+  "selected_strategy": "complex-real-slice",
+  "current_stage": "execute-phase-0",
+  "design_control": {
+    "policy": "standalone",
+    "review": "independent",
+    "triggers": ["new_boundary", "public_api", "event_contract", "data_model", "runtime_operability_performance_observability"],
+    "artifact_id": "td-mvp-release",
+    "approval": {
+      "status": "approved",
+      "reviewer": "repo-native-design-review",
+      "reviewer_kind": "agent",
+      "evidence_ids": ["docs/design/mvp-release/README.md"]
+    }
+  },
+  "artifacts": [
+    {
+      "id": "analysis-mvp-release",
+      "type": "analysis_pack",
+      "status": "approved",
+      "version": 1,
+      "producer": "repo-docs",
+      "depends_on": [],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/specs/mvp-release/spec.md"
+    },
+    {
+      "id": "ctx-mvp-release",
+      "type": "context_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "repo-docs",
+      "depends_on": ["analysis-mvp-release"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "AGENTS.md"
+    },
+    {
+      "id": "spec-mvp-release",
+      "type": "spec",
+      "status": "approved",
+      "version": 1,
+      "producer": "repo-docs",
+      "depends_on": ["analysis-mvp-release"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/specs/mvp-release/acceptance.yaml",
+      "lightweight_exception": false
+    },
+    {
+      "id": "td-mvp-release",
+      "type": "technical_design",
+      "status": "approved",
+      "version": 1,
+      "producer": "repo-docs",
+      "depends_on": ["analysis-mvp-release", "ctx-mvp-release", "spec-mvp-release"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/design/mvp-release/overview.md"
+    },
+    {
+      "id": "plan-mvp-release-phase0",
+      "type": "plan",
+      "status": "approved",
+      "version": 1,
+      "producer": "repo-docs",
+      "depends_on": ["td-mvp-release"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "task-phase0",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "ctx-mvp-release"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase0",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase0"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "src/runtime"
+    },
+    {
+      "id": "evidence-phase0",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase0"],
+      "covers_acceptance": ["shared-runtime-contract"],
+      "path": "docs/evidence/phase0-evidence-manifest.json"
+    }
+  ],
+  "claims": {
+    "requested": "dev_done",
+    "validated": []
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "evidence_manifest_id": "phase0-local-dev-2026-06-24",
+  "claim_requested": "dev_done",
+  "acceptance_coverage": [
+    {
+      "acceptance_id": "shared-runtime-contract",
+      "validator_ids": ["V-UNIT-PHASE0", "V-TYPECHECK", "V-WORKFLOW", "V-P5-STATIC", "V-DEMO-HASH"]
+    }
+  ],
+  "validators": [
+    {
+      "id": "V-UNIT-PHASE0",
+      "type": "unit",
+      "result": "pass",
+      "command_or_method": "npx vitest run tests/unit/demo-vault-fixture.test.ts tests/unit/runtime-phase0-contract.test.ts tests/unit/evaluation-thresholds-phase0.test.ts",
+      "proves": "Demo Vault structure, Phase 0 runtime request/envelope/dispatcher/workspace contract, and thresholds schema lock pass local unit tests.",
+      "gaps": "Does not prove runtime integration, real provider behavior, browser E2E, or reviewer approval."
+    },
+    {
+      "id": "V-TYPECHECK",
+      "type": "typecheck",
+      "result": "pass",
+      "command_or_method": "npx tsc --noEmit",
+      "proves": "The current TypeScript workspace, including new src/runtime Phase 0 skeleton, typechecks.",
+      "gaps": "Typecheck does not prove runtime behavior."
+    },
+    {
+      "id": "V-WORKFLOW",
+      "type": "static",
+      "result": "pass",
+      "command_or_method": "python3 <adaptive-dev-workflow>/scripts/validate_workflow_manifest.py workflow_manifest.json && python3 <adaptive-dev-workflow>/scripts/validate_artifact_graph.py workflow_manifest.json",
+      "proves": "Workflow manifest and artifact graph are structurally valid.",
+      "gaps": "Does not sign a delivery claim."
+    },
+    {
+      "id": "V-P5-STATIC",
+      "type": "static",
+      "result": "pass",
+      "command_or_method": "rg forbidden-public-boundary-patterns <phase0 paths>",
+      "proves": "No local-path-shaped strings, raw provider payload marker, or provider credential env-name marker were found in the Phase 0 paths checked.",
+      "gaps": "Search is pattern-based and scoped to Phase 0 touched paths."
+    },
+    {
+      "id": "V-SDK-AUDIT",
+      "type": "manual",
+      "result": "pass",
+      "command_or_method": "docs/evidence/sdk-extract-checklist.md source audit against src/sdk/agent-runtime/",
+      "proves": "P0-T6 extraction checklist maps frozen SDK files to new runtime targets with line ranges, adaptation notes, and test migration paths.",
+      "gaps": "Requires reviewer inspection for final checklist approval."
+    },
+    {
+      "id": "V-DEMO-HASH",
+      "type": "static",
+      "result": "pass",
+      "command_or_method": "git rev-parse <P0-T7-demo-vault-commit>",
+      "proves": "Demo Vault baseline is committed at efba9f361f4216bba523cd07f06ab6f87fe5ab1b for reproducible Phase 0 evidence references.",
+      "gaps": "Future eval reports must record the commit they actually ran against."
+    }
+  ],
+  "deferred": [
+    "Reviewer PASS for docs/evidence/sdk-extract-checklist.md.",
+    "Pull request creation and per-task reviewer workflow.",
+    "Phase 1-6 integration, browser, eval CLI, and real provider evidence."
+  ],
+  "review_focus": [
+    "P5 public boundary hygiene: no public cwd, local paths, env names, raw provider payloads, or native IDs.",
+    "P7/P8 SDK remains adapter-only; no arbitrary MCP/custom tool/Bash surface.",
+    "P0 path discipline: no new business logic in src/sdk/agent-runtime/, backend/, or docs/superpowers/.",
+    "Threshold schema count and Phase 0/P6 split are intentional and aligned with plan dependency order."
+  ]
+}
