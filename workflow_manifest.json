@@ -14,7 +14,7 @@
     "required_skills": ["adaptive-dev-workflow", "test-driven-development", "delivery-verification"]
   },
   "selected_strategy": "complex-real-slice",
-  "current_stage": "execute-phase-0",
+  "current_stage": "execute-phase-1-p1-t5",
   "design_control": {
     "policy": "standalone",
     "review": "independent",
@@ -108,6 +108,186 @@
       "depends_on": ["impl-phase0"],
       "covers_acceptance": ["shared-runtime-contract"],
       "path": "docs/evidence/phase0-evidence-manifest.json"
+    },
+    {
+      "id": "task-phase1-p1-t1",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "ctx-mvp-release"],
+      "covers_acceptance": ["candidate-changeset-only", "stale-changeset-rejection"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase1-p1-t1",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t1"],
+      "covers_acceptance": ["candidate-changeset-only", "stale-changeset-rejection"],
+      "path": "src/domain/knowledge/changeset/store.ts"
+    },
+    {
+      "id": "evidence-phase1-p1-t1",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-p1-t1"],
+      "covers_acceptance": ["candidate-changeset-only", "stale-changeset-rejection"],
+      "path": "tests/unit/knowledge-changeset-store.test.ts"
+    },
+    {
+      "id": "task-phase1-p1-t2",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "task-phase1-p1-t1", "ctx-mvp-release"],
+      "covers_acceptance": ["deterministic-rule-enforcement"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase1-p1-t2",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t2", "impl-phase1-p1-t1"],
+      "covers_acceptance": ["deterministic-rule-enforcement"],
+      "path": "src/domain/knowledge/validator/ruleset-validator.ts"
+    },
+    {
+      "id": "evidence-phase1-p1-t2",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-p1-t2"],
+      "covers_acceptance": ["deterministic-rule-enforcement"],
+      "path": "tests/unit/knowledge-changeset-validator.test.ts"
+    },
+    {
+      "id": "task-phase1-p1-t3",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "task-phase1-p1-t2", "ctx-mvp-release"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase1-p1-t3",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t3", "impl-phase1-p1-t1"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "src/domain/knowledge/changeset/approval.ts"
+    },
+    {
+      "id": "evidence-phase1-p1-t3",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-p1-t3"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "tests/unit/knowledge-changeset-approval.test.ts"
+    },
+    {
+      "id": "task-phase1-p1-t4",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "task-phase1-p1-t3", "ctx-mvp-release"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase1-p1-t4",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t4", "impl-phase1-p1-t3"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "src/domain/knowledge/changeset/approval.ts"
+    },
+    {
+      "id": "evidence-phase1-p1-t4",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-p1-t4"],
+      "covers_acceptance": ["structured-approval-binding"],
+      "path": "tests/unit/knowledge-changeset-pipeline.test.ts"
+    },
+    {
+      "id": "task-phase1-p1-t5",
+      "type": "task_packet",
+      "status": "approved",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["plan-mvp-release-phase0", "task-phase1-p1-t4", "ctx-mvp-release"],
+      "covers_acceptance": ["stale-changeset-rejection", "candidate-changeset-only"],
+      "path": "docs/plans/mvp-release.md"
+    },
+    {
+      "id": "impl-phase1-p1-t5-apply",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t5", "impl-phase1-p1-t1"],
+      "covers_acceptance": ["stale-changeset-rejection"],
+      "path": "src/domain/knowledge/changeset/apply.ts"
+    },
+    {
+      "id": "evidence-phase1-p1-t5-apply",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-p1-t5-apply"],
+      "covers_acceptance": ["stale-changeset-rejection"],
+      "path": "tests/unit/knowledge-changeset-apply.test.ts"
+    },
+    {
+      "id": "impl-phase1-pipeline",
+      "type": "implementation",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["task-phase1-p1-t5", "impl-phase1-p1-t2", "impl-phase1-p1-t3", "impl-phase1-p1-t5-apply"],
+      "covers_acceptance": [
+        "candidate-changeset-only",
+        "deterministic-rule-enforcement",
+        "structured-approval-binding",
+        "stale-changeset-rejection"
+      ],
+      "path": "src/domain/knowledge/changeset/pipeline.ts"
+    },
+    {
+      "id": "evidence-phase1-pipeline",
+      "type": "evidence_manifest",
+      "status": "ready",
+      "version": 1,
+      "producer": "codex",
+      "depends_on": ["impl-phase1-pipeline"],
+      "covers_acceptance": [
+        "candidate-changeset-only",
+        "deterministic-rule-enforcement",
+        "structured-approval-binding",
+        "stale-changeset-rejection"
+      ],
+      "path": "tests/unit/knowledge-changeset-pipeline.test.ts"
     }
   ],
   "claims": {
