@@ -4,7 +4,7 @@
   "acceptance_coverage": [
     {
       "acceptance_id": "shared-runtime-contract",
-      "validator_ids": ["V-UNIT-PHASE0", "V-TYPECHECK", "V-WORKFLOW", "V-P5-STATIC", "V-DEMO-HASH"]
+      "validator_ids": ["V-UNIT-PHASE0", "V-TYPECHECK", "V-WORKFLOW", "V-P5-STATIC", "V-DEMO-HASH", "V-COMPLETION-AUDIT"]
     }
   ],
   "validators": [
@@ -55,6 +55,14 @@
       "command_or_method": "git rev-parse <P0-T7-demo-vault-commit>",
       "proves": "Demo Vault baseline is committed at efba9f361f4216bba523cd07f06ab6f87fe5ab1b for reproducible Phase 0 evidence references.",
       "gaps": "Future eval reports must record the commit they actually ran against."
+    },
+    {
+      "id": "V-COMPLETION-AUDIT",
+      "type": "manual",
+      "result": "pass",
+      "command_or_method": "docs/evidence/phase0-completion-audit.md",
+      "proves": "Phase 0 requirements were checked item by item against current PR evidence, with remaining reviewer gates explicitly separated from local dev evidence.",
+      "gaps": "Audit is not a substitute for reviewer approval."
     }
   ],
   "deferred": [
