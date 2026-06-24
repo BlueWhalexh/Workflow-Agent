@@ -3,9 +3,9 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const vaultRoot = join(process.cwd(), "fixtures/demo-vault");
-const inboxRoot = join(vaultRoot, "Inbox");
-const projectsRoot = join(vaultRoot, "Projects");
-const rulesetPath = join(vaultRoot, "_rules/ruleset.json");
+const rawRoot = join(vaultRoot, "raw");
+const knowledgeBaseRoot = join(vaultRoot, "knowledge-base");
+const schemaRoot = join(vaultRoot, "schema");
 const goldenRoot = join(vaultRoot, "_golden");
 
 async function listMarkdownFiles(dir: string): Promise<string[]> {
@@ -17,45 +17,50 @@ async function listMarkdownFiles(dir: string): Promise<string[]> {
 }
 
 describe("Phase 0 Demo Vault fixture", () => {
-  it("contains exactly 12 intentionally mixed Inbox notes", async () => {
-    const inboxNotes = await listMarkdownFiles(inboxRoot);
+  it("contains the LLM Wiki raw inputs without making raw writable", async () => {
+    const clippings = await listMarkdownFiles(join(rawRoot, "clippings"));
 
-    expect(inboxNotes).toHaveLength(12);
+    expect(clippings).toHaveLength(6);
+    expect(await readFile(join(rawRoot, "项目随手记.md"), "utf8")).not.toMatch(/^---\n/);
 
     const contents = await Promise.all(
-      inboxNotes.map(async (name) => readFile(join(inboxRoot, name), "utf8"))
+      clippings.map(async (name) => readFile(join(rawRoot, "clippings", name), "utf8"))
     );
-    const withFrontmatter = contents.filter((content) => content.startsWith("---\n")).length;
-    const withoutFrontmatter = contents.length - withFrontmatter;
     const englishChineseMixed = contents.filter((content) => /[A-Za-z]/.test(content) && /[\u4e00-\u9fff]/.test(content));
 
-    expect(withFrontmatter).toBeGreaterThan(0);
-    expect(withoutFrontmatter).toBeGreaterThan(0);
-    expect(englishChineseMixed.length).toBeGreaterThanOrEqual(8);
+    expect(contents.every((content) => !content.startsWith("---\n"))).toBe(true);
+    expect(englishChineseMixed.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("ships project targets, ruleset, and all golden baseline files", async () => {
-    await expect(stat(projectsRoot)).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+  it("ships knowledge-base MOCs, schema rules, and all golden baseline files", async () => {
+    await expect(stat(knowledgeBaseRoot)).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+    await expect(stat(schemaRoot)).resolves.toMatchObject({ isDirectory: expect.any(Function) });
 
-    const ruleset = JSON.parse(await readFile(rulesetPath, "utf8")) as {
-      schemaVersion?: number;
-      writableRoots?: string[];
-      frontmatterSchema?: { required?: string[] };
-      maxOperationsPerChangeset?: number;
-    };
-    expect(ruleset.schemaVersion).toBe(1);
-    expect(ruleset.writableRoots).toEqual(["Inbox/", "Projects/"]);
-    expect(ruleset.frontmatterSchema?.required).toEqual(
-      expect.arrayContaining(["title", "project", "type", "date", "status", "source"])
-    );
-    expect(ruleset.maxOperationsPerChangeset).toBeGreaterThanOrEqual(13);
+    const ruleset = await readFile(join(schemaRoot, "ruleset.yaml"), "utf8");
+    const writableRootsBlock = ruleset.match(/^writableRoots:\n((?:  - .+\n)+)/m)?.[1] ?? "";
+    expect(ruleset).toContain("schemaVersion: 1");
+    expect(writableRootsBlock).toContain("- knowledge-base/");
+    expect(writableRootsBlock).not.toContain("- raw/");
+    expect(ruleset).toContain("frontmatterSchema:");
+    expect(ruleset).toContain("- title");
+    expect(ruleset).toContain("- project");
+    expect(ruleset).toContain("- type");
+    expect(ruleset).toContain("- date");
+    expect(ruleset).toContain("- status");
+    expect(ruleset).toContain("- source");
+    expect(ruleset).toContain("maxOperationsPerChangeset: 24");
 
     const goldenFiles = await readdir(goldenRoot);
-    expect(goldenFiles.sort()).toEqual(["assignment.json", "entropy.json", "link-graph.json", "moc.md"]);
+    expect(goldenFiles.filter((file) => !file.startsWith(".")).sort()).toEqual([
+      "assignment.json",
+      "entropy.json",
+      "link-graph.json",
+      "moc.md"
+    ]);
 
     const assignment = JSON.parse(await readFile(join(goldenRoot, "assignment.json"), "utf8")) as {
       notes?: Record<string, unknown>;
     };
-    expect(Object.keys(assignment.notes ?? {})).toHaveLength(12);
+    expect(Object.keys(assignment.notes ?? {})).toHaveLength(6);
   });
 });

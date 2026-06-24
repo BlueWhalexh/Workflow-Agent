@@ -1,12 +1,3 @@
----
-title: Cobalt MOC format discussion
-project: Cobalt Notes
-type: meeting
-date: 2026-06-11
-status: inbox
-source: user-note
----
-
 # Cobalt MOC format discussion
 
 Meeting notes:
@@ -16,4 +7,4 @@ Meeting notes:
 
 中文:
 - 相关链接需要可解释,不要只是堆列表.
-- 如果生成 Projects/CobaltNotes/Cobalt Notes MOC.md, 应保留指向 Inbox 原笔记的链接.
+- 如果生成 knowledge-base/cobalt-notes/index.md, 应保留指向 raw 原笔记的链接.

@@ -1,14 +1,16 @@
-# Demo Vault
+# Demo Vault: LLM Wiki Three-Layer Fixture
 
-Phase: 0
-Task: P0-T7
-Constitution: P1, P3, P5, P6, P12
+This fixture is the Phase 0 local-first Obsidian-compatible Demo Vault.
 
-This fixture is an Obsidian-compatible Markdown Vault for the MVP release eval baseline.
+It follows the LLM Wiki three-layer structure defined by `docs/design/mvp-release/06-schema-layer.md`:
 
-- `Inbox/` contains 12 intentionally mixed meeting and research notes. Some notes have incomplete or missing frontmatter.
-- `Projects/` contains target project pages used by the golden assignment.
-- `_rules/ruleset.json` is the deterministic validation ruleset for MVP V1.
-- `_golden/` contains expected project assignment, MOC, link graph, and entropy baseline files.
+- `raw/`: human-imported source material. It is readable but not writable by the agent.
+- `knowledge-base/`: LLM-maintained wiki layer. Updates here must sync `knowledge-base/index.md` and `log.md`.
+- `schema/`: protected rules and methodology layer. Edits require schema approval.
+- `daily/`, `projects/`, and `resources/`: writable workspace support roots.
+- `log.md`: append-only operation log.
 
-`README.md`, `_rules/`, and `_golden/` are support files for tests and eval. They are not user notes to reorganize.
+The six research clippings in `raw/clippings/` are the Phase 0 organization inputs for `_golden/assignment.json`.
+The six meeting and scratch notes are intentionally merged into `raw/项目随手记.md` so the fixture includes a mixed raw capture file without frontmatter.
+
+`_golden/` contains deterministic eval targets only. It is not a user workspace area.

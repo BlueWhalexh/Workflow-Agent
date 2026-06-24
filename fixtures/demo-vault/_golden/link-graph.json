@@ -1,54 +1,74 @@
 {
   "schemaVersion": 1,
-  "expectedLinks": [
-    {
-      "from": "Projects/AtlasSearch/Atlas Search MOC.md",
-      "to": "Projects/AtlasSearch/2026-06-01-atlas-search-kickoff.md"
-    },
-    {
-      "from": "Projects/AtlasSearch/Atlas Search MOC.md",
-      "to": "Projects/AtlasSearch/2026-06-05-atlas-link-quality.md"
-    },
-    {
-      "from": "Projects/AtlasSearch/Atlas Search MOC.md",
-      "to": "Projects/AtlasSearch/2026-06-10-atlas-query-taxonomy.md"
-    },
-    {
-      "from": "Projects/BeaconOps/Beacon Ops MOC.md",
-      "to": "Projects/BeaconOps/2026-06-02-beacon-ops-incident-review.md"
-    },
-    {
-      "from": "Projects/BeaconOps/Beacon Ops MOC.md",
-      "to": "Projects/BeaconOps/2026-06-06-beacon-runtime-lab.md"
-    },
-    {
-      "from": "Projects/BeaconOps/Beacon Ops MOC.md",
-      "to": "Projects/BeaconOps/2026-06-09-beacon-sse-replay-test.md"
-    },
-    {
-      "from": "Projects/CobaltNotes/Cobalt Notes MOC.md",
-      "to": "Projects/CobaltNotes/2026-06-03-cobalt-notes-frontmatter-study.md"
-    },
-    {
-      "from": "Projects/CobaltNotes/Cobalt Notes MOC.md",
-      "to": "Projects/CobaltNotes/2026-06-07-cobalt-source-attribution.md"
-    },
-    {
-      "from": "Projects/CobaltNotes/Cobalt Notes MOC.md",
-      "to": "Projects/CobaltNotes/2026-06-11-cobalt-moc-format.md"
-    },
-    {
-      "from": "Projects/DeltaResearch/Delta Research MOC.md",
-      "to": "Projects/DeltaResearch/2026-06-04-delta-research-reading.md"
-    },
-    {
-      "from": "Projects/DeltaResearch/Delta Research MOC.md",
-      "to": "Projects/DeltaResearch/2026-06-08-delta-approval-expiry.md"
-    },
-    {
-      "from": "Projects/DeltaResearch/Delta Research MOC.md",
-      "to": "Projects/DeltaResearch/2026-06-12-delta-stale-rejection.md"
-    }
+  "nodes": [
+    "knowledge-base/index.md",
+    "knowledge-base/atlas-search/index.md",
+    "knowledge-base/beacon-ops/index.md",
+    "knowledge-base/cobalt-notes/index.md",
+    "knowledge-base/delta-research/index.md",
+    "knowledge-base/beacon-ops/sse-replay.md",
+    "knowledge-base/cobalt-notes/frontmatter-schema.md",
+    "knowledge-base/cobalt-notes/moc-format.md",
+    "knowledge-base/cobalt-notes/source-attribution.md",
+    "knowledge-base/delta-research/approval-expiry.md",
+    "knowledge-base/delta-research/optimistic-locking.md",
+    "log.md"
   ],
-  "minimumUsefulCrossNoteLinks": 8
+  "edges": [
+    {
+      "from": "knowledge-base/index.md",
+      "to": "knowledge-base/atlas-search/index.md",
+      "type": "moc-link"
+    },
+    {
+      "from": "knowledge-base/index.md",
+      "to": "knowledge-base/beacon-ops/index.md",
+      "type": "moc-link"
+    },
+    {
+      "from": "knowledge-base/index.md",
+      "to": "knowledge-base/cobalt-notes/index.md",
+      "type": "moc-link"
+    },
+    {
+      "from": "knowledge-base/index.md",
+      "to": "knowledge-base/delta-research/index.md",
+      "type": "moc-link"
+    },
+    {
+      "from": "knowledge-base/beacon-ops/sse-replay.md",
+      "to": "knowledge-base/beacon-ops/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/cobalt-notes/frontmatter-schema.md",
+      "to": "knowledge-base/cobalt-notes/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/cobalt-notes/moc-format.md",
+      "to": "knowledge-base/cobalt-notes/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/cobalt-notes/source-attribution.md",
+      "to": "knowledge-base/cobalt-notes/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/delta-research/approval-expiry.md",
+      "to": "knowledge-base/delta-research/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/delta-research/optimistic-locking.md",
+      "to": "knowledge-base/delta-research/index.md",
+      "type": "parent-moc"
+    },
+    {
+      "from": "knowledge-base/index.md",
+      "to": "log.md",
+      "type": "sync-target"
+    }
+  ]
 }

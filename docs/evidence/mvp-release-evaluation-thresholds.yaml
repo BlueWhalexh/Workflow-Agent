@@ -27,8 +27,8 @@ calibrationCommit: efba9f361f4216bba523cd07f06ab6f87fe5ab1b
 
 # ============================================================
 # Layer A — Outcome(真实交付效果)
-#   对应 V1 切片"整理 Inbox/ 12 篇笔记 + 加 frontmatter / 找项目归属 /
-#   加相关链接 / 产 Project MOC / 不破坏原文"
+#   对应 V1 切片"从 raw/ clippings 产 atomic note + 同步 knowledge-base MOC /
+#   加相关链接 / 维护 log / 不破坏原文"
 #   测法:Eval CLI 比对 apply 后 vault 与 fixtures/demo-vault/_golden/
 # ============================================================
 outcome:
@@ -85,8 +85,8 @@ outcome:
     definition: "整理前后 Vault 凌乱度 score 差值(broken link + 无 frontmatter + 孤岛笔记 合成)"
     measurement: "vault entropy score (pre) - (post)"
     threshold_type: float
-    pre_organization_score: 29
-    threshold: 14.5        # Phase 0 Demo Vault pre score 29 × 50%
+    pre_organization_score: 13
+    threshold: 6.5         # Phase 0 LLM Wiki Demo Vault pre score 13 × 50%
     blocker: false
 
 # ============================================================

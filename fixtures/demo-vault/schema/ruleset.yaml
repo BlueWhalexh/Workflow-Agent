@@ -1,0 +1,65 @@
+schemaVersion: 1
+rulesetId: demo-vault-mvp-phase0-llm-wiki
+workspaceKind: obsidian-compatible-markdown-vault
+writableRoots:
+  - knowledge-base/
+  - daily/
+  - projects/
+  - resources/
+appendOnlyFiles:
+  - log.md
+protectedRoots:
+  - raw/
+  - schema/
+protectedFiles:
+  - AGENTS.md
+  - CLAUDE.md
+readableRoots: ["**/*"]
+frontmatterSchema:
+  required:
+    - title
+    - project
+    - type
+    - date
+    - status
+    - source
+  properties:
+    title:
+      type: string
+    project:
+      type: string
+    type:
+      enum:
+        - meeting
+        - research
+        - moc
+        - runbook
+        - note
+    date:
+      type: string
+      format: date
+    status:
+      enum:
+        - inbox
+        - active
+        - archived
+    source:
+      enum:
+        - user-note
+        - clipped-research
+        - design-reading
+    updated:
+      type: string
+      format: date
+linkPolicy:
+  requiredProjectMocLink: true
+  allowBrokenLinks: false
+  requireSourceBacklinks: true
+maxOperationsPerChangeset: 24
+maxFilesPerChangeset: 16
+methodologyAware:
+  enforceLayerWritability: true
+  enforceAppendOnlyLog: true
+  enforceKbSync:
+    syncTargets: [knowledge-base/index.md, log.md]
+  enforceAtomicNoteUplink: true
